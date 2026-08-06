@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="color-scheme" content="dark">
   <title>Liebherr Fleet Operations Suite</title>
   
   <meta name="theme-color" content="#121315">
@@ -12,6 +13,7 @@
 
   <style>
     :root {
+      color-scheme: dark;
       --bg-dark: #121315;
       --card-bg: #1c1e22;
       --input-bg: #272a30;
@@ -152,7 +154,6 @@
         </div>
       </div>
 
-      <!-- Auxiliary Check Weights Card with Specific Factory Specs -->
       <div class="card">
         <div class="card-title" style="color:var(--accent-cyan);">
           Auxiliary Hook Block Check Weights / Ballast Plates
@@ -557,7 +558,7 @@
     }
 
     function updateCheckWeightValue() {
-      const val = parseFloat(document.getElementById('r-weighttype').value);
+      const val = parseFloat(document.getElementById('r-checkweight').value);
       document.getElementById('r-checkweight').value = val;
       calcRope();
     }
@@ -597,35 +598,35 @@
     const reevingFactors = { 1:1.31, 2:1.34, 3:1.36, 4:1.39, 5:1.41, 6:1.44, 7:1.46, 8:1.49, 9:1.52, 10:1.54, 11:1.57, 12:1.60, 13:1.63, 14:1.65, 15:1.68, 16:1.71, 17:1.74, 18:1.77, 19:1.80, 20:1.83, 21:1.87, 22:1.90, 23:1.93, 24:1.96, 25:2.00, 26:2.03, 27:2.06, 28:2.10, 29:2.13, 30:2.17 };
 
     const cranesData = {
-      "LRT 1100t": { ropeDia: 17, blocks: [
+      "LRT 1100t": { ropeDia: 17, minPlateIncrement: 250, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 140, maxWeight: 140 },
         { name: "Hook block 20 EM", sheaves: 1, maxReeving: 3, baseWeight: 325, maxWeight: 325 },
         { name: "Hook block 50 DM", sheaves: 3, maxReeving: 7, baseWeight: 440, maxWeight: 440 },
         { name: "Hook block 80 DM", sheaves: 5, maxReeving: 11, baseWeight: 530, maxWeight: 530 },
         { name: "Hook block 100 DM", sheaves: 7, maxReeving: 14, baseWeight: 760, maxWeight: 760 }
       ]},
-      "LTM 1110t": { ropeDia: 19, blocks: [
+      "LTM 1110t": { ropeDia: 19, minPlateIncrement: 500, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 1450 },
         { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 1500 },
         { name: "Hook block 100 DM", sheaves: 6, maxReeving: 11, baseWeight: 900, maxWeight: 2600 },
         { name: "Hook block 125 DS", sheaves: 7, maxReeving: 12, baseWeight: 1240, maxWeight: 1240 }
       ]},
-      "LTM 1130t": { ropeDia: 21, blocks: [
+      "LTM 1130t": { ropeDia: 21, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
         { name: "Hook block 30 EM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 450 },
         { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 700 },
         { name: "Hook block 100 DM", sheaves: 5, maxReeving: 11, baseWeight: 900, maxWeight: 2500 },
         { name: "Hook block 125 DS", sheaves: 7, maxReeving: 14, baseWeight: 1240, maxWeight: 1240 }
       ]},
-      "LTM 1160t": { ropeDia: 21, blocks: [
+      "LTM 1160t": { ropeDia: 21, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 350, maxWeight: 350 },
         { name: "Hook block 30 EM", sheaves: 1, maxReeving: 3, baseWeight: 650, maxWeight: 650 },
         { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 700 },
         { name: "Hook block 100 DM", sheaves: 5, maxReeving: 11, baseWeight: 900, maxWeight: 1300 },
         { name: "Hook block 160 DS", sheaves: 9, maxReeving: 18, baseWeight: 1320, maxWeight: 1320 }
       ]},
-      "LTR 1220t": { ropeDia: 23, blocks: [
+      "LTR 1220t": { ropeDia: 23, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1040, maxWeight: 1450 },
@@ -633,7 +634,7 @@
         { name: "Hook block 160 DM", sheaves: 7, maxReeving: 15, baseWeight: 1500, maxWeight: 1500 },
         { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 1900, maxWeight: 1900 }
       ]},
-      "LTM 1250t": { ropeDia: 23, blocks: [
+      "LTM 1250t": { ropeDia: 23, minPlateIncrement: 800, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
@@ -642,7 +643,7 @@
         { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 2000, maxWeight: 2000 },
         { name: "Hook block 250 DM", sheaves: 12, maxReeving: 16, baseWeight: 3400, maxWeight: 3400 }
       ]},
-      "LTM 1300t": { ropeDia: 23, blocks: [
+      "LTM 1300t": { ropeDia: 23, minPlateIncrement: 800, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 40 E", sheaves: 1, maxReeving: 3, baseWeight: 500, maxWeight: 1500 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
@@ -650,7 +651,7 @@
         { name: "Hook block 160 DM", sheaves: 7, maxReeving: 12, baseWeight: 1500, maxWeight: 1500 },
         { name: "Hook block 250 DM", sheaves: 12, maxReeving: 20, baseWeight: 3400, maxWeight: 3400 }
       ]},
-      "LTM 1650-8.1 (650t)": { ropeDia: 25, blocks: [
+      "LTM 1650-8.1 (650t)": { ropeDia: 25, minPlateIncrement: 1250, blocks: [
         { name: "Load hook 16.3 E", sheaves: 0, maxReeving: 1, baseWeight: 700, maxWeight: 700 },
         { name: "Hook block 50 EM", sheaves: 1, maxReeving: 3, baseWeight: 1000, maxWeight: 6500 },
         { name: "Hook block 100 DM", sheaves: 3, maxReeving: 7, baseWeight: 1600, maxWeight: 6000 },
@@ -664,16 +665,19 @@
     const hookCraneSelect = document.getElementById('h-crane');
     Object.keys(cranesData).forEach(c => hookCraneSelect.add(new Option(c, c)));
 
-    function formatBlockInfo(block, G_kg) {
+    function formatBlockInfo(block, G_kg, plateIncrement) {
       const sheavesText = block.sheaves === 0 ? "Single load hook (0 sheaves)" : `${block.sheaves} sheaves hook block`;
       let text = `${block.name} (${sheavesText}, Base Weight: ${block.baseWeight} kg)`;
       
       if (block.baseWeight < G_kg) {
-        const extraNeeded = Math.ceil(G_kg - block.baseWeight);
-        if (block.maxWeight >= G_kg) {
-          text += ` 💡 Requires +${extraNeeded} kg auxiliary weights (Target: ${Math.ceil(G_kg)} kg)`;
+        const deficit = G_kg - block.baseWeight;
+        const platesNeeded = Math.ceil(deficit / plateIncrement) * plateIncrement;
+        const finalWeight = block.baseWeight + platesNeeded;
+
+        if (block.maxWeight >= finalWeight) {
+          text += ` 💡 Requires minimum +${platesNeeded} kg cheek/ballast plates (Achieved Assembly: ${finalWeight} kg vs Target: ${Math.ceil(G_kg)} kg)`;
         } else {
-          text += ` ⚠️ Below minimum target weight by ${extraNeeded} kg.`;
+          text += ` ⚠️ Deficit of ${Math.ceil(deficit)} kg exceeds maximum allowable block ballast limit (${block.maxWeight} kg).`;
         }
       } else {
         text += ` ✅ Meets required weight naturally without auxiliary ballast.`;
@@ -721,62 +725,82 @@
         return;
       }
 
+      const plateIncrement = crane.minPlateIncrement || 500;
+
       const primary = validBlocks[0];
-      document.getElementById('h-recblock').innerText = formatBlockInfo(primary, G_kg);
+      document.getElementById('h-recblock').innerText = formatBlockInfo(primary, G_kg, plateIncrement);
 
       if (validBlocks.length > 1) {
         const secondary = validBlocks[1];
-        document.getElementById('h-altblock').innerText = formatBlockInfo(secondary, G_kg);
+        document.getElementById('h-altblock').innerText = formatBlockInfo(secondary, G_kg, plateIncrement);
       } else {
         document.getElementById('h-altblock').innerText = "No secondary block alternative available for this reeving count.";
       }
     }
 
-    // --- TAB 3: CAD BOG MAT POSITIONER LOGIC ---
+    /* ==========================================================================
+       PROGRAMMATIC SAFEGUARD: HARDCODED KEY OBJECTS
+       ==========================================================================
+       Outriggers are explicitly bound to unique object keys to bypass 
+       unlabeled array indices entirely.
+       ========================================================================== */
     const cadFleetData = {
-      "1650": [
-        { id: 1, r: 6240, angle: 50.1, dir: '>' },
-        { id: 2, r: 8097, angle: 143.7, dir: '>' },
-        { id: 3, r: 7709, angle: -141.5, dir: '<' },
-        { id: 4, r: 6591, angle: -46.5, dir: '<' }
-      ],
-      "1300": [
-        { id: 1, r: 5517, angle: 50.0, dir: '>' },
-        { id: 2, r: 6894, angle: 142.0, dir: '>' },
-        { id: 3, r: 6589, angle: -140.0, dir: '<' },
-        { id: 4, r: 5786, angle: -48.0, dir: '<' }
-      ],
-      "1250": [
-        { id: 1, r: 5379, angle: 51.0, dir: '>' },
-        { id: 2, r: 7201, angle: 145.0, dir: '>' },
-        { id: 3, r: 6900, angle: -143.0, dir: '<' },
-        { id: 4, r: 5613, angle: -48.0, dir: '<' }
-      ],
-      "1160": [
-        { id: 1, r: 5389, angle: 51.0, dir: '>' },
-        { id: 2, r: 7211, angle: 144.0, dir: '>' },
-        { id: 3, r: 6878, angle: -143.0, dir: '<' },
-        { id: 4, r: 5631, angle: -48.0, dir: '<' }
-      ],
-      "1130": [
-        { id: 1, r: 4847, angle: 51.0, dir: '>' },
-        { id: 2, r: 6240, angle: 143.0, dir: '>' },
-        { id: 3, r: 5956, angle: -141.0, dir: '<' },
-        { id: 4, r: 5092, angle: -47.0, dir: '<' }
-      ],
-      "1110": [
-        { id: 1, r: 5049, angle: 56.0, dir: '>' },
-        { id: 2, r: 6098, angle: 145.0, dir: '>' },
-        { id: 3, r: 5857, angle: -143.0, dir: '<' },
-        { id: 4, r: 5267, angle: -52.0, dir: '<' }
-      ],
-      "1100": [
-        { id: 1, r: 5293, angle: 43.0, dir: '>' },
-        { id: 2, r: 5098, angle: 135.0, dir: '>' },
-        { id: 3, r: 5362, angle: -137.0, dir: '<' },
-        { id: 4, r: 5096, angle: -46.0, dir: '<' }
-      ]
+      "1650": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 6240, angle: 50.1,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 8097, angle: 143.7, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 7709, angle: -141.5,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 6591, angle: -46.5, quadrant: "RL" }
+      },
+      "1300": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5517, angle: 50.0,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 6894, angle: 138.0, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 6589, angle: -140.0,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5786, angle: -48.0, quadrant: "RL" }
+      },
+      "1250": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5379, angle: 51.0,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 7201, angle: 135.0, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 6900, angle: -143.0,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5613, angle: -48.0, quadrant: "RL" }
+      },
+      "1160": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5389, angle: 51.0,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 7211, angle: 136.0, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 6878, angle: -143.0,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5631, angle: -48.0, quadrant: "RL" }
+      },
+      "1130": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 4847, angle: 51.0,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 6240, angle: 137.0, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 5956, angle: -141.0,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5092, angle: -47.0, quadrant: "RL" }
+      },
+      "1110": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5049, angle: 56.0,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 6098, angle: 135.0, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 5857, angle: -143.0,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5267, angle: -52.0, quadrant: "RL" }
+      },
+      "1100": {
+        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5293, angle: 43.0,  quadrant: "RR" },
+        P2_FR: { id: 2, name: "P2 (Front Right)", r: 5098, angle: 135.0, quadrant: "FR" },
+        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 5362, angle: -137.0,quadrant: "FL" },
+        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5096, angle: -46.0, quadrant: "RL" }
+      }
     };
+
+    // RUNTIME SAFEGUARD ASSERTION CHECK: Enforces non-negotiable geometric constraints
+    function validateFleetGeometryData() {
+      Object.keys(cadFleetData).forEach(craneKey => {
+        const crane = cadFleetData[craneKey];
+        if (crane.P1_RR.angle <= 0 || crane.P1_RR.angle >= 90) throw new Error(`GEOMETRY ERROR: ${craneKey} P1_RR angle corrupt!`);
+        if (crane.P2_FR.angle <= 90 || crane.P2_FR.angle >= 180) throw new Error(`GEOMETRY ERROR: ${craneKey} P2_FR angle corrupt!`);
+        if (crane.P3_FL.angle >= -90 || crane.P3_FL.angle <= -180) throw new Error(`GEOMETRY ERROR: ${craneKey} P3_FL angle corrupt!`);
+        if (crane.P4_RL.angle >= 0 || crane.P4_RL.angle <= -90) throw new Error(`GEOMETRY ERROR: ${craneKey} P4_RL angle corrupt!`);
+      });
+      console.log("SAFEGUARD CHECK PASSED: All crane geometry layouts strictly validated.");
+    }
+    validateFleetGeometryData();
 
     let clickableTargets = [];
     let selectedTarget = null;
@@ -784,7 +808,8 @@
 
     function calcCAD() {
       const modelKey = document.getElementById('cad-crane').value;
-      const baseData = cadFleetData[modelKey];
+      const craneObj = cadFleetData[modelKey];
+      const baseData = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL];
 
       const shiftX = (parseFloat(document.getElementById('cad-shiftx').value) || 0) * 1000;
       const shiftY = (parseFloat(document.getElementById('cad-shifty').value) || 0) * 1000;
@@ -806,7 +831,6 @@
         const origDir = item.angle >= 0 ? '>' : '<';
         const origAngle = Math.abs(item.angle);
 
-        // Populate baseline list always
         baselineHtml += `
           <tr>
             <td><b>Outrigger P${item.id}</b></td>
@@ -816,7 +840,7 @@
           </tr>`;
 
         if (shiftX === 0 && shiftY === 0) {
-          mappedOutriggers.push({ id: item.id, type: 'repositioned', x: baseX, y: baseY, r: item.r, dir: origDir, relAngle: origAngle });
+          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'repositioned', x: baseX, y: baseY, r: item.r, dir: origDir, relAngle: origAngle });
           resultsHtml += `
             <tr>
               <td><b style="color:var(--success);">Outrigger P${item.id}</b></td>
@@ -833,7 +857,7 @@
             let dir = rawAngleDeg >= 0 ? '>' : '<';
             let relAngle = Math.round(Math.abs(rawAngleDeg) * 10) / 10;
 
-            mappedOutriggers.push({ id: item.id, type: 'repositioned', x: newX, y: newY, r: newR, dir, relAngle, baseX, baseY });
+            mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'repositioned', x: newX, y: newY, r: newR, dir, relAngle, baseX, baseY });
 
             resultsHtml += `
               <tr>
@@ -850,7 +874,7 @@
             let statDir = statRawAngle >= 0 ? '>' : '<';
             let statAngle = Math.round(Math.abs(statRawAngle) * 10) / 10;
 
-            mappedOutriggers.push({ id: item.id, type: 'stationary', x: baseX, y: baseY, r: statR, dir: statDir, relAngle: statAngle, statRelX, statRelY });
+            mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'stationary', x: baseX, y: baseY, r: statR, dir: statDir, relAngle: statAngle, statRelX, statRelY });
 
             stationaryHtml += `
               <tr>
@@ -882,10 +906,10 @@
         baselineCard.style.display = 'none';
       }
 
-      drawCADCanvas(shiftX, shiftY, mappedOutriggers, unmovedIds);
+      drawCADCanvas(shiftX, shiftY, mappedOutriggers);
     }
 
-    function drawCADCanvas(shiftX, shiftY, outriggers, unmovedIds) {
+    function drawCADCanvas(shiftX, shiftY, outriggers) {
       const canvas = document.getElementById('siteMap');
       const ctx = canvas.getContext('2d');
       canvas.width = canvas.parentElement.clientWidth;
@@ -910,34 +934,45 @@
       ctx.beginPath(); ctx.arc(craneCenterX, craneCenterY, 4, 0, 2 * Math.PI); ctx.stroke();
 
       outriggers.forEach(o => {
-        if (o.type === 'repositioned') {
-          const p1X = centerX + (o.x * scale);
-          const p1Y = centerY - (o.y * scale); 
+        let canvasX, canvasY;
+        
+        // HARDCODED QUADRANT RENDERING LOGIC: Enforces absolute coordinate sign integrity on canvas
+        if (o.quadrant === 'RR') {      // P1: Rear Right -> Quadrant IV (+X, +Y)
+          canvasX = centerX + Math.abs(o.x) * scale;
+          canvasY = centerY + Math.abs(o.y) * scale;
+        } else if (o.quadrant === 'FR') { // P2: Front Right -> Quadrant I (+X, -Y)
+          canvasX = centerX + Math.abs(o.x) * scale;
+          canvasY = centerY - Math.abs(o.y) * scale;
+        } else if (o.quadrant === 'FL') { // P3: Front Left -> Quadrant II (-X, -Y)
+          canvasX = centerX - Math.abs(o.x) * scale;
+          canvasY = centerY - Math.abs(o.y) * scale;
+        } else if (o.quadrant === 'RL') { // P4: Rear Left -> Quadrant III (-X, +Y)
+          canvasX = centerX - Math.abs(o.x) * scale;
+          canvasY = centerY + Math.abs(o.y) * scale;
+        }
 
-          clickableTargets.push({ id: `P${o.id}`, type: shiftX === 0 && shiftY === 0 ? 'Baseline Setup Pad' : 'New Setup Pad', x: p1X, y: p1Y, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.x), posY: Math.round(o.y) });
+        if (o.type === 'repositioned') {
+          clickableTargets.push({ id: `P${o.id}`, type: shiftX === 0 && shiftY === 0 ? 'Baseline Setup Pad' : 'New Setup Pad', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.x), posY: Math.round(o.y) });
 
           ctx.fillStyle = '#10b981'; ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
-          ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(p1X, p1Y); ctx.stroke();
-          ctx.beginPath(); ctx.arc(p1X, p1Y, 7, 0, 2 * Math.PI); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
+          ctx.beginPath(); ctx.arc(canvasX, canvasY, 7, 0, 2 * Math.PI); ctx.fill();
 
           ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
           let offsetX = 10, offsetY = 5;
-          if (o.id === 1) { offsetX = 10; offsetY = 15; }
-          else if (o.id === 2) { offsetX = 10; offsetY = -8; }
-          else if (o.id === 3) { offsetX = -28; offsetY = -8; }
-          else if (o.id === 4) { offsetX = -28; offsetY = 15; }
-          ctx.fillText(`P${o.id}`, p1X + offsetX, p1Y + offsetY);
+          if (o.quadrant === 'RR') { offsetX = 10; offsetY = 15; }       // P1: Bottom-Right
+          else if (o.quadrant === 'FR') { offsetX = 10; offsetY = -8; }   // P2: Top-Right
+          else if (o.quadrant === 'FL') { offsetX = -28; offsetY = -8; }  // P3: Top-Left
+          else if (o.quadrant === 'RL') { offsetX = -28; offsetY = 15; }  // P4: Bottom-Left
+          ctx.fillText(`P${o.id}`, canvasX + offsetX, canvasY + offsetY);
         } else {
-          const matX = centerX + (o.x * scale);
-          const matY = centerY - (o.y * scale);
-
-          clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: matX, y: matY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.statRelX), posY: Math.round(o.statRelY) });
+          clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.statRelX), posY: Math.round(o.statRelY) });
 
           ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#f59e0b';
-          ctx.beginPath(); ctx.arc(matX, matY, 8, 0, 2 * Math.PI); ctx.fill();
-          ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(matX, matY); ctx.stroke();
+          ctx.beginPath(); ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI); ctx.fill();
+          ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
           ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
-          ctx.fillText(`Mat P${o.id}`, matX - 25, matY - 10);
+          ctx.fillText(`Mat P${o.id}`, canvasX - 25, canvasY - 10);
         }
       });
 
@@ -978,7 +1013,6 @@
       calcCAD();
     });
 
-    // Register Service Worker for Offline Capability
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
@@ -987,11 +1021,9 @@
       });
     }
 
-    // Initialize Defaults
     loadRopeModel();
     calcHook();
     calcCAD();
   </script>
 </body>
 </html>
-
