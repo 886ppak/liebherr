@@ -295,7 +295,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">New Crane Setup Positions</div>
+        <div class="card-title" style="color:var(--success);">Repositioned Outriggers (Green Setup Mats)</div>
         <table>
           <thead>
             <tr>
@@ -309,18 +309,33 @@
         </table>
       </div>
 
-      <div class="card" id="cad-stationarycard">
-        <div class="card-title" style="color:var(--warning);">Left-Behind Mats (Relative to New Crane Center)</div>
+      <div class="card" id="cad-stationarycard" style="display:none;">
+        <div class="card-title" style="color:var(--warning);">Left-Behind Mats (Pickup Target From New Center)</div>
         <table>
           <thead>
             <tr>
-              <th>Unmoved Mat</th>
+              <th>Stationary Mat</th>
               <th>Radius from New Center</th>
               <th>Slew Dir</th>
               <th>Slew Angle from New Center</th>
             </tr>
           </thead>
           <tbody id="cad-stationaryresults"></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="cad-baselinecard" style="display:none;">
+        <div class="card-title" style="color:var(--accent-cyan);">Original Baseline Target Reference (Zero Shift Position)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Original Mat</th>
+              <th>Baseline Radius</th>
+              <th>Slew Dir</th>
+              <th>Baseline Slew Angle</th>
+            </tr>
+          </thead>
+          <tbody id="cad-baselineresults"></tbody>
         </table>
       </div>
 
@@ -776,6 +791,7 @@
       
       let resultsHtml = '';
       let stationaryHtml = '';
+      let baselineHtml = '';
       let mappedOutriggers = [];
 
       let unmovedIds = [];
@@ -785,50 +801,85 @@
       baseData.forEach(item => {
         const rad = item.angle * (Math.PI / 180);
         const baseX = item.r * Math.sin(rad);
-        const baseY = -item.r * Math.cos(rad);
+        const baseY = item.r * Math.cos(rad);
 
-        const newX = baseX + shiftX;
-        const newY = baseY + shiftY;
+        const origDir = item.angle >= 0 ? '>' : '<';
+        const origAngle = Math.abs(item.angle);
 
-        const newR = Math.round(Math.hypot(newX, newY));
-        const relAngle = Math.round(Math.abs(item.angle) * 10) / 10;
-
-        mappedOutriggers.push({ id: item.id, baseX, baseY, newX, newY, newR, dir: item.dir, relAngle });
-
-        resultsHtml += `
+        // Populate baseline list always
+        baselineHtml += `
           <tr>
-            <td><b>Outrigger ${item.id}</b></td>
-            <td><b>${newR} mm</b></td>
-            <td><b>${item.dir}</b></td>
-            <td><b>${relAngle.toFixed(1)}°</b></td>
+            <td><b>Outrigger P${item.id}</b></td>
+            <td><b>${item.r} mm</b></td>
+            <td><b>${origDir}</b></td>
+            <td><b>${origAngle.toFixed(1)}°</b></td>
           </tr>`;
 
-        if (unmovedIds.includes(item.id)) {
-          const relX = baseX - shiftX;
-          const relY = baseY - shiftY;
-
-          const matRadius = Math.round(Math.hypot(relX, relY));
-          const matDir = relX >= 0 ? '>' : '<';
-          const matAngle = Math.round(Math.abs(Math.degrees(Math.atan2(relX, -relY))) * 10) / 10;
-
-          stationaryHtml += `
+        if (shiftX === 0 && shiftY === 0) {
+          mappedOutriggers.push({ id: item.id, type: 'repositioned', x: baseX, y: baseY, r: item.r, dir: origDir, relAngle: origAngle });
+          resultsHtml += `
             <tr>
-              <td><b class="tag-leftbehind">Mat P${item.id} (Stationary)</b></td>
-              <td><b>${matRadius} mm</b></td>
-              <td><b>${matDir}</b></td>
-              <td><b>${matAngle.toFixed(1)}°</b></td>
+              <td><b style="color:var(--success);">Outrigger P${item.id}</b></td>
+              <td><b>${item.r} mm</b></td>
+              <td><b>${origDir}</b></td>
+              <td><b>${origAngle.toFixed(1)}°</b></td>
             </tr>`;
+        } else {
+          if (!unmovedIds.includes(item.id)) {
+            const newX = baseX + shiftX;
+            const newY = baseY + shiftY;
+            const newR = Math.round(Math.hypot(newX, newY));
+            let rawAngleDeg = Math.degrees(Math.atan2(newX, newY));
+            let dir = rawAngleDeg >= 0 ? '>' : '<';
+            let relAngle = Math.round(Math.abs(rawAngleDeg) * 10) / 10;
+
+            mappedOutriggers.push({ id: item.id, type: 'repositioned', x: newX, y: newY, r: newR, dir, relAngle, baseX, baseY });
+
+            resultsHtml += `
+              <tr>
+                <td><b style="color:var(--success);">Outrigger P${item.id} (Repositioned)</b></td>
+                <td><b>${newR} mm</b></td>
+                <td><b>${dir}</b></td>
+                <td><b>${relAngle.toFixed(1)}°</b></td>
+              </tr>`;
+          } else {
+            const statRelX = baseX - shiftX;
+            const statRelY = baseY - shiftY;
+            const statR = Math.round(Math.hypot(statRelX, statRelY));
+            let statRawAngle = Math.degrees(Math.atan2(statRelX, statRelY));
+            let statDir = statRawAngle >= 0 ? '>' : '<';
+            let statAngle = Math.round(Math.abs(statRawAngle) * 10) / 10;
+
+            mappedOutriggers.push({ id: item.id, type: 'stationary', x: baseX, y: baseY, r: statR, dir: statDir, relAngle: statAngle, statRelX, statRelY });
+
+            stationaryHtml += `
+              <tr>
+                <td><b class="tag-leftbehind">Mat P${item.id} (Stationary)</b></td>
+                <td><b>${statR} mm</b></td>
+                <td><b>${statDir}</b></td>
+                <td><b>${statAngle.toFixed(1)}°</b></td>
+              </tr>`;
+          }
         }
       });
 
       document.getElementById('cad-results').innerHTML = resultsHtml;
+      document.getElementById('cad-baselineresults').innerHTML = baselineHtml;
       
       const stationaryCard = document.getElementById('cad-stationarycard');
-      if (stationaryHtml !== '') {
-        stationaryCard.style.display = 'block';
-        document.getElementById('cad-stationaryresults').innerHTML = stationaryHtml;
+      const baselineCard = document.getElementById('cad-baselinecard');
+
+      if (shiftX !== 0 || shiftY !== 0) {
+        if (stationaryHtml !== '') {
+          stationaryCard.style.display = 'block';
+          document.getElementById('cad-stationaryresults').innerHTML = stationaryHtml;
+        } else {
+          stationaryCard.style.display = 'none';
+        }
+        baselineCard.style.display = 'block';
       } else {
         stationaryCard.style.display = 'none';
+        baselineCard.style.display = 'none';
       }
 
       drawCADCanvas(shiftX, shiftY, mappedOutriggers, unmovedIds);
@@ -859,39 +910,34 @@
       ctx.beginPath(); ctx.arc(craneCenterX, craneCenterY, 4, 0, 2 * Math.PI); ctx.stroke();
 
       outriggers.forEach(o => {
-        const p1X = centerX + (o.newX * scale);
-        const p1Y = centerY - (o.newY * scale); 
+        if (o.type === 'repositioned') {
+          const p1X = centerX + (o.x * scale);
+          const p1Y = centerY - (o.y * scale); 
 
-        clickableTargets.push({ id: `P${o.id}`, type: 'New Setup Pad', x: p1X, y: p1Y, r: o.newR, dir: o.dir, angle: o.relAngle, posX: Math.round(o.newX), posY: Math.round(o.newY) });
+          clickableTargets.push({ id: `P${o.id}`, type: shiftX === 0 && shiftY === 0 ? 'Baseline Setup Pad' : 'New Setup Pad', x: p1X, y: p1Y, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.x), posY: Math.round(o.y) });
 
-        ctx.fillStyle = '#38bdf8'; ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([]);
-        ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(p1X, p1Y); ctx.stroke();
-        ctx.beginPath(); ctx.arc(p1X, p1Y, 7, 0, 2 * Math.PI); ctx.fill();
+          ctx.fillStyle = '#10b981'; ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(p1X, p1Y); ctx.stroke();
+          ctx.beginPath(); ctx.arc(p1X, p1Y, 7, 0, 2 * Math.PI); ctx.fill();
 
-        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
-        let offsetX = 10, offsetY = 5;
-        if (o.id === 1) { offsetX = 10; offsetY = 15; }
-        else if (o.id === 2) { offsetX = 10; offsetY = -8; }
-        else if (o.id === 3) { offsetX = -28; offsetY = -8; }
-        else if (o.id === 4) { offsetX = -28; offsetY = 15; }
-        ctx.fillText(`P${o.id}`, p1X + offsetX, p1Y + offsetY);
+          ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
+          let offsetX = 10, offsetY = 5;
+          if (o.id === 1) { offsetX = 10; offsetY = 15; }
+          else if (o.id === 2) { offsetX = 10; offsetY = -8; }
+          else if (o.id === 3) { offsetX = -28; offsetY = -8; }
+          else if (o.id === 4) { offsetX = -28; offsetY = 15; }
+          ctx.fillText(`P${o.id}`, p1X + offsetX, p1Y + offsetY);
+        } else {
+          const matX = centerX + (o.x * scale);
+          const matY = centerY - (o.y * scale);
 
-        if (unmovedIds.includes(o.id)) {
-          const matX = centerX + (o.baseX * scale);
-          const matY = centerY - (o.baseY * scale);
-
-          const relX = o.baseX - shiftX;
-          const relY = o.baseY - shiftY;
-          const matR = Math.round(Math.hypot(relX, relY));
-          const matDir = relX >= 0 ? '>' : '<';
-          const matAngle = Math.round(Math.abs(Math.degrees(Math.atan2(relX, -relY))) * 10) / 10;
-
-          clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: matX, y: matY, r: matR, dir: matDir, angle: matAngle, posX: Math.round(o.baseX), posY: Math.round(o.baseY) });
+          clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: matX, y: matY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.statRelX), posY: Math.round(o.statRelY) });
 
           ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#f59e0b';
           ctx.beginPath(); ctx.arc(matX, matY, 8, 0, 2 * Math.PI); ctx.fill();
           ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(matX, matY); ctx.stroke();
-          ctx.fillStyle = '#f59e0b'; ctx.fillText(`Mat P${o.id}`, matX - 25, matY - 10);
+          ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
+          ctx.fillText(`Mat P${o.id}`, matX - 25, matY - 10);
         }
       });
 
@@ -905,7 +951,7 @@
       if (boxY + boxH > ctx.canvas.height) boxY = target.y + 12;
 
       ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-      ctx.strokeStyle = target.type === 'Left-Behind Mat' ? '#f59e0b' : '#38bdf8';
+      ctx.strokeStyle = target.type === 'Left-Behind Mat' ? '#f59e0b' : '#10b981';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 6); ctx.fill(); ctx.stroke();
 
