@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Liebherr Fleet Operations Suite</title>
+  
+  <meta name="theme-color" content="#121315">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root {
+      --bg-dark: #121315;
+      --card-bg: #1c1e22;
+      --input-bg: #272a30;
+      --border-color: #383c45;
+      --accent-gold: #e5a900;
+      --accent-cyan: #38bdf8;
+      --warning: #f59e0b;
+      --text-main: #f0f2f5;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 20px; }
+    
+    header { background-color: #181a1d; border-bottom: 1px solid var(--border-color); padding: 16px 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
+    header h1 { font-size: 1.15rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-gold); font-weight: 800; }
+    
+    .nav-tabs { display: flex; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { flex: 1; min-width: 120px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
+    .tab-btn.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); background-color: rgba(229, 169, 0, 0.05); }
+
+    .container { padding: 16px; max-width: 850px; margin: 0 auto; width: 100%; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card-title { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; color: var(--accent-gold); margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); }
+    input, select { background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); padding: 10px 12px; font-size: 0.95rem; font-weight: 600; outline: none; width: 100%; }
+    input:focus, select:focus { border-color: var(--accent-gold); }
+    
+    .toggle-group { display: flex; background-color: var(--input-bg); border-radius: 6px; padding: 3px; border: 1px solid var(--border-color); }
+    .toggle-btn { flex: 1; padding: 8px; border: none; background: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; border-radius: 4px; cursor: pointer; text-align: center; }
+    .toggle-btn.active { background-color: var(--accent-gold); color: #000; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+    .metric-card { background: linear-gradient(145deg, #22252b, #191b1f); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; text-align: center; }
+    .metric-card.highlight { border-color: var(--accent-gold); background: rgba(229, 169, 0, 0.08); }
+    .metric-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+    .metric-value { font-size: 1.5rem; font-weight: 900; color: var(--text-main); }
+    .metric-card.highlight .metric-value { color: var(--accent-gold); }
+    .metric-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .recommendation-box { background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); padding: 12px; border-radius: 4px; margin-top: 12px; font-size: 0.9rem; line-height: 1.4; }
+    .alt-box { background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--accent-cyan); padding: 12px; border-radius: 4px; margin-top: 12px; font-size: 0.9rem; line-height: 1.4; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+    th, td { padding: 10px; text-align: center; border-bottom: 1px solid var(--border-color); }
+    th { color: var(--text-muted); font-weight: 600; background: var(--input-bg); font-size: 0.75rem; text-transform: uppercase; }
+
+    .canvas-container { position: relative; width: 100%; height: 320px; background-color: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-top: 8px; }
+    canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
+    .btn { display: block; width: 100%; padding: 12px; background: var(--accent-gold); color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.95rem; text-transform: uppercase; margin-top: 16px; }
+    .btn:hover { background: var(--accent-gold); opacity: 0.9; }
+    .tag-leftbehind { color: var(--warning); font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1><span style="color:#fff;">LIEBHERR</span> FLEET OPERATIONS</h1>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Retention</button>
+    <button class="tab-btn" onclick="switchTab('hook-tab', event)">Hook Block Calc</button>
+    <button class="tab-btn" onclick="switchTab('cad-tab', event)">CAD Mat Positioner</button>
+  </nav>
+
+  <div class="container">
+
+    <!-- ================= TAB 1: ROPE RETENTION ================= -->
+    <div id="rope-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-title">Configuration & Winch Setup</div>
+        <div class="grid">
+          <div class="form-group">
+            <label>Crane Model</label>
+            <select id="r-model" onchange="loadRopeModel()">
+              <option value="1650-t3">LTM 1650-8.1 (T3 54m)</option>
+              <option value="1650-t5">LTM 1650-8.1 (T5 80m)</option>
+              <option value="1300">LTM 1300-6.2</option>
+              <option value="1250">LTM 1250-5.1</option>
+              <option value="1220">LTR 1220</option>
+              <option value="1160">LTM 1160-5.2</option>
+              <option value="1150">LTM 1150-5.3</option>
+              <option value="1130">LTM 1130-5.1</option>
+              <option value="1110">LTM 1110-5.1</option>
+              <option value="1100">LRT 1100-2.1</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Active Winch Selection</label>
+            <div class="toggle-group">
+              <button id="winch1-btn" class="toggle-btn active" onclick="setWinch(1)">Winch 1 (Main)</button>
+              <button id="winch2-btn" class="toggle-btn" onclick="setWinch(2)">Winch 2 (Aux)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Rigging & Hook Block Selection</div>
+        <div class="grid">
+          <div class="form-group">
+            <label>Hook Block Type</label>
+            <select id="r-blockselect" onchange="updateBlockWeight()"></select>
+          </div>
+          <div class="form-group">
+            <label>Base Block Weight (t)</label>
+            <input type="number" id="r-hook" value="3.5" step="0.01" oninput="calcRope()">
+          </div>
+          <div class="form-group">
+            <label>Rope Length on Drum (m)</label>
+            <input type="number" id="r-rope" value="520" oninput="calcRope()">
+          </div>
+          <div class="form-group">
+            <label>Max Single Line Pull (t)</label>
+            <input type="number" id="r-pull" value="12.8" step="0.1" oninput="calcRope()">
+          </div>
+          <div class="form-group">
+            <label>Active Boom Length (m)</label>
+            <input type="number" id="r-boom" value="54" oninput="calcRope()">
+          </div>
+          <div class="form-group">
+            <label>Fly Jib / Extension (m)</label>
+            <input type="number" id="r-fly" value="0" oninput="calcRope()">
+          </div>
+          <div class="form-group">
+            <label>Spooling Tension %</label>
+            <input type="number" id="r-tension" value="10" oninput="calcRope()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Auxiliary Check Weights Card with Specific Factory Specs -->
+      <div class="card">
+        <div class="card-title" style="color:var(--accent-cyan);">
+          Auxiliary Hook Block Check Weights / Ballast Plates
+          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; text-transform:none;">
+            <input type="checkbox" id="r-useweights" onchange="toggleCheckWeights()" style="width:auto; cursor:pointer;">
+            Enable Block Ballast
+          </label>
+        </div>
+        <div class="grid" id="r-weightpanel" style="display:none; margin-top:8px;">
+          <div class="form-group">
+            <label>Ballast Configuration Type</label>
+            <select id="r-weighttype" onchange="updateCheckWeightValue()"></select>
+          </div>
+          <div class="form-group">
+            <label>Total Ballast Plate Mass (t)</label>
+            <input type="number" id="r-checkweight" value="0.0" step="0.05" oninput="calcRope()">
+          </div>
+          <div class="form-group">
+            <label>Combined Hook Assembly Weight (t)</label>
+            <input type="text" id="r-combinedhook" readonly style="color:var(--accent-cyan); font-weight:bold;">
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">System Length</div>
+          <div class="metric-value" id="r-out-length">54m</div>
+          <div class="metric-sub">Main + Fly combined</div>
+        </div>
+        <div class="metric-card highlight">
+          <div class="metric-label">Minimum Reeving</div>
+          <div class="metric-value" id="r-out-reeving">9</div>
+          <div class="metric-sub">Parts of line required</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Weight Req.</div>
+          <div class="metric-value" id="r-out-totalweight">11.52t</div>
+          <div class="metric-sub">Target tensioning mass</div>
+        </div>
+        <div class="metric-card highlight">
+          <div class="metric-label">Net Add Test Weight</div>
+          <div class="metric-value" id="r-out-addweight">8.02t</div>
+          <div class="metric-sub" id="r-out-addweight-sub">Weight on top of block</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 2: HOOK BLOCK CALCULATOR ================= -->
+    <div id="hook-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Crane & Rigging Setup</div>
+        <div class="grid">
+          <div class="form-group">
+            <label>Crane Selection</label>
+            <select id="h-crane" onchange="calcHook()"></select>
+          </div>
+          <div class="form-group">
+            <label>Boom Length (L) - meters</label>
+            <input type="number" id="h-boom" value="" placeholder="e.g. 80" oninput="calcHook()">
+          </div>
+          <div class="form-group">
+            <label>Reeving / Falls (n)</label>
+            <input type="number" id="h-reeving" value="" placeholder="e.g. 12" oninput="calcHook()">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Calculated Rope Metrics</div>
+        <div class="grid">
+          <div class="form-group">
+            <label>Rope Diameter</label>
+            <input type="text" id="h-ropedia" readonly style="color: var(--accent-gold);">
+          </div>
+          <div class="form-group">
+            <label>Rope Weight (M)</label>
+            <input type="text" id="h-ropeweight" readonly>
+          </div>
+          <div class="form-group">
+            <label>Reeving Factor (F)</label>
+            <input type="text" id="h-reevingfactor" readonly>
+          </div>
+        </div>
+        <div class="metrics-grid" style="margin-top:12px;">
+          <div class="metric-card highlight">
+            <div class="metric-label">Min Required Weight (G)</div>
+            <div class="metric-value" id="h-minweightkg">- kg</div>
+            <div class="metric-sub" id="h-minweightt">- tonnes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Hook Block Recommendations</div>
+        <div class="recommendation-box">
+          <strong style="color:var(--success);">Option 1 (Primary Block Choice):</strong>
+          <div id="h-recblock" style="margin-top:6px;">Enter boom length and reeving above...</div>
+        </div>
+        <div class="alt-box">
+          <strong style="color:var(--accent-cyan);">Option 2 (Alternative Block Choice):</strong>
+          <div id="h-altblock" style="margin-top:6px;">Enter boom length and reeving above...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 3: CAD BOG MAT POSITIONER ================= -->
+    <div id="cad-tab" class="tab-content">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Crane Selection & Shift</div>
+          <div class="form-group">
+            <label>Select Crane Model</label>
+            <select id="cad-crane" onchange="calcCAD()">
+              <option value="1650">LTM 1650-8.1</option>
+              <option value="1300">LTM 1300-6.2</option>
+              <option value="1250">LTM 1250-5.1</option>
+              <option value="1160">LTM 1160-5.2</option>
+              <option value="1130">LTM 1130-5.1</option>
+              <option value="1110">LTM 1110-5.1</option>
+              <option value="1100">LRT 1100-2.1</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Lateral Shift (Meters) [+Right / -Left]</label>
+            <input type="number" id="cad-shiftx" value="0" step="0.1" oninput="calcCAD()">
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Longitudinal Shift (Meters) [+Fwd / -Bwd]</label>
+            <input type="number" id="cad-shifty" value="0" step="0.1" oninput="calcCAD()">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Visual Site Plan <span style="font-size:0.75rem; color:var(--text-muted);">(Tap points for info)</span></div>
+          <div class="canvas-container">
+            <canvas id="siteMap"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">New Crane Setup Positions</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Outrigger</th>
+              <th>New Radius</th>
+              <th>Slew Dir</th>
+              <th>New Slew Angle</th>
+            </tr>
+          </thead>
+          <tbody id="cad-results"></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="cad-stationarycard">
+        <div class="card-title" style="color:var(--warning);">Left-Behind Mats (Relative to New Crane Center)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Unmoved Mat</th>
+              <th>Radius from New Center</th>
+              <th>Slew Dir</th>
+              <th>Slew Angle from New Center</th>
+            </tr>
+          </thead>
+          <tbody id="cad-stationaryresults"></tbody>
+        </table>
+      </div>
+
+      <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
+    </div>
+
+  </div>
+
+  <script>
+    // Tab Controller
+    function switchTab(tabId, evt) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      if (evt && evt.target) {
+        evt.target.classList.add('active');
+      }
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'cad-tab') calcCAD();
+    }
+
+    // --- TAB 1: ROPE RETENTION LOGIC ---
+    const ROPE_PRESETS = {
+      '1650-t3': {
+        w1: 520, p1: 12.8, w2: 520, p2: 12.8, boom: 54,
+        blocks: [
+          { name: "320t 11-Sheave DMZ Block", weight: 3.95 },
+          { name: "260t 9-Sheave DMZ Block", weight: 3.25 },
+          { name: "200t 7-Sheave DM Block", weight: 2.60 },
+          { name: "160t 5-Sheave DM Block", weight: 2.10 },
+          { name: "100t 3-Sheave DM Block", weight: 1.60 },
+          { name: "50t 1-Sheave EM Block", weight: 1.00 },
+          { name: "16.3t Single Line Load Hook", weight: 0.70 }
+        ],
+        weights: [
+          { name: "Type A: Standard Side Cheek Plates (1 Pair) - 1.25t", value: 1.25 },
+          { name: "Type B: Heavy Slab Ballast Plates (1 Pair) - 2.50t", value: 2.50 },
+          { name: "Type C: Heavy Slab + Standard Cheek Plates (2 Pairs Stacked) - 3.75t", value: 3.75 },
+          { name: "Type D: Quad Heavy Slab Ballast Array (2 Pairs Outer) - 5.00t", value: 5.00 }
+        ]
+      },
+      '1650-t5': {
+        w1: 640, p1: 12.8, w2: 640, p2: 12.8, boom: 80,
+        blocks: [
+          { name: "320t 11-Sheave DMZ Block", weight: 3.95 },
+          { name: "260t 9-Sheave DMZ Block", weight: 3.25 },
+          { name: "200t 7-Sheave DM Block", weight: 2.60 },
+          { name: "160t 5-Sheave DM Block", weight: 2.10 },
+          { name: "100t 3-Sheave DM Block", weight: 1.60 },
+          { name: "50t 1-Sheave EM Block", weight: 1.00 }
+        ],
+        weights: [
+          { name: "Type A: Standard Side Cheek Plates (1 Pair) - 1.25t", value: 1.25 },
+          { name: "Type B: Heavy Slab Ballast Plates (1 Pair) - 2.50t", value: 2.50 },
+          { name: "Type C: Heavy Slab + Standard Cheek Plates (2 Pairs Stacked) - 3.75t", value: 3.75 }
+        ]
+      },
+      '1300': {
+        w1: 300, p1: 12.6, w2: 465, p2: 12.6, boom: 78,
+        blocks: [
+          { name: "250t 12-Sheave DM Block", weight: 3.40 },
+          { name: "160t 7-Sheave DM Block", weight: 1.50 },
+          { name: "125t 5-Sheave DM Block", weight: 1.60 },
+          { name: "80t 3-Sheave DM Block", weight: 1.45 },
+          { name: "40t 1-Sheave E Block", weight: 0.50 }
+        ],
+        weights: [
+          { name: "Type A: Light Side Plates (1 Pair) - 0.80t", value: 0.80 },
+          { name: "Type B: Heavy Side Plates (1 Pair) - 1.50t", value: 1.50 },
+          { name: "Type C: Heavy + Light Combined Set (2 Pairs) - 2.30t", value: 2.30 }
+        ]
+      },
+      '1250': {
+        w1: 300, p1: 12.6, w2: 300, p2: 12.6, boom: 60,
+        blocks: [
+          { name: "250t 12-Sheave DM Block", weight: 3.40 },
+          { name: "200t 9-Sheave DM Block", weight: 2.00 },
+          { name: "160t 7-Sheave DM Block", weight: 1.70 },
+          { name: "125t 5-Sheave DM Block", weight: 1.60 },
+          { name: "80t 3-Sheave DM Block", weight: 1.45 }
+        ],
+        weights: [
+          { name: "Type A: Light Side Plates (1 Pair) - 0.80t", value: 0.80 },
+          { name: "Type B: Heavy Side Plates (1 Pair) - 1.50t", value: 1.50 }
+        ]
+      },
+      '1220': {
+        w1: 350, p1: 10.5, w2: 350, p2: 10.5, boom: 60,
+        blocks: [
+          { name: "200t 9-Sheave DM Block", weight: 1.90 },
+          { name: "160t 7-Sheave DM Block", weight: 1.50 },
+          { name: "125t 5-Sheave DM Block", weight: 1.30 },
+          { name: "80t 3-Sheave DM Block", weight: 1.04 },
+          { name: "32t 1-Sheave DM Block", weight: 0.84 }
+        ],
+        weights: [
+          { name: "Type A: Light Side Plates (1 Pair) - 0.40t", value: 0.40 },
+          { name: "Type B: Heavy Side Plates (1 Pair) - 0.80t", value: 0.80 }
+        ]
+      },
+      '1160': {
+        w1: 260, p1: 10.5, w2: 260, p2: 10.5, boom: 62,
+        blocks: [
+          { name: "160t 9-Sheave DS Block", weight: 1.32 },
+          { name: "100t 5-Sheave DM Block", weight: 0.90 },
+          { name: "63t 3-Sheave DM Block", weight: 0.70 },
+          { name: "30t 1-Sheave EM Block", weight: 0.65 }
+        ],
+        weights: [
+          { name: "Type A: Light Side Plates (1 Pair) - 0.40t", value: 0.40 },
+          { name: "Type B: Heavy Side Plates (1 Pair) - 0.80t", value: 0.80 }
+        ]
+      },
+      '1150': {
+        w1: 240, p1: 9.3, w2: 240, p2: 9.3, boom: 66,
+        blocks: [
+          { name: "100t 5-Sheave DM Block", weight: 0.90 },
+          { name: "63t 3-Sheave DM Block", weight: 0.70 },
+          { name: "30t 1-Sheave EM Block", weight: 0.45 }
+        ],
+        weights: [
+          { name: "Type A: Light Side Plates (1 Pair) - 0.40t", value: 0.40 },
+          { name: "Type B: Heavy Side Plates (1 Pair) - 0.80t", value: 0.80 }
+        ]
+      },
+      '1130': {
+        w1: 220, p1: 8.8, w2: 220, p2: 8.8, boom: 60,
+        blocks: [
+          { name: "125t 7-Sheave DS Block", weight: 1.24 },
+          { name: "100t 5-Sheave DM Block", weight: 0.90 },
+          { name: "63t 3-Sheave DM Block", weight: 0.70 },
+          { name: "30t 1-Sheave EM Block", weight: 0.45 }
+        ],
+        weights: [
+          { name: "Type A: Light Cheek Plates (1 Pair) - 0.40t", value: 0.40 },
+          { name: "Type B: Heavy Cheek Plates (1 Pair) - 0.80t", value: 0.80 },
+          { name: "Type C: Dual Heavy Cheek Plates (2 Pairs) - 1.60t", value: 1.60 }
+        ]
+      },
+      '1110': {
+        w1: 220, p1: 6.5, w2: 220, p2: 6.5, boom: 60,
+        blocks: [
+          { name: "125t 7-Sheave DS Block", weight: 1.24 },
+          { name: "100t 6-Sheave DM Block", weight: 0.90 },
+          { name: "63t 3-Sheave DM Block", weight: 0.70 },
+          { name: "32t 1-Sheave DM Block", weight: 0.45 },
+          { name: "10t Single Line Load Hook", weight: 0.25 }
+        ],
+        weights: [
+          { name: "Type A: Standard Cheek Plates (1 Pair) - 0.50t", value: 0.50 },
+          { name: "Type B: Heavy Cheek Plates (1 Pair) - 1.00t", value: 1.00 }
+        ]
+      },
+      '1100': {
+        w1: 240, p1: 6.4, w2: 240, p2: 6.4, boom: 50,
+        blocks: [
+          { name: "100t 7-Sheave DM Block", weight: 0.76 },
+          { name: "80t 5-Sheave DM Block", weight: 0.53 },
+          { name: "50t 3-Sheave DM Block", weight: 0.44 },
+          { name: "20t 1-Sheave EM Block", weight: 0.325 }
+        ],
+        weights: [
+          { name: "Type A: Light Side Plates (1 Pair) - 0.25t", value: 0.25 },
+          { name: "Type B: Heavy Side Plates (1 Pair) - 0.50t", value: 0.50 }
+        ]
+      }
+    };
+
+    let activeWinch = 1;
+
+    function setWinch(num) {
+      activeWinch = num;
+      document.getElementById('winch1-btn').classList.toggle('active', num === 1);
+      document.getElementById('winch2-btn').classList.toggle('active', num === 2);
+      loadRopeModel();
+    }
+
+    function toggleCheckWeights() {
+      const isEnabled = document.getElementById('r-useweights').checked;
+      document.getElementById('r-weightpanel').style.display = isEnabled ? 'grid' : 'none';
+      calcRope();
+    }
+
+    function loadRopeModel() {
+      const key = document.getElementById('r-model').value;
+      const data = ROPE_PRESETS[key];
+      document.getElementById('r-rope').value = activeWinch === 1 ? data.w1 : data.w2;
+      document.getElementById('r-pull').value = activeWinch === 1 ? data.p1 : data.p2;
+      document.getElementById('r-boom').value = data.boom;
+
+      // Populate Hook Block Dropdown
+      const blockSelect = document.getElementById('r-blockselect');
+      blockSelect.innerHTML = '';
+      data.blocks.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.weight;
+        opt.text = `${b.name} (${b.weight}t)`;
+        blockSelect.add(opt);
+      });
+      document.getElementById('r-hook').value = data.blocks[0].weight;
+
+      // Populate Check Weight Dropdown
+      const weightSelect = document.getElementById('r-weighttype');
+      weightSelect.innerHTML = '';
+      data.weights.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.value;
+        opt.text = w.name;
+        weightSelect.add(opt);
+      });
+      document.getElementById('r-checkweight').value = data.weights[0].value;
+
+      calcRope();
+    }
+
+    function updateBlockWeight() {
+      const val = parseFloat(document.getElementById('r-blockselect').value);
+      document.getElementById('r-hook').value = val;
+      calcRope();
+    }
+
+    function updateCheckWeightValue() {
+      const val = parseFloat(document.getElementById('r-weighttype').value);
+      document.getElementById('r-checkweight').value = val;
+      calcRope();
+    }
+
+    function calcRope() {
+      const rope = parseFloat(document.getElementById('r-rope').value) || 0;
+      const pull = parseFloat(document.getElementById('r-pull').value) || 0;
+      const boom = parseFloat(document.getElementById('r-boom').value) || 0;
+      const fly = parseFloat(document.getElementById('r-fly').value) || 0;
+      const baseHook = parseFloat(document.getElementById('r-hook').value) || 0;
+      const tensionPct = (parseFloat(document.getElementById('r-tension').value) || 10) / 100;
+
+      const useCheckWeights = document.getElementById('r-useweights').checked;
+      const checkWeight = useCheckWeights ? (parseFloat(document.getElementById('r-checkweight').value) || 0) : 0;
+      
+      const totalHookAssembly = baseHook + checkWeight;
+      document.getElementById('r-combinedhook').value = `${totalHookAssembly.toFixed(2)} t`;
+
+      const totalLength = boom + fly;
+      const reeving = totalLength > 0 ? Math.ceil((rope - totalLength) / totalLength) : 0;
+      const totalWeight = reeving * pull * tensionPct;
+      
+      const addWeight = Math.max(0, totalWeight - totalHookAssembly);
+
+      document.getElementById('r-out-length').innerText = `${totalLength}m`;
+      document.getElementById('r-out-reeving').innerText = reeving;
+      document.getElementById('r-out-totalweight').innerText = `${totalWeight.toFixed(2)}t`;
+      document.getElementById('r-out-addweight').innerText = `${addWeight.toFixed(2)}t`;
+      
+      document.getElementById('r-out-addweight-sub').innerText = useCheckWeights 
+        ? `After Base Hook (${baseHook}t) + Ballast (${checkWeight}t)`
+        : `After Base Hook (${baseHook}t)`;
+    }
+
+    // --- TAB 2: HOOK BLOCK CALCULATOR LOGIC ---
+    const ropeWeights = { 13:0.85, 15:1.12, 17:1.45, 19:1.81, 21:2.24, 23:2.67, 25:3.09, 28:3.94, 30:4.46, 32:5.09, 38:7.21, 40:7.99, 52:13.5 };
+    const reevingFactors = { 1:1.31, 2:1.34, 3:1.36, 4:1.39, 5:1.41, 6:1.44, 7:1.46, 8:1.49, 9:1.52, 10:1.54, 11:1.57, 12:1.60, 13:1.63, 14:1.65, 15:1.68, 16:1.71, 17:1.74, 18:1.77, 19:1.80, 20:1.83, 21:1.87, 22:1.90, 23:1.93, 24:1.96, 25:2.00, 26:2.03, 27:2.06, 28:2.10, 29:2.13, 30:2.17 };
+
+    const cranesData = {
+      "LRT 1100t": { ropeDia: 17, blocks: [
+        { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 140, maxWeight: 140 },
+        { name: "Hook block 20 EM", sheaves: 1, maxReeving: 3, baseWeight: 325, maxWeight: 325 },
+        { name: "Hook block 50 DM", sheaves: 3, maxReeving: 7, baseWeight: 440, maxWeight: 440 },
+        { name: "Hook block 80 DM", sheaves: 5, maxReeving: 11, baseWeight: 530, maxWeight: 530 },
+        { name: "Hook block 100 DM", sheaves: 7, maxReeving: 14, baseWeight: 760, maxWeight: 760 }
+      ]},
+      "LTM 1110t": { ropeDia: 19, blocks: [
+        { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
+        { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 1450 },
+        { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 1500 },
+        { name: "Hook block 100 DM", sheaves: 6, maxReeving: 11, baseWeight: 900, maxWeight: 2600 },
+        { name: "Hook block 125 DS", sheaves: 7, maxReeving: 12, baseWeight: 1240, maxWeight: 1240 }
+      ]},
+      "LTM 1130t": { ropeDia: 21, blocks: [
+        { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
+        { name: "Hook block 30 EM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 450 },
+        { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 700 },
+        { name: "Hook block 100 DM", sheaves: 5, maxReeving: 11, baseWeight: 900, maxWeight: 2500 },
+        { name: "Hook block 125 DS", sheaves: 7, maxReeving: 14, baseWeight: 1240, maxWeight: 1240 }
+      ]},
+      "LTM 1160t": { ropeDia: 21, blocks: [
+        { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 350, maxWeight: 350 },
+        { name: "Hook block 30 EM", sheaves: 1, maxReeving: 3, baseWeight: 650, maxWeight: 650 },
+        { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 700 },
+        { name: "Hook block 100 DM", sheaves: 5, maxReeving: 11, baseWeight: 900, maxWeight: 1300 },
+        { name: "Hook block 160 DS", sheaves: 9, maxReeving: 18, baseWeight: 1320, maxWeight: 1320 }
+      ]},
+      "LTR 1220t": { ropeDia: 23, blocks: [
+        { name: "Load hook 10.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
+        { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
+        { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1040, maxWeight: 1450 },
+        { name: "Hook block 125 DM", sheaves: 5, maxReeving: 11, baseWeight: 1300, maxWeight: 1300 },
+        { name: "Hook block 160 DM", sheaves: 7, maxReeving: 15, baseWeight: 1500, maxWeight: 1500 },
+        { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 1900, maxWeight: 1900 }
+      ]},
+      "LTM 1250t": { ropeDia: 23, blocks: [
+        { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
+        { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
+        { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
+        { name: "Hook block 125 DM", sheaves: 5, maxReeving: 11, baseWeight: 1600, maxWeight: 1600 },
+        { name: "Hook block 160 DM", sheaves: 7, maxReeving: 14, baseWeight: 1700, maxWeight: 1700 },
+        { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 2000, maxWeight: 2000 },
+        { name: "Hook block 250 DM", sheaves: 12, maxReeving: 16, baseWeight: 3400, maxWeight: 3400 }
+      ]},
+      "LTM 1300t": { ropeDia: 23, blocks: [
+        { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
+        { name: "Hook block 40 E", sheaves: 1, maxReeving: 3, baseWeight: 500, maxWeight: 1500 },
+        { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
+        { name: "Hook block 125 DM", sheaves: 5, maxReeving: 11, baseWeight: 1600, maxWeight: 1600 },
+        { name: "Hook block 160 DM", sheaves: 7, maxReeving: 12, baseWeight: 1500, maxWeight: 1500 },
+        { name: "Hook block 250 DM", sheaves: 12, maxReeving: 20, baseWeight: 3400, maxWeight: 3400 }
+      ]},
+      "LTM 1650-8.1 (650t)": { ropeDia: 25, blocks: [
+        { name: "Load hook 16.3 E", sheaves: 0, maxReeving: 1, baseWeight: 700, maxWeight: 700 },
+        { name: "Hook block 50 EM", sheaves: 1, maxReeving: 3, baseWeight: 1000, maxWeight: 6500 },
+        { name: "Hook block 100 DM", sheaves: 3, maxReeving: 7, baseWeight: 1600, maxWeight: 6000 },
+        { name: "Hook block 160 DM", sheaves: 5, maxReeving: 11, baseWeight: 2100, maxWeight: 5000 },
+        { name: "Hook block 200 DM", sheaves: 7, maxReeving: 15, baseWeight: 2600, maxWeight: 5500 },
+        { name: "Hook block 260 DMZ", sheaves: 9, maxReeving: 19, baseWeight: 3250, maxWeight: 7250 },
+        { name: "Hook block 320 DMZ", sheaves: 11, maxReeving: 23, baseWeight: 3950, maxWeight: 7000 }
+      ]}
+    };
+
+    const hookCraneSelect = document.getElementById('h-crane');
+    Object.keys(cranesData).forEach(c => hookCraneSelect.add(new Option(c, c)));
+
+    function formatBlockInfo(block, G_kg) {
+      const sheavesText = block.sheaves === 0 ? "Single load hook (0 sheaves)" : `${block.sheaves} sheaves hook block`;
+      let text = `${block.name} (${sheavesText}, Base Weight: ${block.baseWeight} kg)`;
+      
+      if (block.baseWeight < G_kg) {
+        const extraNeeded = Math.ceil(G_kg - block.baseWeight);
+        if (block.maxWeight >= G_kg) {
+          text += ` 💡 Requires +${extraNeeded} kg auxiliary weights (Target: ${Math.ceil(G_kg)} kg)`;
+        } else {
+          text += ` ⚠️ Below minimum target weight by ${extraNeeded} kg.`;
+        }
+      } else {
+        text += ` ✅ Meets required weight naturally without auxiliary ballast.`;
+      }
+      return text;
+    }
+
+    function calcHook() {
+      const craneKey = hookCraneSelect.value;
+      const crane = cranesData[craneKey];
+      
+      const boomRaw = document.getElementById('h-boom').value;
+      const reevingRaw = document.getElementById('h-reeving').value;
+
+      document.getElementById('h-ropedia').value = `${crane.ropeDia} mm`;
+
+      if (boomRaw === "" || reevingRaw === "") {
+        document.getElementById('h-ropeweight').value = "-";
+        document.getElementById('h-reevingfactor').value = "-";
+        document.getElementById('h-minweightkg').innerText = "- kg";
+        document.getElementById('h-minweightt').innerText = "- tonnes";
+        document.getElementById('h-recblock').innerText = "Enter boom length and reeving count above to generate recommendations.";
+        document.getElementById('h-altblock').innerText = "Enter boom length and reeving count above to generate recommendations.";
+        return;
+      }
+
+      const L = parseFloat(boomRaw) || 0;
+      const n = parseInt(reevingRaw) || 1;
+
+      const M = ropeWeights[crane.ropeDia] || 2.24;
+      const F = reevingFactors[n] || 1.54;
+
+      const G_kg = L * M * n * F;
+      const G_t = G_kg / 1000;
+
+      document.getElementById('h-ropeweight').value = `${M} kg/m`;
+      document.getElementById('h-reevingfactor').value = F;
+      document.getElementById('h-minweightkg').innerText = `${G_kg.toFixed(1)} kg`;
+      document.getElementById('h-minweightt').innerText = `${G_t.toFixed(3)} tonnes`;
+
+      const validBlocks = crane.blocks.filter(b => b.maxReeving >= n);
+      if (validBlocks.length === 0) {
+        document.getElementById('h-recblock').innerText = "Exceeds maximum reeving for available hook blocks!";
+        document.getElementById('h-altblock').innerText = "None available";
+        return;
+      }
+
+      const primary = validBlocks[0];
+      document.getElementById('h-recblock').innerText = formatBlockInfo(primary, G_kg);
+
+      if (validBlocks.length > 1) {
+        const secondary = validBlocks[1];
+        document.getElementById('h-altblock').innerText = formatBlockInfo(secondary, G_kg);
+      } else {
+        document.getElementById('h-altblock').innerText = "No secondary block alternative available for this reeving count.";
+      }
+    }
+
+    // --- TAB 3: CAD BOG MAT POSITIONER LOGIC ---
+    const cadFleetData = {
+      "1650": [
+        { id: 1, r: 6240, angle: 50.1, dir: '>' },
+        { id: 2, r: 8097, angle: 143.7, dir: '>' },
+        { id: 3, r: 7709, angle: -141.5, dir: '<' },
+        { id: 4, r: 6591, angle: -46.5, dir: '<' }
+      ],
+      "1300": [
+        { id: 1, r: 5517, angle: 50.0, dir: '>' },
+        { id: 2, r: 6894, angle: 142.0, dir: '>' },
+        { id: 3, r: 6589, angle: -140.0, dir: '<' },
+        { id: 4, r: 5786, angle: -48.0, dir: '<' }
+      ],
+      "1250": [
+        { id: 1, r: 5379, angle: 51.0, dir: '>' },
+        { id: 2, r: 7201, angle: 145.0, dir: '>' },
+        { id: 3, r: 6900, angle: -143.0, dir: '<' },
+        { id: 4, r: 5613, angle: -48.0, dir: '<' }
+      ],
+      "1160": [
+        { id: 1, r: 5389, angle: 51.0, dir: '>' },
+        { id: 2, r: 7211, angle: 144.0, dir: '>' },
+        { id: 3, r: 6878, angle: -143.0, dir: '<' },
+        { id: 4, r: 5631, angle: -48.0, dir: '<' }
+      ],
+      "1130": [
+        { id: 1, r: 4847, angle: 51.0, dir: '>' },
+        { id: 2, r: 6240, angle: 143.0, dir: '>' },
+        { id: 3, r: 5956, angle: -141.0, dir: '<' },
+        { id: 4, r: 5092, angle: -47.0, dir: '<' }
+      ],
+      "1110": [
+        { id: 1, r: 5049, angle: 56.0, dir: '>' },
+        { id: 2, r: 6098, angle: 145.0, dir: '>' },
+        { id: 3, r: 5857, angle: -143.0, dir: '<' },
+        { id: 4, r: 5267, angle: -52.0, dir: '<' }
+      ],
+      "1100": [
+        { id: 1, r: 5293, angle: 43.0, dir: '>' },
+        { id: 2, r: 5098, angle: 135.0, dir: '>' },
+        { id: 3, r: 5362, angle: -137.0, dir: '<' },
+        { id: 4, r: 5096, angle: -46.0, dir: '<' }
+      ]
+    };
+
+    let clickableTargets = [];
+    let selectedTarget = null;
+    Math.degrees = function(radians) { return radians * 180 / Math.PI; };
+
+    function calcCAD() {
+      const modelKey = document.getElementById('cad-crane').value;
+      const baseData = cadFleetData[modelKey];
+
+      const shiftX = (parseFloat(document.getElementById('cad-shiftx').value) || 0) * 1000;
+      const shiftY = (parseFloat(document.getElementById('cad-shifty').value) || 0) * 1000;
+      
+      let resultsHtml = '';
+      let stationaryHtml = '';
+      let mappedOutriggers = [];
+
+      let unmovedIds = [];
+      if (shiftX > 0) unmovedIds = [3, 4];
+      else if (shiftX < 0) unmovedIds = [1, 2];
+
+      baseData.forEach(item => {
+        const rad = item.angle * (Math.PI / 180);
+        const baseX = item.r * Math.sin(rad);
+        const baseY = -item.r * Math.cos(rad);
+
+        const newX = baseX + shiftX;
+        const newY = baseY + shiftY;
+
+        const newR = Math.round(Math.hypot(newX, newY));
+        const relAngle = Math.round(Math.abs(item.angle) * 10) / 10;
+
+        mappedOutriggers.push({ id: item.id, baseX, baseY, newX, newY, newR, dir: item.dir, relAngle });
+
+        resultsHtml += `
+          <tr>
+            <td><b>Outrigger ${item.id}</b></td>
+            <td><b>${newR} mm</b></td>
+            <td><b>${item.dir}</b></td>
+            <td><b>${relAngle.toFixed(1)}°</b></td>
+          </tr>`;
+
+        if (unmovedIds.includes(item.id)) {
+          const relX = baseX - shiftX;
+          const relY = baseY - shiftY;
+
+          const matRadius = Math.round(Math.hypot(relX, relY));
+          const matDir = relX >= 0 ? '>' : '<';
+          const matAngle = Math.round(Math.abs(Math.degrees(Math.atan2(relX, -relY))) * 10) / 10;
+
+          stationaryHtml += `
+            <tr>
+              <td><b class="tag-leftbehind">Mat P${item.id} (Stationary)</b></td>
+              <td><b>${matRadius} mm</b></td>
+              <td><b>${matDir}</b></td>
+              <td><b>${matAngle.toFixed(1)}°</b></td>
+            </tr>`;
+        }
+      });
+
+      document.getElementById('cad-results').innerHTML = resultsHtml;
+      
+      const stationaryCard = document.getElementById('cad-stationarycard');
+      if (stationaryHtml !== '') {
+        stationaryCard.style.display = 'block';
+        document.getElementById('cad-stationaryresults').innerHTML = stationaryHtml;
+      } else {
+        stationaryCard.style.display = 'none';
+      }
+
+      drawCADCanvas(shiftX, shiftY, mappedOutriggers, unmovedIds);
+    }
+
+    function drawCADCanvas(shiftX, shiftY, outriggers, unmovedIds) {
+      const canvas = document.getElementById('siteMap');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const scale = 0.006;
+      clickableTargets = [];
+
+      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
+      ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
+      ctx.stroke();
+
+      const craneCenterX = centerX + (shiftX * scale);
+      const craneCenterY = centerY - (shiftY * scale);
+
+      ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(craneCenterX, craneCenterY, 4, 0, 2 * Math.PI); ctx.stroke();
+
+      outriggers.forEach(o => {
+        const p1X = centerX + (o.newX * scale);
+        const p1Y = centerY - (o.newY * scale); 
+
+        clickableTargets.push({ id: `P${o.id}`, type: 'New Setup Pad', x: p1X, y: p1Y, r: o.newR, dir: o.dir, angle: o.relAngle, posX: Math.round(o.newX), posY: Math.round(o.newY) });
+
+        ctx.fillStyle = '#38bdf8'; ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(p1X, p1Y); ctx.stroke();
+        ctx.beginPath(); ctx.arc(p1X, p1Y, 7, 0, 2 * Math.PI); ctx.fill();
+
+        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
+        let offsetX = 10, offsetY = 5;
+        if (o.id === 1) { offsetX = 10; offsetY = 15; }
+        else if (o.id === 2) { offsetX = 10; offsetY = -8; }
+        else if (o.id === 3) { offsetX = -28; offsetY = -8; }
+        else if (o.id === 4) { offsetX = -28; offsetY = 15; }
+        ctx.fillText(`P${o.id}`, p1X + offsetX, p1Y + offsetY);
+
+        if (unmovedIds.includes(o.id)) {
+          const matX = centerX + (o.baseX * scale);
+          const matY = centerY - (o.baseY * scale);
+
+          const relX = o.baseX - shiftX;
+          const relY = o.baseY - shiftY;
+          const matR = Math.round(Math.hypot(relX, relY));
+          const matDir = relX >= 0 ? '>' : '<';
+          const matAngle = Math.round(Math.abs(Math.degrees(Math.atan2(relX, -relY))) * 10) / 10;
+
+          clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: matX, y: matY, r: matR, dir: matDir, angle: matAngle, posX: Math.round(o.baseX), posY: Math.round(o.baseY) });
+
+          ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#f59e0b';
+          ctx.beginPath(); ctx.arc(matX, matY, 8, 0, 2 * Math.PI); ctx.fill();
+          ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(matX, matY); ctx.stroke();
+          ctx.fillStyle = '#f59e0b'; ctx.fillText(`Mat P${o.id}`, matX - 25, matY - 10);
+        }
+      });
+
+      if (selectedTarget) drawInfoBox(ctx, selectedTarget);
+    }
+
+    function drawInfoBox(ctx, target) {
+      const boxW = 160, boxH = 75;
+      let boxX = target.x + 12, boxY = target.y - 40;
+      if (boxX + boxW > ctx.canvas.width) boxX = target.x - boxW - 12;
+      if (boxY + boxH > ctx.canvas.height) boxY = target.y + 12;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+      ctx.strokeStyle = target.type === 'Left-Behind Mat' ? '#f59e0b' : '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 6); ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`${target.id} (${target.type})`, boxX + 8, boxY + 18);
+      ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif';
+      ctx.fillText(`Radius: ${target.r} mm`, boxX + 8, boxY + 36);
+      ctx.fillText(`Slew: ${target.dir} ${target.angle.toFixed(1)}°`, boxX + 8, boxY + 52);
+      ctx.fillText(`X/Y: ${target.posX} / ${target.posY}`, boxX + 8, boxY + 67);
+    }
+
+    document.getElementById('siteMap').addEventListener('click', function(e) {
+      const rect = this.getBoundingClientRect();
+      const clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
+      let hit = false;
+      clickableTargets.forEach(target => {
+        if (Math.hypot(clickX - target.x, clickY - target.y) < 15) { selectedTarget = target; hit = true; }
+      });
+      if (!hit) selectedTarget = null;
+      calcCAD();
+    });
+
+    window.addEventListener('resize', () => {
+      calcCAD();
+    });
+
+    // Register Service Worker for Offline Capability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+          .catch((err) => console.error('Service Worker registration failed:', err));
+      });
+    }
+
+    // Initialize Defaults
+    loadRopeModel();
+    calcHook();
+    calcCAD();
+  </script>
+</body>
+</html>
+
