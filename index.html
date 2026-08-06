@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#121315">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="./manifest.json">
 
   <style>
     :root {
@@ -512,7 +512,6 @@
       document.getElementById('r-pull').value = activeWinch === 1 ? data.p1 : data.p2;
       document.getElementById('r-boom').value = data.boom;
 
-      // Populate Hook Block Dropdown
       const blockSelect = document.getElementById('r-blockselect');
       blockSelect.innerHTML = '';
       data.blocks.forEach(b => {
@@ -523,7 +522,6 @@
       });
       document.getElementById('r-hook').value = data.blocks[0].weight;
 
-      // Populate Check Weight Dropdown
       const weightSelect = document.getElementById('r-weighttype');
       weightSelect.innerHTML = '';
       data.weights.forEach(w => {
