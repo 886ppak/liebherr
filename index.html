@@ -34,7 +34,7 @@
     
     .nav-tabs { display: flex; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
     .nav-tabs::-webkit-scrollbar { display: none; }
-    .tab-btn { flex: 1; min-width: 120px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
+    .tab-btn { flex: 1; min-width: 140px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
     .tab-btn.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); background-color: rgba(229, 169, 0, 0.05); }
 
     .container { padding: 16px; max-width: 850px; margin: 0 auto; width: 100%; }
@@ -83,14 +83,14 @@
   </header>
 
   <nav class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Retention</button>
-    <button class="tab-btn" onclick="switchTab('hook-tab', event)">Hook Block Calc</button>
-    <button class="tab-btn" onclick="switchTab('cad-tab', event)">CAD Mat Positioner</button>
+    <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Rententioning</button>
+    <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
+    <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
   </nav>
 
   <div class="container">
 
-    <!-- ================= TAB 1: ROPE RETENTION ================= -->
+    <!-- ================= TAB 1: ROPE RENTENTIONING ================= -->
     <div id="rope-tab" class="tab-content active">
       <div class="card">
         <div class="card-title">Configuration & Winch Setup</div>
@@ -202,7 +202,7 @@
       </div>
     </div>
 
-    <!-- ================= TAB 2: HOOK BLOCK CALCULATOR ================= -->
+    <!-- ================= TAB 2: MINIMUM HOOK BLOCK WEIGHTS ================= -->
     <div id="hook-tab" class="tab-content">
       <div class="card">
         <div class="card-title">Crane & Rigging Setup</div>
@@ -260,7 +260,7 @@
       </div>
     </div>
 
-    <!-- ================= TAB 3: CAD BOG MAT POSITIONER ================= -->
+    <!-- ================= TAB 3: OUTRIGGER SUPPORT POSITIONING ================= -->
     <div id="cad-tab" class="tab-content">
       <div class="grid">
         <div class="card">
@@ -359,7 +359,7 @@
       if (tabId === 'cad-tab') calcCAD();
     }
 
-    // --- TAB 1: ROPE RETENTION LOGIC ---
+    // --- TAB 1: ROPE RENTENTIONING LOGIC ---
     const ROPE_PRESETS = {
       '1650-t3': {
         w1: 520, p1: 12.8, w2: 520, p2: 12.8, boom: 54,
@@ -593,7 +593,7 @@
         : `After Base Hook (${baseHook}t)`;
     }
 
-    // --- TAB 2: HOOK BLOCK CALCULATOR LOGIC ---
+    // --- TAB 2: MINIMUM HOOK BLOCK WEIGHTS LOGIC ---
     const ropeWeights = { 13:0.85, 15:1.12, 17:1.45, 19:1.81, 21:2.24, 23:2.67, 25:3.09, 28:3.94, 30:4.46, 32:5.09, 38:7.21, 40:7.99, 52:13.5 };
     const reevingFactors = { 1:1.31, 2:1.34, 3:1.36, 4:1.39, 5:1.41, 6:1.44, 7:1.46, 8:1.49, 9:1.52, 10:1.54, 11:1.57, 12:1.60, 13:1.63, 14:1.65, 15:1.68, 16:1.71, 17:1.74, 18:1.77, 19:1.80, 20:1.83, 21:1.87, 22:1.90, 23:1.93, 24:1.96, 25:2.00, 26:2.03, 27:2.06, 28:2.10, 29:2.13, 30:2.17 };
 
@@ -738,12 +738,7 @@
       }
     }
 
-    /* ==========================================================================
-       PROGRAMMATIC SAFEGUARD: HARDCODED KEY OBJECTS
-       ==========================================================================
-       Outriggers are explicitly bound to unique object keys to bypass 
-       unlabeled array indices entirely.
-       ========================================================================== */
+    // --- TAB 3: OUTRIGGER SUPPORT POSITIONING LOGIC ---
     const cadFleetData = {
       "1650": {
         P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 6240, angle: 50.1,  quadrant: "RR" },
@@ -789,7 +784,6 @@
       }
     };
 
-    // RUNTIME SAFEGUARD ASSERTION CHECK: Enforces non-negotiable geometric constraints
     function validateFleetGeometryData() {
       Object.keys(cadFleetData).forEach(craneKey => {
         const crane = cadFleetData[craneKey];
@@ -936,17 +930,16 @@
       outriggers.forEach(o => {
         let canvasX, canvasY;
         
-        // HARDCODED QUADRANT RENDERING LOGIC: Enforces absolute coordinate sign integrity on canvas
-        if (o.quadrant === 'RR') {      // P1: Rear Right -> Quadrant IV (+X, +Y)
+        if (o.quadrant === 'RR') {
           canvasX = centerX + Math.abs(o.x) * scale;
           canvasY = centerY + Math.abs(o.y) * scale;
-        } else if (o.quadrant === 'FR') { // P2: Front Right -> Quadrant I (+X, -Y)
+        } else if (o.quadrant === 'FR') {
           canvasX = centerX + Math.abs(o.x) * scale;
           canvasY = centerY - Math.abs(o.y) * scale;
-        } else if (o.quadrant === 'FL') { // P3: Front Left -> Quadrant II (-X, -Y)
+        } else if (o.quadrant === 'FL') {
           canvasX = centerX - Math.abs(o.x) * scale;
           canvasY = centerY - Math.abs(o.y) * scale;
-        } else if (o.quadrant === 'RL') { // P4: Rear Left -> Quadrant III (-X, +Y)
+        } else if (o.quadrant === 'RL') {
           canvasX = centerX - Math.abs(o.x) * scale;
           canvasY = centerY + Math.abs(o.y) * scale;
         }
@@ -960,10 +953,10 @@
 
           ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
           let offsetX = 10, offsetY = 5;
-          if (o.quadrant === 'RR') { offsetX = 10; offsetY = 15; }       // P1: Bottom-Right
-          else if (o.quadrant === 'FR') { offsetX = 10; offsetY = -8; }   // P2: Top-Right
-          else if (o.quadrant === 'FL') { offsetX = -28; offsetY = -8; }  // P3: Top-Left
-          else if (o.quadrant === 'RL') { offsetX = -28; offsetY = 15; }  // P4: Bottom-Left
+          if (o.quadrant === 'RR') { offsetX = 10; offsetY = 15; }
+          else if (o.quadrant === 'FR') { offsetX = 10; offsetY = -8; }
+          else if (o.quadrant === 'FL') { offsetX = -28; offsetY = -8; }
+          else if (o.quadrant === 'RL') { offsetX = -28; offsetY = 15; }
           ctx.fillText(`P${o.id}`, canvasX + offsetX, canvasY + offsetY);
         } else {
           clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.statRelX), posY: Math.round(o.statRelY) });
