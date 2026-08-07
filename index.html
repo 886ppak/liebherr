@@ -9,7 +9,6 @@
   <meta name="theme-color" content="#121315">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./manifest.json">
 
   <style>
     :root {
@@ -49,6 +48,7 @@
     label { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); }
     input, select { background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); padding: 10px 12px; font-size: 0.95rem; font-weight: 600; outline: none; width: 100%; }
     input:focus, select:focus { border-color: var(--accent-gold); }
+    input[readonly] { opacity: 0.85; cursor: not-allowed; }
     
     .toggle-group { display: flex; background-color: var(--input-bg); border-radius: 6px; padding: 3px; border: 1px solid var(--border-color); }
     .toggle-btn { flex: 1; padding: 8px; border: none; background: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; border-radius: 4px; cursor: pointer; text-align: center; }
@@ -83,14 +83,14 @@
   </header>
 
   <nav class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Rententioning</button>
+    <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
   </nav>
 
   <div class="container">
 
-    <!-- ================= TAB 1: ROPE RENTENTIONING ================= -->
+    <!-- ================= TAB 1: ROPE RETENTIONING ================= -->
     <div id="rope-tab" class="tab-content active">
       <div class="card">
         <div class="card-title">Configuration & Winch Setup</div>
@@ -104,7 +104,6 @@
               <option value="1250">LTM 1250-5.1</option>
               <option value="1220">LTR 1220</option>
               <option value="1160">LTM 1160-5.2</option>
-              <option value="1150">LTM 1150-5.3</option>
               <option value="1130">LTM 1130-5.1</option>
               <option value="1110">LTM 1110-5.1</option>
               <option value="1100">LRT 1100-2.1</option>
@@ -125,11 +124,11 @@
         <div class="grid">
           <div class="form-group">
             <label>Hook Block Type</label>
-            <select id="r-blockselect" onchange="updateBlockWeight()"></select>
+            <select id="r-blockselect" onchange="onHookBlockChange()"></select>
           </div>
           <div class="form-group">
             <label>Base Block Weight (t)</label>
-            <input type="number" id="r-hook" value="3.5" step="0.01" oninput="calcRope()">
+            <input type="number" id="r-hook" value="3.5" step="0.01" readonly style="color:var(--accent-gold);">
           </div>
           <div class="form-group">
             <label>Rope Length on Drum (m)</label>
@@ -163,13 +162,13 @@
           </label>
         </div>
         <div class="grid" id="r-weightpanel" style="display:none; margin-top:8px;">
-          <div class="form-group">
-            <label>Ballast Configuration Type</label>
+          <div class="form-group" style="grid-column: span 2;">
+            <label>OEM Ballast Configuration Option</label>
             <select id="r-weighttype" onchange="updateCheckWeightValue()"></select>
           </div>
           <div class="form-group">
             <label>Total Ballast Plate Mass (t)</label>
-            <input type="number" id="r-checkweight" value="0.0" step="0.05" oninput="calcRope()">
+            <input type="number" id="r-checkweight" value="0.0" readonly style="color:var(--accent-cyan);">
           </div>
           <div class="form-group">
             <label>Combined Hook Assembly Weight (t)</label>
@@ -359,149 +358,214 @@
       if (tabId === 'cad-tab') calcCAD();
     }
 
-    // --- TAB 1: ROPE RENTENTIONING LOGIC ---
-    const ROPE_PRESETS = {
+    // --- OEM HOOK BLOCK DATA BASED ON SPECIFICATION SHEETS ---
+    const FLEET_BLOCK_SPEC = {
       '1650-t3': {
         w1: 520, p1: 12.8, w2: 520, p2: 12.8, boom: 54,
         blocks: [
-          { name: "320t 11-Sheave DMZ Block", weight: 3.95 },
-          { name: "260t 9-Sheave DMZ Block", weight: 3.25 },
-          { name: "200t 7-Sheave DM Block", weight: 2.60 },
-          { name: "160t 5-Sheave DM Block", weight: 2.10 },
-          { name: "100t 3-Sheave DM Block", weight: 1.60 },
-          { name: "50t 1-Sheave EM Block", weight: 1.00 },
-          { name: "16.3t Single Line Load Hook", weight: 0.70 }
-        ],
-        weights: [
-          { name: "Type A: Standard Side Cheek Plates (1 Pair) - 1.25t", value: 1.25 },
-          { name: "Type B: Heavy Slab Ballast Plates (1 Pair) - 2.50t", value: 2.50 },
-          { name: "Type C: Heavy Slab + Standard Cheek Plates (2 Pairs Stacked) - 3.75t", value: 3.75 },
-          { name: "Type D: Quad Heavy Slab Ballast Array (2 Pairs Outer) - 5.00t", value: 5.00 }
+          { id: 'b320', name: "320t 11-Sheave DMZ Block", weight: 3.95, aux: [
+            { name: "None (Base Net Weight - 3.95 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 4.70 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 4.95 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 5.45 t", add: 1.50 },
+            { name: "4 x 500 kg (+2.00 t) -> Total: 5.95 t", add: 2.00 },
+            { name: "6 x 375 kg (+2.25 t) -> Total: 6.20 t", add: 2.25 },
+            { name: "6 x 500 kg (+3.00 t) -> Total: 6.95 t", add: 3.00 },
+            { name: "8 x 375 kg (+3.00 t) -> Total: 6.95 t", add: 3.00 },
+            { name: "8 x 500 kg (+4.00 t) -> Total: 7.95 t", add: 4.00 },
+            { name: "10 x 375 kg (+3.75 t) -> Total: 7.70 t", add: 3.75 },
+            { name: "10 x 500 kg (+5.00 t) -> Total: 8.95 t", add: 5.00 },
+            { name: "12 x 375 kg (+4.50 t) -> Total: 8.45 t", add: 4.50 }
+          ]},
+          { id: 'b250', name: "250t 9-Sheave DMZ Block", weight: 3.25, aux: [
+            { name: "None (Base Net Weight - 3.25 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 4.00 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 4.25 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 4.75 t", add: 1.50 },
+            { name: "4 x 500 kg (+2.00 t) -> Total: 5.25 t", add: 2.00 },
+            { name: "6 x 375 kg (+2.25 t) -> Total: 5.50 t", add: 2.25 },
+            { name: "6 x 500 kg (+3.00 t) -> Total: 6.25 t", add: 3.00 },
+            { name: "8 x 375 kg (+3.00 t) -> Total: 6.25 t", add: 3.00 },
+            { name: "8 x 500 kg (+4.00 t) -> Total: 7.25 t", add: 4.00 },
+            { name: "10 x 375 kg (+3.75 t) -> Total: 7.00 t", add: 3.75 },
+            { name: "10 x 500 kg (+5.00 t) -> Total: 8.25 t", add: 5.00 },
+            { name: "12 x 375 kg (+4.50 t) -> Total: 7.75 t", add: 4.50 }
+          ]},
+          { id: 'b160', name: "160t 5-Sheave DM Block", weight: 2.10, aux: [
+            { name: "None (Base Net Weight - 2.10 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 2.85 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 3.10 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 3.60 t", add: 1.50 },
+            { name: "4 x 500 kg (+2.00 t) -> Total: 4.10 t", add: 2.00 },
+            { name: "6 x 375 kg (+2.25 t) -> Total: 4.35 t", add: 2.25 },
+            { name: "6 x 500 kg (+3.00 t) -> Total: 5.10 t", add: 3.00 },
+            { name: "8 x 375 kg (+3.00 t) -> Total: 5.10 t", add: 3.00 },
+            { name: "8 x 500 kg (+4.00 t) -> Total: 6.10 t", add: 4.00 },
+            { name: "10 x 375 kg (+3.75 t) -> Total: 5.85 t", add: 3.75 },
+            { name: "10 x 500 kg (+5.00 t) -> Total: 7.10 t", add: 5.00 },
+            { name: "12 x 375 kg (+4.50 t) -> Total: 6.60 t", add: 4.50 }
+          ]},
+          { id: 'b100', name: "100t 3-Sheave DM Block", weight: 1.50, aux: [
+            { name: "None (Base Net Weight - 1.50 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 2.25 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 2.50 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 3.00 t", add: 1.50 },
+            { name: "4 x 500 kg (+2.00 t) -> Total: 3.50 t", add: 2.00 },
+            { name: "6 x 375 kg (+2.25 t) -> Total: 3.75 t", add: 2.25 },
+            { name: "6 x 500 kg (+3.00 t) -> Total: 4.50 t", add: 3.00 },
+            { name: "8 x 375 kg (+3.00 t) -> Total: 4.50 t", add: 3.00 },
+            { name: "8 x 500 kg (+4.00 t) -> Total: 5.50 t", add: 4.00 },
+            { name: "10 x 375 kg (+3.75 t) -> Total: 5.25 t", add: 3.75 },
+            { name: "10 x 500 kg (+5.00 t) -> Total: 6.50 t", add: 5.00 },
+            { name: "12 x 375 kg (+4.50 t) -> Total: 6.00 t", add: 4.50 }
+          ]},
+          { id: 'b50', name: "50t 1-Sheave EM/DM Block", weight: 1.00, aux: [
+            { name: "None (Base Net Weight - 1.00 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 1.75 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 2.00 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 2.50 t", add: 1.50 },
+            { name: "4 x 500 kg (+2.00 t) -> Total: 3.00 t", add: 2.00 },
+            { name: "6 x 375 kg (+2.25 t) -> Total: 3.25 t", add: 2.25 },
+            { name: "6 x 500 kg (+3.00 t) -> Total: 4.00 t", add: 3.00 },
+            { name: "8 x 375 kg (+3.00 t) -> Total: 4.00 t", add: 3.00 },
+            { name: "8 x 500 kg (+4.00 t) -> Total: 5.00 t", add: 4.00 },
+            { name: "10 x 375 kg (+3.75 t) -> Total: 4.75 t", add: 3.75 },
+            { name: "10 x 500 kg (+5.00 t) -> Total: 6.00 t", add: 5.00 },
+            { name: "12 x 375 kg (+4.50 t) -> Total: 5.50 t", add: 4.50 }
+          ]},
+          { id: 'b16', name: "16.3t Single Line Load Hook", weight: 0.70, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       },
       '1650-t5': {
         w1: 640, p1: 12.8, w2: 640, p2: 12.8, boom: 80,
         blocks: [
-          { name: "320t 11-Sheave DMZ Block", weight: 3.95 },
-          { name: "260t 9-Sheave DMZ Block", weight: 3.25 },
-          { name: "200t 7-Sheave DM Block", weight: 2.60 },
-          { name: "160t 5-Sheave DM Block", weight: 2.10 },
-          { name: "100t 3-Sheave DM Block", weight: 1.60 },
-          { name: "50t 1-Sheave EM Block", weight: 1.00 }
-        ],
-        weights: [
-          { name: "Type A: Standard Side Cheek Plates (1 Pair) - 1.25t", value: 1.25 },
-          { name: "Type B: Heavy Slab Ballast Plates (1 Pair) - 2.50t", value: 2.50 },
-          { name: "Type C: Heavy Slab + Standard Cheek Plates (2 Pairs Stacked) - 3.75t", value: 3.75 }
+          { id: 'b320', name: "320t 11-Sheave DMZ Block", weight: 3.95, aux: [
+            { name: "None (Base Net Weight - 3.95 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 4.70 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 4.95 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 5.45 t", add: 1.50 },
+            { name: "4 x 500 kg (+2.00 t) -> Total: 5.95 t", add: 2.00 },
+            { name: "6 x 375 kg (+2.25 t) -> Total: 6.20 t", add: 2.25 },
+            { name: "6 x 500 kg (+3.00 t) -> Total: 6.95 t", add: 3.00 }
+          ]},
+          { id: 'b250', name: "250t 9-Sheave DMZ Block", weight: 3.25, aux: [
+            { name: "None (Base Net Weight - 3.25 t)", add: 0.00 },
+            { name: "2 x 375 kg (+0.75 t) -> Total: 4.00 t", add: 0.75 },
+            { name: "2 x 500 kg (+1.00 t) -> Total: 4.25 t", add: 1.00 },
+            { name: "4 x 375 kg (+1.50 t) -> Total: 4.75 t", add: 1.50 }
+          ]},
+          { id: 'b160', name: "160t 5-Sheave DM Block", weight: 2.10, aux: [{ name: "None (Base Net Weight - 2.10 t)", add: 0.00 }] },
+          { id: 'b100', name: "100t 3-Sheave DM Block", weight: 1.50, aux: [{ name: "None (Base Net Weight - 1.50 t)", add: 0.00 }] }
         ]
       },
       '1300': {
         w1: 300, p1: 12.6, w2: 465, p2: 12.6, boom: 78,
         blocks: [
-          { name: "250t 12-Sheave DM Block", weight: 3.40 },
-          { name: "160t 7-Sheave DM Block", weight: 1.50 },
-          { name: "125t 5-Sheave DM Block", weight: 1.60 },
-          { name: "80t 3-Sheave DM Block", weight: 1.45 },
-          { name: "40t 1-Sheave E Block", weight: 0.50 }
-        ],
-        weights: [
-          { name: "Type A: Light Side Plates (1 Pair) - 0.80t", value: 0.80 },
-          { name: "Type B: Heavy Side Plates (1 Pair) - 1.50t", value: 1.50 },
-          { name: "Type C: Heavy + Light Combined Set (2 Pairs) - 2.30t", value: 2.30 }
+          { id: 'b250', name: "250t 12-Sheave DM Block", weight: 3.40, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b160', name: "160t 7-Sheave DM Block", weight: 1.50, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b125', name: "125t 5-Sheave DM Block", weight: 1.60, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b80', name: "80t 3-Sheave DM Block", weight: 1.45, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b40', name: "40t 1-Sheave E Block", weight: 0.50, aux: [
+            { name: "None (Base Net Weight - 0.50 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.50 t) -> Total: 1.00 t", add: 0.50 },
+            { name: "4 Auxiliary Weights (+1.00 t) -> Total: 1.50 t", add: 1.00 }
+          ]},
+          { id: 'b12', name: "12.5t Single Load Hook", weight: 0.50, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       },
       '1250': {
         w1: 300, p1: 12.6, w2: 300, p2: 12.6, boom: 60,
         blocks: [
-          { name: "250t 12-Sheave DM Block", weight: 3.40 },
-          { name: "200t 9-Sheave DM Block", weight: 2.00 },
-          { name: "160t 7-Sheave DM Block", weight: 1.70 },
-          { name: "125t 5-Sheave DM Block", weight: 1.60 },
-          { name: "80t 3-Sheave DM Block", weight: 1.45 }
-        ],
-        weights: [
-          { name: "Type A: Light Side Plates (1 Pair) - 0.80t", value: 0.80 },
-          { name: "Type B: Heavy Side Plates (1 Pair) - 1.50t", value: 1.50 }
+          { id: 'b250', name: "250t 12-Sheave DM Block", weight: 3.40, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b200', name: "200t 9-Sheave DM Block", weight: 2.00, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b160', name: "160t 7-Sheave DM Block", weight: 1.70, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b125', name: "125t 5-Sheave DM Block", weight: 1.60, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b80', name: "80t 3-Sheave DM Block", weight: 1.45, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b32', name: "32t 1-Sheave DM/EM Block", weight: 0.84, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       },
       '1220': {
         w1: 350, p1: 10.5, w2: 350, p2: 10.5, boom: 60,
         blocks: [
-          { name: "200t 9-Sheave DM Block", weight: 1.90 },
-          { name: "160t 7-Sheave DM Block", weight: 1.50 },
-          { name: "125t 5-Sheave DM Block", weight: 1.30 },
-          { name: "80t 3-Sheave DM Block", weight: 1.04 },
-          { name: "32t 1-Sheave DM Block", weight: 0.84 }
-        ],
-        weights: [
-          { name: "Type A: Light Side Plates (1 Pair) - 0.40t", value: 0.40 },
-          { name: "Type B: Heavy Side Plates (1 Pair) - 0.80t", value: 0.80 }
+          { id: 'b200', name: "200t 9-Sheave DM Block", weight: 1.90, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b160', name: "160t 7-Sheave DM Block", weight: 1.50, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b125', name: "125t 5-Sheave DM Block", weight: 1.30, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b80', name: "80t 3-Sheave DM Block", weight: 1.04, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b32', name: "32t 1-Sheave DM/EM Block", weight: 0.84, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       },
       '1160': {
         w1: 260, p1: 10.5, w2: 260, p2: 10.5, boom: 62,
         blocks: [
-          { name: "160t 9-Sheave DS Block", weight: 1.32 },
-          { name: "100t 5-Sheave DM Block", weight: 0.90 },
-          { name: "63t 3-Sheave DM Block", weight: 0.70 },
-          { name: "30t 1-Sheave EM Block", weight: 0.65 }
-        ],
-        weights: [
-          { name: "Type A: Light Side Plates (1 Pair) - 0.40t", value: 0.40 },
-          { name: "Type B: Heavy Side Plates (1 Pair) - 0.80t", value: 0.80 }
-        ]
-      },
-      '1150': {
-        w1: 240, p1: 9.3, w2: 240, p2: 9.3, boom: 66,
-        blocks: [
-          { name: "100t 5-Sheave DM Block", weight: 0.90 },
-          { name: "63t 3-Sheave DM Block", weight: 0.70 },
-          { name: "30t 1-Sheave EM Block", weight: 0.45 }
-        ],
-        weights: [
-          { name: "Type A: Light Side Plates (1 Pair) - 0.40t", value: 0.40 },
-          { name: "Type B: Heavy Side Plates (1 Pair) - 0.80t", value: 0.80 }
+          { id: 'b160', name: "160t 9-Sheave DS Block", weight: 1.32, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b100', name: "100t 5-Sheave DM Block", weight: 0.90, aux: [
+            { name: "None (Base Net Weight - 0.90 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.40 t) -> Total: 1.30 t", add: 0.40 }
+          ]},
+          { id: 'b63', name: "63t 3-Sheave DM Block", weight: 0.70, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b30', name: "30t 1-Sheave EM Block", weight: 0.65, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       },
       '1130': {
         w1: 220, p1: 8.8, w2: 220, p2: 8.8, boom: 60,
         blocks: [
-          { name: "125t 7-Sheave DS Block", weight: 1.24 },
-          { name: "100t 5-Sheave DM Block", weight: 0.90 },
-          { name: "63t 3-Sheave DM Block", weight: 0.70 },
-          { name: "30t 1-Sheave EM Block", weight: 0.45 }
-        ],
-        weights: [
-          { name: "Type A: Light Cheek Plates (1 Pair) - 0.40t", value: 0.40 },
-          { name: "Type B: Heavy Cheek Plates (1 Pair) - 0.80t", value: 0.80 },
-          { name: "Type C: Dual Heavy Cheek Plates (2 Pairs) - 1.60t", value: 1.60 }
+          { id: 'b125', name: "125t 7-Sheave DS Block", weight: 1.24, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b100', name: "100t 5-Sheave DM Block", weight: 0.90, aux: [
+            { name: "None (Base Net Weight - 0.90 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.40 t) -> Total: 1.30 t", add: 0.40 },
+            { name: "4 Auxiliary Weights (+0.80 t) -> Total: 1.70 t", add: 0.80 },
+            { name: "6 Auxiliary Weights (+1.20 t) -> Total: 2.10 t", add: 1.20 },
+            { name: "8 Auxiliary Weights (+1.60 t) -> Total: 2.50 t", add: 1.60 }
+          ]},
+          { id: 'b63', name: "63t 3-Sheave DM Block", weight: 0.70, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b30', name: "30t 1-Sheave EM Block", weight: 0.45, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       },
       '1110': {
         w1: 220, p1: 6.5, w2: 220, p2: 6.5, boom: 60,
         blocks: [
-          { name: "125t 7-Sheave DS Block", weight: 1.24 },
-          { name: "100t 6-Sheave DM Block", weight: 0.90 },
-          { name: "63t 3-Sheave DM Block", weight: 0.70 },
-          { name: "32t 1-Sheave DM Block", weight: 0.45 },
-          { name: "10t Single Line Load Hook", weight: 0.25 }
-        ],
-        weights: [
-          { name: "Type A: Standard Cheek Plates (1 Pair) - 0.50t", value: 0.50 },
-          { name: "Type B: Heavy Cheek Plates (1 Pair) - 1.00t", value: 1.00 }
+          { id: 'b125', name: "125t 7-Sheave DS Block", weight: 1.24, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b100-6', name: "100t 6-Sheave DM Block", weight: 0.75, aux: [
+            { name: "None (Base Net Weight - 0.75 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.20 t) -> Total: 0.95 t", add: 0.20 },
+            { name: "4 Auxiliary Weights (+0.40 t) -> Total: 1.15 t", add: 0.40 },
+            { name: "6 Auxiliary Weights (+0.60 t) -> Total: 1.35 t", add: 0.60 },
+            { name: "8 Auxiliary Weights (+0.80 t) -> Total: 1.55 t", add: 0.80 },
+            { name: "10 Auxiliary Weights (+1.00 t) -> Total: 1.75 t", add: 1.00 }
+          ]},
+          { id: 'b100-5', name: "100t 5-Sheave DM Block", weight: 0.90, aux: [
+            { name: "None (Base Net Weight - 0.90 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.40 t) -> Total: 1.30 t", add: 0.40 },
+            { name: "4 Auxiliary Weights (+0.80 t) -> Total: 1.70 t", add: 0.80 },
+            { name: "6 Auxiliary Weights (+1.20 t) -> Total: 2.10 t", add: 1.20 },
+            { name: "8 Auxiliary Weights (+1.60 t) -> Total: 2.50 t", add: 1.60 }
+          ]},
+          { id: 'b63', name: "63t 3-Sheave DM Heavy Block", weight: 0.50, aux: [
+            { name: "None (Base Net Weight - 0.50 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.23 t) -> Total: 0.73 t", add: 0.23 },
+            { name: "4 Auxiliary Weights (+0.40 t) -> Total: 0.90 t", add: 0.40 },
+            { name: "6 Auxiliary Weights (+0.63 t) -> Total: 1.13 t", add: 0.63 },
+            { name: "8 Auxiliary Weights (+0.80 t) -> Total: 1.30 t", add: 0.80 },
+            { name: "10 Auxiliary Weights (+1.00 t) -> Total: 1.50 t", add: 1.00 }
+          ]},
+          { id: 'b32', name: "32t 1-Sheave DM Block", weight: 0.45, aux: [
+            { name: "None (Base Net Weight - 0.45 t)", add: 0.00 },
+            { name: "2 Auxiliary Weights (+0.20 t) -> Total: 0.65 t", add: 0.20 },
+            { name: "4 Auxiliary Weights (+0.40 t) -> Total: 0.85 t", add: 0.40 },
+            { name: "6 Auxiliary Weights (+0.60 t) -> Total: 1.05 t", add: 0.60 },
+            { name: "8 Auxiliary Weights (+0.80 t) -> Total: 1.25 t", add: 0.80 },
+            { name: "10 Auxiliary Weights (+1.00 t) -> Total: 1.45 t", add: 1.00 }
+          ]}
         ]
       },
       '1100': {
         w1: 240, p1: 6.4, w2: 240, p2: 6.4, boom: 50,
         blocks: [
-          { name: "100t 7-Sheave DM Block", weight: 0.76 },
-          { name: "80t 5-Sheave DM Block", weight: 0.53 },
-          { name: "50t 3-Sheave DM Block", weight: 0.44 },
-          { name: "20t 1-Sheave EM Block", weight: 0.325 }
-        ],
-        weights: [
-          { name: "Type A: Light Side Plates (1 Pair) - 0.25t", value: 0.25 },
-          { name: "Type B: Heavy Side Plates (1 Pair) - 0.50t", value: 0.50 }
+          { id: 'b100', name: "100t 7-Sheave DM Block", weight: 0.76, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b80', name: "80t 5-Sheave DM Block", weight: 0.53, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b50', name: "50t 3-Sheave DM Block", weight: 0.44, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b20', name: "20t 1-Sheave EM Block", weight: 0.325, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] },
+          { id: 'b12', name: "12.5t Single Load Hook", weight: 0.14, aux: [{ name: "No auxiliary ballast allowed", add: 0.00 }] }
         ]
       }
     };
@@ -523,43 +587,46 @@
 
     function loadRopeModel() {
       const key = document.getElementById('r-model').value;
-      const data = ROPE_PRESETS[key];
+      const data = FLEET_BLOCK_SPEC[key];
       document.getElementById('r-rope').value = activeWinch === 1 ? data.w1 : data.w2;
       document.getElementById('r-pull').value = activeWinch === 1 ? data.p1 : data.p2;
       document.getElementById('r-boom').value = data.boom;
 
       const blockSelect = document.getElementById('r-blockselect');
       blockSelect.innerHTML = '';
-      data.blocks.forEach(b => {
+      data.blocks.forEach((b, idx) => {
         const opt = document.createElement('option');
-        opt.value = b.weight;
-        opt.text = `${b.name} (${b.weight}t)`;
+        opt.value = idx;
+        opt.text = `${b.name} (${b.weight}t base)`;
         blockSelect.add(opt);
       });
-      document.getElementById('r-hook').value = data.blocks[0].weight;
+
+      onHookBlockChange();
+    }
+
+    function onHookBlockChange() {
+      const modelKey = document.getElementById('r-model').value;
+      const blockIdx = parseInt(document.getElementById('r-blockselect').value) || 0;
+      const selectedBlock = FLEET_BLOCK_SPEC[modelKey].blocks[blockIdx];
+
+      document.getElementById('r-hook').value = selectedBlock.weight;
 
       const weightSelect = document.getElementById('r-weighttype');
       weightSelect.innerHTML = '';
-      data.weights.forEach(w => {
+      selectedBlock.aux.forEach((w, idx) => {
         const opt = document.createElement('option');
-        opt.value = w.value;
+        opt.value = w.add;
         opt.text = w.name;
         weightSelect.add(opt);
       });
-      document.getElementById('r-checkweight').value = data.weights[0].value;
 
-      calcRope();
-    }
-
-    function updateBlockWeight() {
-      const val = parseFloat(document.getElementById('r-blockselect').value);
-      document.getElementById('r-hook').value = val;
-      calcRope();
+      updateCheckWeightValue();
     }
 
     function updateCheckWeightValue() {
-      const val = parseFloat(document.getElementById('r-checkweight').value);
-      document.getElementById('r-checkweight').value = val;
+      const weightSelect = document.getElementById('r-weighttype');
+      const val = parseFloat(weightSelect.value) || 0.0;
+      document.getElementById('r-checkweight').value = val.toFixed(2);
       calcRope();
     }
 
@@ -589,7 +656,7 @@
       document.getElementById('r-out-addweight').innerText = `${addWeight.toFixed(2)}t`;
       
       document.getElementById('r-out-addweight-sub').innerText = useCheckWeights 
-        ? `After Base Hook (${baseHook}t) + Ballast (${checkWeight}t)`
+        ? `After Base Hook (${baseHook}t) + Ballast (${checkWeight.toFixed(2)}t)`
         : `After Base Hook (${baseHook}t)`;
     }
 
@@ -605,11 +672,11 @@
         { name: "Hook block 80 DM", sheaves: 5, maxReeving: 11, baseWeight: 530, maxWeight: 530 },
         { name: "Hook block 100 DM", sheaves: 7, maxReeving: 14, baseWeight: 760, maxWeight: 760 }
       ]},
-      "LTM 1110t": { ropeDia: 19, minPlateIncrement: 500, blocks: [
+      "LTM 1110t": { ropeDia: 19, minPlateIncrement: 200, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 1450 },
-        { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 1500 },
-        { name: "Hook block 100 DM", sheaves: 6, maxReeving: 11, baseWeight: 900, maxWeight: 2600 },
+        { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 500, maxWeight: 1500 },
+        { name: "Hook block 100 DM", sheaves: 6, maxReeving: 11, baseWeight: 750, maxWeight: 1750 },
         { name: "Hook block 125 DS", sheaves: 7, maxReeving: 12, baseWeight: 1240, maxWeight: 1240 }
       ]},
       "LTM 1130t": { ropeDia: 21, minPlateIncrement: 400, blocks: [
@@ -629,7 +696,7 @@
       "LTR 1220t": { ropeDia: 23, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
-        { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1040, maxWeight: 1450 },
+        { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1040, maxWeight: 1040 },
         { name: "Hook block 125 DM", sheaves: 5, maxReeving: 11, baseWeight: 1300, maxWeight: 1300 },
         { name: "Hook block 160 DM", sheaves: 7, maxReeving: 15, baseWeight: 1500, maxWeight: 1500 },
         { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 1900, maxWeight: 1900 }
@@ -643,7 +710,7 @@
         { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 2000, maxWeight: 2000 },
         { name: "Hook block 250 DM", sheaves: 12, maxReeving: 16, baseWeight: 3400, maxWeight: 3400 }
       ]},
-      "LTM 1300t": { ropeDia: 23, minPlateIncrement: 800, blocks: [
+      "LTM 1300t": { ropeDia: 23, minPlateIncrement: 500, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 40 E", sheaves: 1, maxReeving: 3, baseWeight: 500, maxWeight: 1500 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
@@ -651,14 +718,13 @@
         { name: "Hook block 160 DM", sheaves: 7, maxReeving: 12, baseWeight: 1500, maxWeight: 1500 },
         { name: "Hook block 250 DM", sheaves: 12, maxReeving: 20, baseWeight: 3400, maxWeight: 3400 }
       ]},
-      "LTM 1650-8.1 (650t)": { ropeDia: 25, minPlateIncrement: 1250, blocks: [
+      "LTM 1650-8.1 (650t)": { ropeDia: 25, minPlateIncrement: 375, blocks: [
         { name: "Load hook 16.3 E", sheaves: 0, maxReeving: 1, baseWeight: 700, maxWeight: 700 },
-        { name: "Hook block 50 EM", sheaves: 1, maxReeving: 3, baseWeight: 1000, maxWeight: 6500 },
-        { name: "Hook block 100 DM", sheaves: 3, maxReeving: 7, baseWeight: 1600, maxWeight: 6000 },
-        { name: "Hook block 160 DM", sheaves: 5, maxReeving: 11, baseWeight: 2100, maxWeight: 5000 },
-        { name: "Hook block 200 DM", sheaves: 7, maxReeving: 15, baseWeight: 2600, maxWeight: 5500 },
-        { name: "Hook block 260 DMZ", sheaves: 9, maxReeving: 19, baseWeight: 3250, maxWeight: 7250 },
-        { name: "Hook block 320 DMZ", sheaves: 11, maxReeving: 23, baseWeight: 3950, maxWeight: 7000 }
+        { name: "Hook block 50 EM", sheaves: 1, maxReeving: 3, baseWeight: 1000, maxWeight: 6000 },
+        { name: "Hook block 100 DM", sheaves: 3, maxReeving: 7, baseWeight: 1500, maxWeight: 6500 },
+        { name: "Hook block 160 DM", sheaves: 5, maxReeving: 11, baseWeight: 2100, maxWeight: 7100 },
+        { name: "Hook block 250 DMZ", sheaves: 9, maxReeving: 19, baseWeight: 3250, maxWeight: 8250 },
+        { name: "Hook block 320 DMZ", sheaves: 11, maxReeving: 23, baseWeight: 3950, maxWeight: 8950 }
       ]}
     };
 
@@ -783,18 +849,6 @@
         P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5096, angle: -46.0, quadrant: "RL" }
       }
     };
-
-    function validateFleetGeometryData() {
-      Object.keys(cadFleetData).forEach(craneKey => {
-        const crane = cadFleetData[craneKey];
-        if (crane.P1_RR.angle <= 0 || crane.P1_RR.angle >= 90) throw new Error(`GEOMETRY ERROR: ${craneKey} P1_RR angle corrupt!`);
-        if (crane.P2_FR.angle <= 90 || crane.P2_FR.angle >= 180) throw new Error(`GEOMETRY ERROR: ${craneKey} P2_FR angle corrupt!`);
-        if (crane.P3_FL.angle >= -90 || crane.P3_FL.angle <= -180) throw new Error(`GEOMETRY ERROR: ${craneKey} P3_FL angle corrupt!`);
-        if (crane.P4_RL.angle >= 0 || crane.P4_RL.angle <= -90) throw new Error(`GEOMETRY ERROR: ${craneKey} P4_RL angle corrupt!`);
-      });
-      console.log("SAFEGUARD CHECK PASSED: All crane geometry layouts strictly validated.");
-    }
-    validateFleetGeometryData();
 
     let clickableTargets = [];
     let selectedTarget = null;
@@ -1006,15 +1060,7 @@
       calcCAD();
     });
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
-          .catch((err) => console.error('Service Worker registration failed:', err));
-      });
-    }
-
-
+    // Initialize Page Controls
     loadRopeModel();
     calcHook();
     calcCAD();
