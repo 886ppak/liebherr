@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="color-scheme" content="dark">
   <title>Liebherr Fleet Operations Suite</title>
-  
+
   <meta name="theme-color" content="#121315">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Restored: manifest.json and sw.js exist in the repo but this file had stopped
+       linking to them, which would silently break "add to home screen" / offline use. -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 
   <style>
     :root {
@@ -20,6 +25,7 @@
       --accent-gold: #e5a900;
       --accent-cyan: #38bdf8;
       --warning: #f59e0b;
+      --danger: #ef4444;
       --text-main: #f0f2f5;
       --text-muted: #9ca3af;
       --success: #10b981;
@@ -27,10 +33,10 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 20px; }
-    
+
     header { background-color: #181a1d; border-bottom: 1px solid var(--border-color); padding: 16px 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
     header h1 { font-size: 1.15rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-gold); font-weight: 800; }
-    
+
     .nav-tabs { display: flex; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
     .nav-tabs::-webkit-scrollbar { display: none; }
     .tab-btn { flex: 1; min-width: 140px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
@@ -41,15 +47,16 @@
     .tab-content.active { display: block; }
 
     .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .card-title { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; color: var(--accent-gold); margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    
+    .card-title { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; color: var(--accent-gold); margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); }
     input, select { background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); padding: 10px 12px; font-size: 0.95rem; font-weight: 600; outline: none; width: 100%; }
     input:focus, select:focus { border-color: var(--accent-gold); }
     input[readonly] { opacity: 0.85; cursor: not-allowed; }
-    
+    input:invalid { border-color: var(--danger); }
+
     .toggle-group { display: flex; background-color: var(--input-bg); border-radius: 6px; padding: 3px; border: 1px solid var(--border-color); }
     .toggle-btn { flex: 1; padding: 8px; border: none; background: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; border-radius: 4px; cursor: pointer; text-align: center; }
     .toggle-btn.active { background-color: var(--accent-gold); color: #000; }
@@ -64,6 +71,8 @@
 
     .recommendation-box { background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); padding: 12px; border-radius: 4px; margin-top: 12px; font-size: 0.9rem; line-height: 1.4; }
     .alt-box { background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--accent-cyan); padding: 12px; border-radius: 4px; margin-top: 12px; font-size: 0.9rem; line-height: 1.4; }
+    .warn-box { background: rgba(245, 158, 11, 0.12); border-left: 4px solid var(--warning); padding: 12px; border-radius: 4px; margin-top: 12px; font-size: 0.85rem; line-height: 1.4; color: #fde9c8; }
+    .disclaimer { font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 8px; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
     th, td { padding: 10px; text-align: center; border-bottom: 1px solid var(--border-color); }
@@ -74,6 +83,22 @@
     .btn { display: block; width: 100%; padding: 12px; background: var(--accent-gold); color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.95rem; text-transform: uppercase; margin-top: 16px; }
     .btn:hover { background: var(--accent-gold); opacity: 0.9; }
     .tag-leftbehind { color: var(--warning); font-weight: bold; }
+
+    @media print {
+      body { background: #fff; color: #000; padding-bottom: 0; }
+      header { background: #fff; border-bottom: 2px solid #000; position: static; }
+      header h1 { color: #000; }
+      header h1 span { color: #000 !important; }
+      .card { background: #fff; border: 1px solid #999; break-inside: avoid; }
+      .card-title { color: #000; border-bottom: 1px solid #999; }
+      input, select { background: #fff; color: #000; border: 1px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .metric-card { background: #fff; border: 1px solid #999; }
+      .metric-value { color: #000; }
+      .nav-tabs, .btn { display: none; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      canvas { filter: invert(1) hue-rotate(180deg); }
+    }
   </style>
 </head>
 <body>
@@ -93,7 +118,7 @@
     <!-- ================= TAB 1: ROPE RETENTIONING ================= -->
     <div id="rope-tab" class="tab-content active">
       <div class="card">
-        <div class="card-title">Configuration & Winch Setup</div>
+        <div class="card-title">Configuration &amp; Winch Setup</div>
         <div class="grid">
           <div class="form-group">
             <label>Crane Model</label>
@@ -120,7 +145,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Rigging & Hook Block Selection</div>
+        <div class="card-title">Rigging &amp; Hook Block Selection</div>
         <div class="grid">
           <div class="form-group">
             <label>Hook Block Type</label>
@@ -132,23 +157,23 @@
           </div>
           <div class="form-group">
             <label>Rope Length on Drum (m)</label>
-            <input type="number" id="r-rope" value="520" oninput="calcRope()">
+            <input type="number" id="r-rope" value="520" min="0" oninput="calcRope()">
           </div>
           <div class="form-group">
             <label>Max Single Line Pull (t)</label>
-            <input type="number" id="r-pull" value="12.8" step="0.1" oninput="calcRope()">
+            <input type="number" id="r-pull" value="12.8" step="0.1" min="0" oninput="calcRope()">
           </div>
           <div class="form-group">
             <label>Active Boom Length (m)</label>
-            <input type="number" id="r-boom" value="54" oninput="calcRope()">
+            <input type="number" id="r-boom" value="54" min="1" oninput="calcRope()">
           </div>
           <div class="form-group">
             <label>Fly Jib / Extension (m)</label>
-            <input type="number" id="r-fly" value="0" oninput="calcRope()">
+            <input type="number" id="r-fly" value="0" min="0" oninput="calcRope()">
           </div>
           <div class="form-group">
             <label>Spooling Tension %</label>
-            <input type="number" id="r-tension" value="10" oninput="calcRope()">
+            <input type="number" id="r-tension" value="10" min="0" max="100" oninput="calcRope()">
           </div>
         </div>
       </div>
@@ -186,7 +211,7 @@
         <div class="metric-card highlight">
           <div class="metric-label">Minimum Reeving</div>
           <div class="metric-value" id="r-out-reeving">9</div>
-          <div class="metric-sub">Parts of line required</div>
+          <div class="metric-sub">Parts of line to clear the drum</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Total Weight Req.</div>
@@ -199,12 +224,13 @@
           <div class="metric-sub" id="r-out-addweight-sub">Weight on top of block</div>
         </div>
       </div>
+      <div class="disclaimer">Reference tool only — cross-check reeving, pull rating, and ballast against the current Liebherr load chart and rigging plan for this lift before use on site.</div>
     </div>
 
     <!-- ================= TAB 2: MINIMUM HOOK BLOCK WEIGHTS ================= -->
     <div id="hook-tab" class="tab-content">
       <div class="card">
-        <div class="card-title">Crane & Rigging Setup</div>
+        <div class="card-title">Crane &amp; Rigging Setup</div>
         <div class="grid">
           <div class="form-group">
             <label>Crane Selection</label>
@@ -212,11 +238,11 @@
           </div>
           <div class="form-group">
             <label>Boom Length (L) - meters</label>
-            <input type="number" id="h-boom" value="" placeholder="e.g. 80" oninput="calcHook()">
+            <input type="number" id="h-boom" value="" min="1" placeholder="e.g. 80" oninput="calcHook()">
           </div>
           <div class="form-group">
             <label>Reeving / Falls (n)</label>
-            <input type="number" id="h-reeving" value="" placeholder="e.g. 12" oninput="calcHook()">
+            <input type="number" id="h-reeving" value="" min="1" placeholder="e.g. 12" oninput="calcHook()">
           </div>
         </div>
       </div>
@@ -244,6 +270,7 @@
             <div class="metric-sub" id="h-minweightt">- tonnes</div>
           </div>
         </div>
+        <div id="h-datawarning"></div>
       </div>
 
       <div class="card">
@@ -256,6 +283,7 @@
           <strong style="color:var(--accent-cyan);">Option 2 (Alternative Block Choice):</strong>
           <div id="h-altblock" style="margin-top:6px;">Enter boom length and reeving above...</div>
         </div>
+        <div class="disclaimer">G = L × M × n × F. Confirm this formula's basis against the manufacturer's chart before relying on it.</div>
       </div>
     </div>
 
@@ -263,7 +291,7 @@
     <div id="cad-tab" class="tab-content">
       <div class="grid">
         <div class="card">
-          <div class="card-title">Crane Selection & Shift</div>
+          <div class="card-title">Crane Selection &amp; Shift</div>
           <div class="form-group">
             <label>Select Crane Model</label>
             <select id="cad-crane" onchange="calcCAD()">
@@ -349,7 +377,7 @@
     function switchTab(tabId, evt) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      
+
       if (evt && evt.target) {
         evt.target.classList.add('active');
       }
@@ -357,6 +385,20 @@
 
       if (tabId === 'cad-tab') calcCAD();
     }
+
+    // Shared helper: fill a <select> from an array, options built via textFn/valueFn.
+    function buildSelect(selectEl, items, textFn, valueFn) {
+      selectEl.innerHTML = '';
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = valueFn(item);
+        opt.text = textFn(item);
+        selectEl.add(opt);
+      });
+    }
+
+    function toDegrees(radians) { return radians * 180 / Math.PI; }
+    function dirFor(angleDeg) { return angleDeg >= 0 ? '<' : '>'; }
 
     // --- OEM HOOK BLOCK DATA BASED ON SPECIFICATION SHEETS ---
     const FLEET_BLOCK_SPEC = {
@@ -592,14 +634,12 @@
       document.getElementById('r-pull').value = activeWinch === 1 ? data.p1 : data.p2;
       document.getElementById('r-boom').value = data.boom;
 
-      const blockSelect = document.getElementById('r-blockselect');
-      blockSelect.innerHTML = '';
-      data.blocks.forEach((b, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.text = `${b.name} (${b.weight}t base)`;
-        blockSelect.add(opt);
-      });
+      buildSelect(
+        document.getElementById('r-blockselect'),
+        data.blocks.map((b, idx) => ({ ...b, idx })),
+        b => `${b.name} (${b.weight}t base)`,
+        b => b.idx
+      );
 
       onHookBlockChange();
     }
@@ -611,14 +651,7 @@
 
       document.getElementById('r-hook').value = selectedBlock.weight;
 
-      const weightSelect = document.getElementById('r-weighttype');
-      weightSelect.innerHTML = '';
-      selectedBlock.aux.forEach((w, idx) => {
-        const opt = document.createElement('option');
-        opt.value = w.add;
-        opt.text = w.name;
-        weightSelect.add(opt);
-      });
+      buildSelect(document.getElementById('r-weighttype'), selectedBlock.aux, w => w.name, w => w.add);
 
       updateCheckWeightValue();
     }
@@ -631,31 +664,33 @@
     }
 
     function calcRope() {
-      const rope = parseFloat(document.getElementById('r-rope').value) || 0;
-      const pull = parseFloat(document.getElementById('r-pull').value) || 0;
-      const boom = parseFloat(document.getElementById('r-boom').value) || 0;
-      const fly = parseFloat(document.getElementById('r-fly').value) || 0;
+      const rope = Math.max(0, parseFloat(document.getElementById('r-rope').value) || 0);
+      const pull = Math.max(0, parseFloat(document.getElementById('r-pull').value) || 0);
+      const boom = Math.max(0, parseFloat(document.getElementById('r-boom').value) || 0);
+      const fly = Math.max(0, parseFloat(document.getElementById('r-fly').value) || 0);
       const baseHook = parseFloat(document.getElementById('r-hook').value) || 0;
-      const tensionPct = (parseFloat(document.getElementById('r-tension').value) || 10) / 100;
+      const tensionPct = Math.min(100, Math.max(0, parseFloat(document.getElementById('r-tension').value) || 10)) / 100;
 
       const useCheckWeights = document.getElementById('r-useweights').checked;
       const checkWeight = useCheckWeights ? (parseFloat(document.getElementById('r-checkweight').value) || 0) : 0;
-      
+
       const totalHookAssembly = baseHook + checkWeight;
       document.getElementById('r-combinedhook').value = `${totalHookAssembly.toFixed(2)} t`;
 
       const totalLength = boom + fly;
+      // Minimum parts of line to spool out enough rope (via boom+fly reach per pass)
+      // to strip the working length off the drum, ahead of drum retentioning.
       const reeving = totalLength > 0 ? Math.ceil((rope - totalLength) / totalLength) : 0;
       const totalWeight = reeving * pull * tensionPct;
-      
+
       const addWeight = Math.max(0, totalWeight - totalHookAssembly);
 
       document.getElementById('r-out-length').innerText = `${totalLength}m`;
       document.getElementById('r-out-reeving').innerText = reeving;
       document.getElementById('r-out-totalweight').innerText = `${totalWeight.toFixed(2)}t`;
       document.getElementById('r-out-addweight').innerText = `${addWeight.toFixed(2)}t`;
-      
-      document.getElementById('r-out-addweight-sub').innerText = useCheckWeights 
+
+      document.getElementById('r-out-addweight-sub').innerText = useCheckWeights
         ? `After Base Hook (${baseHook}t) + Ballast (${checkWeight.toFixed(2)}t)`
         : `After Base Hook (${baseHook}t)`;
     }
@@ -728,13 +763,12 @@
       ]}
     };
 
-    const hookCraneSelect = document.getElementById('h-crane');
-    Object.keys(cranesData).forEach(c => hookCraneSelect.add(new Option(c, c)));
+    buildSelect(document.getElementById('h-crane'), Object.keys(cranesData), c => c, c => c);
 
     function formatBlockInfo(block, G_kg, plateIncrement) {
       const sheavesText = block.sheaves === 0 ? "Single load hook (0 sheaves)" : `${block.sheaves} sheaves hook block`;
       let text = `${block.name} (${sheavesText}, Base Weight: ${block.baseWeight} kg)`;
-      
+
       if (block.baseWeight < G_kg) {
         const deficit = G_kg - block.baseWeight;
         const platesNeeded = Math.ceil(deficit / plateIncrement) * plateIncrement;
@@ -752,9 +786,10 @@
     }
 
     function calcHook() {
-      const craneKey = hookCraneSelect.value;
+      const craneKey = document.getElementById('h-crane').value;
       const crane = cranesData[craneKey];
-      
+      const warningEl = document.getElementById('h-datawarning');
+
       const boomRaw = document.getElementById('h-boom').value;
       const reevingRaw = document.getElementById('h-reeving').value;
 
@@ -767,20 +802,28 @@
         document.getElementById('h-minweightt').innerText = "- tonnes";
         document.getElementById('h-recblock').innerText = "Enter boom length and reeving count above to generate recommendations.";
         document.getElementById('h-altblock').innerText = "Enter boom length and reeving count above to generate recommendations.";
+        warningEl.innerHTML = '';
         return;
       }
 
-      const L = parseFloat(boomRaw) || 0;
-      const n = parseInt(reevingRaw) || 1;
+      const L = Math.max(0, parseFloat(boomRaw) || 0);
+      const n = Math.max(1, parseInt(reevingRaw) || 1);
 
-      const M = ropeWeights[crane.ropeDia] || 2.24;
-      const F = reevingFactors[n] || 1.54;
+      const M = ropeWeights[crane.ropeDia];
+      const F = reevingFactors[n];
+      let warning = '';
+      if (M === undefined) warning += `No listed rope weight for a ${crane.ropeDia}mm rope — verify manually. `;
+      if (F === undefined) warning += `Reeving factor for ${n} parts is outside the reference table — verify manually. `;
+      warningEl.innerHTML = warning ? `<div class="warn-box">⚠️ ${warning}</div>` : '';
 
-      const G_kg = L * M * n * F;
+      const usedM = M !== undefined ? M : 2.24;
+      const usedF = F !== undefined ? F : 1.54;
+
+      const G_kg = L * usedM * n * usedF;
       const G_t = G_kg / 1000;
 
-      document.getElementById('h-ropeweight').value = `${M} kg/m`;
-      document.getElementById('h-reevingfactor').value = F;
+      document.getElementById('h-ropeweight').value = `${usedM} kg/m${M === undefined ? ' (fallback)' : ''}`;
+      document.getElementById('h-reevingfactor').value = `${usedF}${F === undefined ? ' (fallback)' : ''}`;
       document.getElementById('h-minweightkg').innerText = `${G_kg.toFixed(1)} kg`;
       document.getElementById('h-minweightt').innerText = `${G_t.toFixed(3)} tonnes`;
 
@@ -852,7 +895,6 @@
 
     let clickableTargets = [];
     let selectedTarget = null;
-    Math.degrees = function(radians) { return radians * 180 / Math.PI; };
 
     function calcCAD() {
       const modelKey = document.getElementById('cad-crane').value;
@@ -861,7 +903,7 @@
 
       const shiftX = (parseFloat(document.getElementById('cad-shiftx').value) || 0) * 1000;
       const shiftY = (parseFloat(document.getElementById('cad-shifty').value) || 0) * 1000;
-      
+
       let resultsHtml = '';
       let stationaryHtml = '';
       let baselineHtml = '';
@@ -876,7 +918,7 @@
         const baseX = item.r * Math.sin(rad);
         const baseY = item.r * Math.cos(rad);
 
-        const origDir = item.angle >= 0 ? '>' : '<';
+        const origDir = dirFor(item.angle);
         const origAngle = Math.abs(item.angle);
 
         baselineHtml += `
@@ -896,48 +938,46 @@
               <td><b>${origDir}</b></td>
               <td><b>${origAngle.toFixed(1)}°</b></td>
             </tr>`;
+        } else if (!unmovedIds.includes(item.id)) {
+          const newX = baseX + shiftX;
+          const newY = baseY + shiftY;
+          const newR = Math.round(Math.hypot(newX, newY));
+          const rawAngleDeg = toDegrees(Math.atan2(newX, newY));
+          const dir = dirFor(rawAngleDeg);
+          const relAngle = Math.round(Math.abs(rawAngleDeg) * 10) / 10;
+
+          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'repositioned', x: newX, y: newY, r: newR, dir, relAngle });
+
+          resultsHtml += `
+            <tr>
+              <td><b style="color:var(--success);">Outrigger P${item.id} (Repositioned)</b></td>
+              <td><b>${newR} mm</b></td>
+              <td><b>${dir}</b></td>
+              <td><b>${relAngle.toFixed(1)}°</b></td>
+            </tr>`;
         } else {
-          if (!unmovedIds.includes(item.id)) {
-            const newX = baseX + shiftX;
-            const newY = baseY + shiftY;
-            const newR = Math.round(Math.hypot(newX, newY));
-            let rawAngleDeg = Math.degrees(Math.atan2(newX, newY));
-            let dir = rawAngleDeg >= 0 ? '>' : '<';
-            let relAngle = Math.round(Math.abs(rawAngleDeg) * 10) / 10;
+          const statRelX = baseX - shiftX;
+          const statRelY = baseY - shiftY;
+          const statR = Math.round(Math.hypot(statRelX, statRelY));
+          const statRawAngle = toDegrees(Math.atan2(statRelX, statRelY));
+          const statDir = dirFor(statRawAngle);
+          const statAngle = Math.round(Math.abs(statRawAngle) * 10) / 10;
 
-            mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'repositioned', x: newX, y: newY, r: newR, dir, relAngle, baseX, baseY });
+          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'stationary', x: baseX, y: baseY, r: statR, dir: statDir, relAngle: statAngle, statRelX, statRelY });
 
-            resultsHtml += `
-              <tr>
-                <td><b style="color:var(--success);">Outrigger P${item.id} (Repositioned)</b></td>
-                <td><b>${newR} mm</b></td>
-                <td><b>${dir}</b></td>
-                <td><b>${relAngle.toFixed(1)}°</b></td>
-              </tr>`;
-          } else {
-            const statRelX = baseX - shiftX;
-            const statRelY = baseY - shiftY;
-            const statR = Math.round(Math.hypot(statRelX, statRelY));
-            let statRawAngle = Math.degrees(Math.atan2(statRelX, statRelY));
-            let statDir = statRawAngle >= 0 ? '>' : '<';
-            let statAngle = Math.round(Math.abs(statRawAngle) * 10) / 10;
-
-            mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'stationary', x: baseX, y: baseY, r: statR, dir: statDir, relAngle: statAngle, statRelX, statRelY });
-
-            stationaryHtml += `
-              <tr>
-                <td><b class="tag-leftbehind">Mat P${item.id} (Stationary)</b></td>
-                <td><b>${statR} mm</b></td>
-                <td><b>${statDir}</b></td>
-                <td><b>${statAngle.toFixed(1)}°</b></td>
-              </tr>`;
-          }
+          stationaryHtml += `
+            <tr>
+              <td><b class="tag-leftbehind">Mat P${item.id} (Stationary)</b></td>
+              <td><b>${statR} mm</b></td>
+              <td><b>${statDir}</b></td>
+              <td><b>${statAngle.toFixed(1)}°</b></td>
+            </tr>`;
         }
       });
 
       document.getElementById('cad-results').innerHTML = resultsHtml;
       document.getElementById('cad-baselineresults').innerHTML = baselineHtml;
-      
+
       const stationaryCard = document.getElementById('cad-stationarycard');
       const baselineCard = document.getElementById('cad-baselinecard');
 
@@ -982,8 +1022,14 @@
       ctx.beginPath(); ctx.arc(craneCenterX, craneCenterY, 4, 0, 2 * Math.PI); ctx.stroke();
 
       outriggers.forEach(o => {
+        // Fixed quadrant canvas mapping (locked, do not switch to raw signed
+        // x/y): P1=RR, P2=FR, P3=FL, P4=RL must always render in their labeled
+        // rear-right / front-right / front-left / rear-left position so the
+        // visual matches the physical Liebherr outrigger layout, regardless of
+        // how far a shift moves the leg. This intentionally overrides the raw
+        // sign of the shifted coordinate for on-screen placement; the results
+        // table still reports the true signed radius/angle for that same leg.
         let canvasX, canvasY;
-        
         if (o.quadrant === 'RR') {
           canvasX = centerX + Math.abs(o.x) * scale;
           canvasY = centerY + Math.abs(o.y) * scale;
@@ -1059,6 +1105,17 @@
     window.addEventListener('resize', () => {
       calcCAD();
     });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+          .catch(() => {
+            // Expected to fail wherever sw.js isn't actually hosted at this origin
+            // (e.g. previews). On the deployed GitHub Pages site this succeeds normally.
+          });
+      });
+    }
 
     // Initialize Page Controls
     loadRopeModel();
