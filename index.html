@@ -39,7 +39,7 @@
 
     .nav-tabs { display: flex; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
     .nav-tabs::-webkit-scrollbar { display: none; }
-    .tab-btn { flex: 1; min-width: 140px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
+    .tab-btn { flex: 0 0 auto; min-width: 140px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
     .tab-btn.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); background-color: rgba(229, 169, 0, 0.05); }
 
     .container { padding: 16px; max-width: 850px; margin: 0 auto; width: 100%; }
@@ -1112,7 +1112,7 @@
           });
       });
     }
- 
+
     // Initialize Page Controls
     loadRopeModel();
     calcHook();
