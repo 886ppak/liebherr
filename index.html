@@ -335,7 +335,7 @@
           </thead>
           <tbody id="cad-results"></tbody>
         </table>
-        <div class="disclaimer">MUST MOVE = in the crane's direct path of travel for this shift. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway.</div>
+        <div class="disclaimer">MUST MOVE = in the crane's direct path of travel for this shift. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway — and flags NOT POSSIBLE if that spot is currently under the crane's own chassis, before it moves. On the site plan, the blue outlined dot for an optional leg shows that same target spot.</div>
       </div>
 
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
@@ -864,12 +864,34 @@
       }
     };
 
+    // Chassis footprint, confirmed against OEM dimension sheets (525/80 R25 tire row).
+    // front/rear = distance from slew center to the front/rear tip of the chassis
+    // body (boom overhang excluded — boom is airborne, doesn't interfere with
+    // ground mats). Used to flag when a pad's "if moved now" spot is currently
+    // sitting underneath the crane's own body — unreachable until the crane moves.
+    const FOOTPRINTS = {
+      "1650": { width: 3100, front: 14585, rear: 3717 },
+      "1300": { width: 3100, front: 11060, rear: 4378 },
+      "1250": { width: 3100, front: 9554,  rear: 4261 },
+      "1160": { width: 2850, front: 9466,  rear: 4222 },
+      "1130": { width: 2850, front: 8451,  rear: 3895 },
+      "1110": { width: 2850, front: 8572,  rear: 3685 },
+      "1100": { width: 3300, front: 4300,  rear: 4388 }
+    };
+
+    // Is point (x,y) under the crane's CURRENT (unshifted) chassis footprint?
+    // front = negative Y in this convention, rear = positive Y.
+    function clashesWithFootprint(x, y, fp) {
+      return Math.abs(x) <= fp.width / 2 && y >= -fp.front && y <= fp.rear;
+    }
+
     let clickableTargets = [];
     let selectedTarget = null;
 
     function calcCAD() {
       const modelKey = document.getElementById('cad-crane').value;
       const craneObj = cadFleetData[modelKey];
+      const fp = FOOTPRINTS[modelKey];
       const baseData = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL];
 
       const shiftX = (parseFloat(document.getElementById('cad-shiftx').value) || 0) * 1000;
@@ -895,7 +917,8 @@
         const baseY = item.r * Math.cos(rad);
 
         if (shiftX === 0 && shiftYinput === 0) {
-          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, x: baseX, y: baseY,
+          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, clash: false,
+            x: baseX, y: baseY, movedX: baseX, movedY: baseY,
             r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
             <tr>
@@ -913,6 +936,7 @@
         const movedRawAngle = toDegrees(Math.atan2(newX, newY));
         const movedDir = dirFor(movedRawAngle);
         const movedAngle = Math.round(Math.abs(movedRawAngle) * 10) / 10;
+        const clash = clashesWithFootprint(newX, newY, fp);
 
         // If left in place: its position measured from the crane's NEW center.
         const relX = baseX - shiftX, relY = baseY - shiftY;
@@ -926,7 +950,8 @@
         const plotY = isRequired ? newY : baseY;
 
         mappedOutriggers.push({
-          id: item.id, quadrant: item.quadrant, required: isRequired, x: plotX, y: plotY,
+          id: item.id, quadrant: item.quadrant, required: isRequired, clash,
+          x: plotX, y: plotY, movedX: newX, movedY: newY,
           r: isRequired ? movedR : stayR, dir: isRequired ? movedDir : stayDir, relAngle: isRequired ? movedAngle : stayAngle,
           posX: Math.round(plotX), posY: Math.round(plotY)
         });
@@ -934,20 +959,23 @@
         const tag = isRequired
           ? '<span style="color:var(--success);font-weight:700;">MUST MOVE</span>'
           : '<span style="color:var(--text-muted);">optional</span>';
+        const movedCell = clash
+          ? '<span style="color:var(--danger);font-weight:700;">NOT POSSIBLE<br>under current footprint</span>'
+          : `${movedR} mm<br>${movedDir} ${movedAngle.toFixed(1)}°`;
         resultsHtml += `
           <tr>
             <td><b>P${item.id}</b><br>${tag}</td>
-            <td>${movedR} mm<br>${movedDir} ${movedAngle.toFixed(1)}°</td>
+            <td>${movedCell}</td>
             <td>${stayR} mm<br>${stayDir} ${stayAngle.toFixed(1)}°</td>
             <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
           </tr>`;
       });
 
       document.getElementById('cad-results').innerHTML = resultsHtml;
-      drawCADCanvas(shiftX, shiftYinput, mappedOutriggers);
+      drawCADCanvas(shiftX, shiftYinput, mappedOutriggers, fp);
     }
 
-    function drawCADCanvas(shiftX, shiftY, outriggers) {
+    function drawCADCanvas(shiftX, shiftY, outriggers, fp) {
       const canvas = document.getElementById('siteMap');
       const ctx = canvas.getContext('2d');
       canvas.width = canvas.parentElement.clientWidth;
@@ -964,6 +992,19 @@
       ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
       ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
       ctx.stroke();
+
+      // Chassis footprint rectangle, centered on the CURRENT (unshifted) origin.
+      // front = negative Y = up on screen, rear = positive Y = down on screen.
+      if (fp) {
+        const fpLeft = centerX - (fp.width / 2) * scale;
+        const fpRight = centerX + (fp.width / 2) * scale;
+        const fpTop = centerY - fp.front * scale;
+        const fpBottom = centerY + fp.rear * scale;
+        ctx.strokeStyle = '#4b5563'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+        ctx.strokeRect(fpLeft, fpTop, fpRight - fpLeft, fpBottom - fpTop);
+        ctx.fillStyle = 'rgba(75,85,99,0.15)';
+        ctx.fillRect(fpLeft, fpTop, fpRight - fpLeft, fpBottom - fpTop);
+      }
 
       const craneCenterX = centerX + (shiftX * scale);
       const craneCenterY = centerY - (shiftY * scale);
@@ -997,6 +1038,30 @@
           ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
           ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
           ctx.fillText(`P${o.id}`, canvasX - 25, canvasY - 10);
+
+          // Ghost "target" dot: for optional legs, shows where this pad WOULD
+          // go if you chose to move it — separate from the current dot above.
+          if (o.movedX !== o.x || o.movedY !== o.y) {
+            const tx = centerX + o.movedX * scale;
+            const ty = centerY + o.movedY * scale;
+
+            ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(canvasX, canvasY); ctx.lineTo(tx, ty); ctx.stroke();
+
+            ctx.fillStyle = 'rgba(56,189,248,0.25)';
+            ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([]); ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(tx, ty, 6, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+
+            if (o.clash) {
+              ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(tx, ty, 11, 0, 2 * Math.PI); ctx.stroke();
+            }
+
+            ctx.fillStyle = '#7dd3fc'; ctx.font = '10px sans-serif';
+            ctx.fillText(`P${o.id} target`, tx + 9, ty + 4);
+
+            clickableTargets.push({ id: `P${o.id} (target)`, type: o.clash ? 'Not possible right now' : 'If moved, target spot', x: tx, y: ty, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.movedX), posY: Math.round(o.movedY) });
+          }
         }
       });
 
