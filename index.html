@@ -323,48 +323,19 @@
       </div>
 
       <div class="card">
-        <div class="card-title" style="color:var(--success);">Repositioned Outriggers (Green Setup Mats)</div>
+        <div class="card-title" style="color:var(--success);">All Four Legs — Reference Frames</div>
         <table>
           <thead>
             <tr>
               <th>Outrigger</th>
-              <th>New Radius</th>
-              <th>Slew Dir</th>
-              <th>New Slew Angle</th>
+              <th>If Moved<br><span style="font-weight:400;text-transform:none;">from current position</span></th>
+              <th>If Left in Place<br><span style="font-weight:400;text-transform:none;">from new center</span></th>
+              <th>Baseline<br><span style="font-weight:400;text-transform:none;">standard target offset</span></th>
             </tr>
           </thead>
           <tbody id="cad-results"></tbody>
         </table>
-      </div>
-
-      <div class="card" id="cad-stationarycard" style="display:none;">
-        <div class="card-title" style="color:var(--warning);">Left-Behind Mats (Pickup Target From New Center)</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Stationary Mat</th>
-              <th>Radius from New Center</th>
-              <th>Slew Dir</th>
-              <th>Slew Angle from New Center</th>
-            </tr>
-          </thead>
-          <tbody id="cad-stationaryresults"></tbody>
-        </table>
-      </div>
-
-      <div class="card" id="cad-baselinecard" style="display:none;">
-        <div class="card-title" style="color:var(--accent-cyan);">Original Baseline Target Reference (Zero Shift Position)</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Original Mat</th>
-              <th>Baseline Radius</th>
-              <th>Slew Dir</th>
-              <th>Baseline Slew Angle</th>
-            </tr>
-          </thead>
-          <tbody id="cad-baselineresults"></tbody>
-        </table>
+        <div class="disclaimer">MUST MOVE = in the crane's direct path of travel for this shift. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway.</div>
       </div>
 
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
@@ -902,99 +873,78 @@
       const baseData = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL];
 
       const shiftX = (parseFloat(document.getElementById('cad-shiftx').value) || 0) * 1000;
-      const shiftY = (parseFloat(document.getElementById('cad-shifty').value) || 0) * 1000;
+      const shiftYinput = (parseFloat(document.getElementById('cad-shifty').value) || 0) * 1000;
+      // Stored polar data uses "front = negative Y" (confirmed against the OEM
+      // outrigger diagram: P2/P3 near the boom = front; P1/P4 near the rear).
+      // A "+forward" user input must DECREASE the internal Y value.
+      const shiftY = -shiftYinput;
+
+      // A pad only needs picking up if it sits in the crane's actual path of
+      // travel — that only happens with a lateral component. A pure fwd/bwd
+      // move never runs over any pad, so nothing is strictly required to move.
+      let requiredIds = [];
+      if (shiftX > 0) requiredIds = [1, 2];
+      else if (shiftX < 0) requiredIds = [3, 4];
 
       let resultsHtml = '';
-      let stationaryHtml = '';
-      let baselineHtml = '';
       let mappedOutriggers = [];
-
-      let unmovedIds = [];
-      if (shiftX > 0) unmovedIds = [3, 4];
-      else if (shiftX < 0) unmovedIds = [1, 2];
 
       baseData.forEach(item => {
         const rad = item.angle * (Math.PI / 180);
         const baseX = item.r * Math.sin(rad);
         const baseY = item.r * Math.cos(rad);
 
-        const origDir = dirFor(item.angle);
-        const origAngle = Math.abs(item.angle);
-
-        baselineHtml += `
-          <tr>
-            <td><b>Outrigger P${item.id}</b></td>
-            <td><b>${item.r} mm</b></td>
-            <td><b>${origDir}</b></td>
-            <td><b>${origAngle.toFixed(1)}°</b></td>
-          </tr>`;
-
-        if (shiftX === 0 && shiftY === 0) {
-          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'repositioned', x: baseX, y: baseY, r: item.r, dir: origDir, relAngle: origAngle });
+        if (shiftX === 0 && shiftYinput === 0) {
+          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, x: baseX, y: baseY,
+            r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
             <tr>
-              <td><b style="color:var(--success);">Outrigger P${item.id}</b></td>
-              <td><b>${item.r} mm</b></td>
-              <td><b>${origDir}</b></td>
-              <td><b>${origAngle.toFixed(1)}°</b></td>
+              <td><b>P${item.id}</b></td>
+              <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
+              <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
+              <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
             </tr>`;
-        } else if (!unmovedIds.includes(item.id)) {
-          const newX = baseX + shiftX;
-          const newY = baseY + shiftY;
-          const newR = Math.round(Math.hypot(newX, newY));
-          const rawAngleDeg = toDegrees(Math.atan2(newX, newY));
-          const dir = dirFor(rawAngleDeg);
-          const relAngle = Math.round(Math.abs(rawAngleDeg) * 10) / 10;
-
-          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'repositioned', x: newX, y: newY, r: newR, dir, relAngle });
-
-          resultsHtml += `
-            <tr>
-              <td><b style="color:var(--success);">Outrigger P${item.id} (Repositioned)</b></td>
-              <td><b>${newR} mm</b></td>
-              <td><b>${dir}</b></td>
-              <td><b>${relAngle.toFixed(1)}°</b></td>
-            </tr>`;
-        } else {
-          const statRelX = baseX - shiftX;
-          const statRelY = baseY - shiftY;
-          const statR = Math.round(Math.hypot(statRelX, statRelY));
-          const statRawAngle = toDegrees(Math.atan2(statRelX, statRelY));
-          const statDir = dirFor(statRawAngle);
-          const statAngle = Math.round(Math.abs(statRawAngle) * 10) / 10;
-
-          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, type: 'stationary', x: baseX, y: baseY, r: statR, dir: statDir, relAngle: statAngle, statRelX, statRelY });
-
-          stationaryHtml += `
-            <tr>
-              <td><b class="tag-leftbehind">Mat P${item.id} (Stationary)</b></td>
-              <td><b>${statR} mm</b></td>
-              <td><b>${statDir}</b></td>
-              <td><b>${statAngle.toFixed(1)}°</b></td>
-            </tr>`;
+          return;
         }
+
+        // If moved: new spot's position measured from the CURRENT (pre-move) zero point.
+        const newX = baseX + shiftX, newY = baseY + shiftY;
+        const movedR = Math.round(Math.hypot(newX, newY));
+        const movedRawAngle = toDegrees(Math.atan2(newX, newY));
+        const movedDir = dirFor(movedRawAngle);
+        const movedAngle = Math.round(Math.abs(movedRawAngle) * 10) / 10;
+
+        // If left in place: its position measured from the crane's NEW center.
+        const relX = baseX - shiftX, relY = baseY - shiftY;
+        const stayR = Math.round(Math.hypot(relX, relY));
+        const stayRawAngle = toDegrees(Math.atan2(relX, relY));
+        const stayDir = dirFor(stayRawAngle);
+        const stayAngle = Math.round(Math.abs(stayRawAngle) * 10) / 10;
+
+        const isRequired = requiredIds.includes(item.id);
+        const plotX = isRequired ? newX : baseX;
+        const plotY = isRequired ? newY : baseY;
+
+        mappedOutriggers.push({
+          id: item.id, quadrant: item.quadrant, required: isRequired, x: plotX, y: plotY,
+          r: isRequired ? movedR : stayR, dir: isRequired ? movedDir : stayDir, relAngle: isRequired ? movedAngle : stayAngle,
+          posX: Math.round(plotX), posY: Math.round(plotY)
+        });
+
+        const tag = isRequired
+          ? '<span style="color:var(--success);font-weight:700;">MUST MOVE</span>'
+          : '<span style="color:var(--text-muted);">optional</span>';
+        resultsHtml += `
+          <tr>
+            <td><b>P${item.id}</b><br>${tag}</td>
+            <td>${movedR} mm<br>${movedDir} ${movedAngle.toFixed(1)}°</td>
+            <td>${stayR} mm<br>${stayDir} ${stayAngle.toFixed(1)}°</td>
+            <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
+          </tr>`;
       });
 
       document.getElementById('cad-results').innerHTML = resultsHtml;
-      document.getElementById('cad-baselineresults').innerHTML = baselineHtml;
-
-      const stationaryCard = document.getElementById('cad-stationarycard');
-      const baselineCard = document.getElementById('cad-baselinecard');
-
-      if (shiftX !== 0 || shiftY !== 0) {
-        if (stationaryHtml !== '') {
-          stationaryCard.style.display = 'block';
-          document.getElementById('cad-stationaryresults').innerHTML = stationaryHtml;
-        } else {
-          stationaryCard.style.display = 'none';
-        }
-        baselineCard.style.display = 'block';
-      } else {
-        stationaryCard.style.display = 'none';
-        baselineCard.style.display = 'none';
-      }
-
-      drawCADCanvas(shiftX, shiftY, mappedOutriggers);
+      drawCADCanvas(shiftX, shiftYinput, mappedOutriggers);
     }
 
     function drawCADCanvas(shiftX, shiftY, outriggers) {
@@ -1022,30 +972,11 @@
       ctx.beginPath(); ctx.arc(craneCenterX, craneCenterY, 4, 0, 2 * Math.PI); ctx.stroke();
 
       outriggers.forEach(o => {
-        // Fixed quadrant canvas mapping (locked, do not switch to raw signed
-        // x/y): P1=RR, P2=FR, P3=FL, P4=RL must always render in their labeled
-        // rear-right / front-right / front-left / rear-left position so the
-        // visual matches the physical Liebherr outrigger layout, regardless of
-        // how far a shift moves the leg. This intentionally overrides the raw
-        // sign of the shifted coordinate for on-screen placement; the results
-        // table still reports the true signed radius/angle for that same leg.
-        let canvasX, canvasY;
-        if (o.quadrant === 'RR') {
-          canvasX = centerX + Math.abs(o.x) * scale;
-          canvasY = centerY + Math.abs(o.y) * scale;
-        } else if (o.quadrant === 'FR') {
-          canvasX = centerX + Math.abs(o.x) * scale;
-          canvasY = centerY - Math.abs(o.y) * scale;
-        } else if (o.quadrant === 'FL') {
-          canvasX = centerX - Math.abs(o.x) * scale;
-          canvasY = centerY - Math.abs(o.y) * scale;
-        } else if (o.quadrant === 'RL') {
-          canvasX = centerX - Math.abs(o.x) * scale;
-          canvasY = centerY + Math.abs(o.y) * scale;
-        }
+        const canvasX = centerX + o.x * scale;
+        const canvasY = centerY + o.y * scale;
 
-        if (o.type === 'repositioned') {
-          clickableTargets.push({ id: `P${o.id}`, type: shiftX === 0 && shiftY === 0 ? 'Baseline Setup Pad' : 'New Setup Pad', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.x), posY: Math.round(o.y) });
+        if (o.required) {
+          clickableTargets.push({ id: `P${o.id}`, type: 'Must-Move Setup Pad', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
           ctx.fillStyle = '#10b981'; ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
           ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
@@ -1059,13 +990,13 @@
           else if (o.quadrant === 'RL') { offsetX = -28; offsetY = 15; }
           ctx.fillText(`P${o.id}`, canvasX + offsetX, canvasY + offsetY);
         } else {
-          clickableTargets.push({ id: `Mat P${o.id}`, type: 'Left-Behind Mat', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.statRelX), posY: Math.round(o.statRelY) });
+          clickableTargets.push({ id: `P${o.id}`, type: 'Optional / Left in Place', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
           ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#f59e0b';
           ctx.beginPath(); ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI); ctx.fill();
           ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
           ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
-          ctx.fillText(`Mat P${o.id}`, canvasX - 25, canvasY - 10);
+          ctx.fillText(`P${o.id}`, canvasX - 25, canvasY - 10);
         }
       });
 
