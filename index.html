@@ -79,7 +79,22 @@
     th { color: var(--text-muted); font-weight: 600; background: var(--input-bg); font-size: 0.75rem; text-transform: uppercase; }
 
     .canvas-container { position: relative; width: 100%; height: 320px; background-color: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-top: 8px; }
-    canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
+    canvas { width: 100%; height: 100%; display: block; cursor: pointer; touch-action: none; }
+    .toolbar-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .toolbar-btn { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 7px 10px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+    .toolbar-btn:active { background: var(--accent-gold); color: #000; }
+    .toolbar-readout { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); min-width: 36px; text-align: center; }
+    .compass-dial { position: relative; width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: rgba(39,42,48,0.45); border: 1px solid rgba(56,60,69,0.5); touch-action: none; cursor: grab; opacity: 0.55; transition: opacity 0.15s ease; }
+    .compass-dial:hover, .compass-dial:active { opacity: 1; cursor: grabbing; }
+    .compass-needle { position: absolute; left: 50%; top: 50%; width: 2.5px; height: 17px; background: var(--accent-gold); border-radius: 2px; transform-origin: 50% 100%; transform: translate(-50%,-100%) rotate(0deg); pointer-events: none; }
+    .compass-needle::after { content: ''; position: absolute; top: -3px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid var(--accent-gold); }
+    .compass-center-dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+    .legend-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 0.72rem; color: var(--text-muted); }
+    .legend-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .legend-swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .legend-swatch-ring { width: 9px; height: 9px; border-radius: 50%; border: 2px solid; background: transparent; }
+    .legend-swatch-dashed { width: 12px; height: 9px; border: 1.5px dashed #4b5563; display: inline-block; }
+    .legend-swatch-arrow { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 8px solid var(--accent-gold); display: inline-block; }
     .btn { display: block; width: 100%; padding: 12px; background: var(--accent-gold); color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.95rem; text-transform: uppercase; margin-top: 16px; }
     .btn:hover { background: var(--accent-gold); opacity: 0.9; }
     .tag-leftbehind { color: var(--warning); font-weight: bold; }
@@ -315,8 +330,30 @@
 
         <div class="card">
           <div class="card-title">Visual Site Plan <span style="font-size:0.75rem; color:var(--text-muted);">(Tap points for info)</span></div>
+          <div class="toolbar-row">
+            <button class="toolbar-btn" onclick="adjustZoom(0.8)">−</button>
+            <span id="zoomReadout" class="toolbar-readout">100%</span>
+            <button class="toolbar-btn" onclick="adjustZoom(1.25)">+</button>
+            <div id="compassDial" class="compass-dial">
+              <div id="compassNeedle" class="compass-needle"></div>
+              <div class="compass-center-dot"></div>
+            </div>
+            <span id="rotationReadout" class="toolbar-readout">0°</span>
+            <button class="toolbar-btn" onclick="snapRotate(-90)">⟲</button>
+            <button class="toolbar-btn" onclick="snapRotate(90)">⟳</button>
+            <button class="toolbar-btn" onclick="resetRotation()">Reset</button>
+            <button class="toolbar-btn" onclick="fitView()">Fit</button>
+          </div>
           <div class="canvas-container">
             <canvas id="siteMap"></canvas>
+          </div>
+          <div class="legend-row">
+            <span class="legend-item"><span class="legend-swatch" style="background:#10b981;"></span>must move</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#f59e0b;"></span>optional</span>
+            <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#38bdf8;"></span>target</span>
+            <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#ef4444;"></span>clash</span>
+            <span class="legend-item"><span class="legend-swatch-dashed"></span>footprint</span>
+            <span class="legend-item"><span class="legend-swatch-arrow"></span>front</span>
           </div>
         </div>
       </div>
@@ -884,6 +921,28 @@
       return Math.abs(x) <= fp.width / 2 && y >= -fp.front && y <= fp.rear;
     }
 
+    // Map view state — rotation (radians), zoom multiplier, and pan focal
+    // point (rotated-space mm). Purely a display transform layered on top of
+    // the leg math above; never touches the underlying positions or table.
+    let viewRotation = 0;
+    let userZoom = 1;
+    let panX = 0, panY = 0;
+    let lastMapped = [], lastFp = null, lastShiftX = 0, lastShiftY = 0;
+
+    function rotatePoint(x, y) {
+      const cos = Math.cos(viewRotation), sin = Math.sin(viewRotation);
+      return { x: x * cos - y * sin, y: x * sin + y * cos };
+    }
+
+    // Converts a logical mm coordinate (relative to the crane's own current
+    // slew center) into a screen pixel position, applying rotation, zoom,
+    // and pan. Every plotted point on the canvas goes through this.
+    function toScreen(x, y, centerX, centerY, baseScale) {
+      const r = rotatePoint(x, y);
+      const s = baseScale * userZoom;
+      return { x: centerX + (r.x - panX) * s, y: centerY + (r.y - panY) * s };
+    }
+
     let clickableTargets = [];
     let selectedTarget = null;
 
@@ -971,6 +1030,7 @@
       });
 
       document.getElementById('cad-results').innerHTML = resultsHtml;
+      lastMapped = mappedOutriggers; lastFp = fp; lastShiftX = shiftX; lastShiftY = shiftYinput;
       drawCADCanvas(shiftX, shiftYinput, mappedOutriggers, fp);
     }
 
@@ -983,44 +1043,74 @@
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const scale = 0.006;
+      const baseScale = 0.006;
+      const S = (x, y) => toScreen(x, y, centerX, centerY, baseScale);
       clickableTargets = [];
 
-      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
-      ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
-      ctx.stroke();
-
-      // Chassis footprint rectangle, centered on the CURRENT (unshifted) origin.
-      // front = negative Y = up on screen, rear = positive Y = down on screen.
-      if (fp) {
-        const fpLeft = centerX - (fp.width / 2) * scale;
-        const fpRight = centerX + (fp.width / 2) * scale;
-        const fpTop = centerY - fp.front * scale;
-        const fpBottom = centerY + fp.rear * scale;
-        ctx.strokeStyle = '#4b5563'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
-        ctx.strokeRect(fpLeft, fpTop, fpRight - fpLeft, fpBottom - fpTop);
-        ctx.fillStyle = 'rgba(75,85,99,0.15)';
-        ctx.fillRect(fpLeft, fpTop, fpRight - fpLeft, fpBottom - fpTop);
+      // Grid: subtle repeating lines every 2m, plus brighter axes through the
+      // origin. Rotates with the view, so it reads as the crane's own local
+      // grid rather than a fixed screen reference.
+      const gridStep = 2000, gridExtent = 24000;
+      ctx.setLineDash([]);
+      for (let g = -gridExtent; g <= gridExtent; g += gridStep) {
+        const isAxis = g === 0;
+        ctx.strokeStyle = isAxis ? '#334155' : 'rgba(148,163,184,0.07)';
+        ctx.lineWidth = isAxis ? 1.2 : 1;
+        let a = S(g, -gridExtent), b = S(g, gridExtent);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        a = S(-gridExtent, g); b = S(gridExtent, g);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
 
-      const craneCenterX = centerX + (shiftX * scale);
-      const craneCenterY = centerY - (shiftY * scale);
+      // Chassis footprint rectangle, centered on the CURRENT (unshifted) origin
+      // — drawn as a rotated polygon since it's not screen-axis-aligned once
+      // the view is spun. front = negative Y, rear = positive Y.
+      if (fp) {
+        const corners = [
+          S(-fp.width/2, -fp.front), S(fp.width/2, -fp.front),
+          S(fp.width/2, fp.rear),    S(-fp.width/2, fp.rear)
+        ];
+        ctx.strokeStyle = '#4b5563'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(75,85,99,0.15)'; ctx.fill();
+        ctx.stroke();
+      }
 
-      ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.arc(craneCenterX, craneCenterY, 4, 0, 2 * Math.PI); ctx.stroke();
+      const crane = S(shiftX, -shiftY);
+      ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(crane.x, crane.y, 4, 0, 2 * Math.PI); ctx.stroke();
+
+      // Front-direction arrow from the crane's current position — a fixed
+      // real-world reference so the rotated map can be visually checked
+      // against which way the person is actually facing the crane.
+      if (fp) {
+        const frontTip = S(0, -fp.front - 1400);
+        const frontBase = S(0, -fp.front - 400);
+        ctx.strokeStyle = '#e5a900'; ctx.setLineDash([]); ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(frontBase.x, frontBase.y); ctx.lineTo(frontTip.x, frontTip.y); ctx.stroke();
+        const arrowAng = Math.atan2(frontTip.y - frontBase.y, frontTip.x - frontBase.x);
+        ctx.beginPath();
+        ctx.moveTo(frontTip.x, frontTip.y);
+        ctx.lineTo(frontTip.x - 9*Math.cos(arrowAng - 0.4), frontTip.y - 9*Math.sin(arrowAng - 0.4));
+        ctx.lineTo(frontTip.x - 9*Math.cos(arrowAng + 0.4), frontTip.y - 9*Math.sin(arrowAng + 0.4));
+        ctx.closePath();
+        ctx.fillStyle = '#e5a900'; ctx.fill();
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('FRONT', frontTip.x - 18, frontTip.y - 10);
+      }
 
       outriggers.forEach(o => {
-        const canvasX = centerX + o.x * scale;
-        const canvasY = centerY + o.y * scale;
+        const pt = S(o.x, o.y);
 
         if (o.required) {
-          clickableTargets.push({ id: `P${o.id}`, type: 'Must-Move Setup Pad', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
+          clickableTargets.push({ id: `P${o.id}`, type: 'Must-Move Setup Pad', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
           ctx.fillStyle = '#10b981'; ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
-          ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
-          ctx.beginPath(); ctx.arc(canvasX, canvasY, 7, 0, 2 * Math.PI); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(crane.x, crane.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, 7, 0, 2 * Math.PI); ctx.fill();
 
           ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
           let offsetX = 10, offsetY = 5;
@@ -1028,38 +1118,37 @@
           else if (o.quadrant === 'FR') { offsetX = 10; offsetY = -8; }
           else if (o.quadrant === 'FL') { offsetX = -28; offsetY = -8; }
           else if (o.quadrant === 'RL') { offsetX = -28; offsetY = 15; }
-          ctx.fillText(`P${o.id}`, canvasX + offsetX, canvasY + offsetY);
+          ctx.fillText(`P${o.id}`, pt.x + offsetX, pt.y + offsetY);
         } else {
-          clickableTargets.push({ id: `P${o.id}`, type: 'Optional / Left in Place', x: canvasX, y: canvasY, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
+          clickableTargets.push({ id: `P${o.id}`, type: 'Optional / Left in Place', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
           ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#f59e0b';
-          ctx.beginPath(); ctx.arc(canvasX, canvasY, 8, 0, 2 * Math.PI); ctx.fill();
-          ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(craneCenterX, craneCenterY); ctx.lineTo(canvasX, canvasY); ctx.stroke();
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI); ctx.fill();
+          ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(crane.x, crane.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
           ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
-          ctx.fillText(`P${o.id}`, canvasX - 25, canvasY - 10);
+          ctx.fillText(`P${o.id}`, pt.x - 25, pt.y - 10);
 
           // Ghost "target" dot: for optional legs, shows where this pad WOULD
           // go if you chose to move it — separate from the current dot above.
           if (o.movedX !== o.x || o.movedY !== o.y) {
-            const tx = centerX + o.movedX * scale;
-            const ty = centerY + o.movedY * scale;
+            const tpt = S(o.movedX, o.movedY);
 
             ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(canvasX, canvasY); ctx.lineTo(tx, ty); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(tpt.x, tpt.y); ctx.stroke();
 
             ctx.fillStyle = 'rgba(56,189,248,0.25)';
             ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([]); ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.arc(tx, ty, 6, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(tpt.x, tpt.y, 6, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
 
             if (o.clash) {
               ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
-              ctx.beginPath(); ctx.arc(tx, ty, 11, 0, 2 * Math.PI); ctx.stroke();
+              ctx.beginPath(); ctx.arc(tpt.x, tpt.y, 11, 0, 2 * Math.PI); ctx.stroke();
             }
 
             ctx.fillStyle = '#7dd3fc'; ctx.font = '10px sans-serif';
-            ctx.fillText(`P${o.id} target`, tx + 9, ty + 4);
+            ctx.fillText(`P${o.id} target`, tpt.x + 9, tpt.y + 4);
 
-            clickableTargets.push({ id: `P${o.id} (target)`, type: o.clash ? 'Not possible right now' : 'If moved, target spot', x: tx, y: ty, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.movedX), posY: Math.round(o.movedY) });
+            clickableTargets.push({ id: `P${o.id} (target)`, type: o.clash ? 'Not possible right now' : 'If moved, target spot', x: tpt.x, y: tpt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.movedX), posY: Math.round(o.movedY) });
           }
         }
       });
@@ -1085,6 +1174,143 @@
       ctx.fillText(`Slew: ${target.dir} ${target.angle.toFixed(1)}°`, boxX + 8, boxY + 52);
       ctx.fillText(`X/Y: ${target.posX} / ${target.posY}`, boxX + 8, boxY + 67);
     }
+
+    function updateZoomReadout() {
+      document.getElementById('zoomReadout').textContent = `${Math.round(userZoom * 100)}%`;
+    }
+
+    function adjustZoom(factor) {
+      userZoom = Math.min(6, Math.max(0.15, userZoom * factor));
+      updateZoomReadout();
+      calcCAD();
+    }
+
+    // Gathers every point currently on the canvas (footprint corners, crane
+    // center, each leg's plotted + target position) in rotated-space mm, then
+    // sets zoom/pan so all of it fits on screen with some margin.
+    function fitView() {
+      if (!lastFp) return;
+      const canvas = document.getElementById('siteMap');
+      const pts = [];
+      const fp = lastFp;
+      [[-fp.width/2, -fp.front], [fp.width/2, -fp.front], [fp.width/2, fp.rear], [-fp.width/2, fp.rear]]
+        .forEach(([x, y]) => pts.push(rotatePoint(x, y)));
+      pts.push(rotatePoint(lastShiftX, -lastShiftY));
+      pts.push(rotatePoint(0, -fp.front - 1400));
+      lastMapped.forEach(o => {
+        pts.push(rotatePoint(o.x, o.y));
+        if (!o.required && (o.movedX !== o.x || o.movedY !== o.y)) pts.push(rotatePoint(o.movedX, o.movedY));
+      });
+
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const bboxW = Math.max(1, maxX - minX), bboxH = Math.max(1, maxY - minY);
+
+      const baseScale = 0.006;
+      const padding = 0.82;
+      const fitScaleX = (canvas.width * padding) / bboxW;
+      const fitScaleY = (canvas.height * padding) / bboxH;
+      const fitScale = Math.min(fitScaleX, fitScaleY);
+
+      userZoom = Math.min(6, Math.max(0.15, fitScale / baseScale));
+      panX = (minX + maxX) / 2;
+      panY = (minY + maxY) / 2;
+      updateZoomReadout();
+      calcCAD();
+    }
+
+    function updateCompassUI() {
+      const deg = Math.round(((toDegrees(viewRotation) % 360) + 360) % 360);
+      document.getElementById('rotationReadout').textContent = `${deg}°`;
+      document.getElementById('compassNeedle').style.transform = `translate(-50%,-100%) rotate(${deg}deg)`;
+    }
+
+    function snapRotate(deltaDeg) {
+      viewRotation += deltaDeg * Math.PI / 180;
+      updateCompassUI();
+      calcCAD();
+    }
+
+    function resetRotation() {
+      viewRotation = 0;
+      updateCompassUI();
+      calcCAD();
+    }
+
+    const compassDial = document.getElementById('compassDial');
+    let draggingDial = false;
+
+    function angleFromPointer(e) {
+      const rect = compassDial.getBoundingClientRect();
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      return Math.atan2(e.clientX - cx, -(e.clientY - cy));
+    }
+
+    compassDial.addEventListener('pointerdown', (e) => {
+      draggingDial = true;
+      compassDial.setPointerCapture(e.pointerId);
+      viewRotation = angleFromPointer(e);
+      updateCompassUI();
+      calcCAD();
+    });
+    compassDial.addEventListener('pointermove', (e) => {
+      if (!draggingDial) return;
+      viewRotation = angleFromPointer(e);
+      updateCompassUI();
+      calcCAD();
+    });
+    compassDial.addEventListener('pointerup', () => { draggingDial = false; });
+    compassDial.addEventListener('pointercancel', () => { draggingDial = false; });
+
+    // Two-finger twist-to-rotate + pinch-to-zoom directly on the map,
+    // matching how Google Maps handles multi-touch. Single-finger touches
+    // are left alone so the existing tap-for-info click handler still works.
+    const siteMapCanvas = document.getElementById('siteMap');
+    const activePointers = new Map();
+    let gesture = null;
+
+    function twoPointerState() {
+      const pts = Array.from(activePointers.values());
+      const [a, b] = pts;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      return { angle: Math.atan2(dy, dx), dist: Math.hypot(dx, dy) };
+    }
+
+    function maybeStartGesture() {
+      if (activePointers.size === 2) {
+        const s = twoPointerState();
+        gesture = { startAngle: s.angle, startDist: s.dist, startRotation: viewRotation, startZoom: userZoom };
+      } else {
+        gesture = null;
+      }
+    }
+
+    siteMapCanvas.addEventListener('pointerdown', (e) => {
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      siteMapCanvas.setPointerCapture(e.pointerId);
+      maybeStartGesture();
+    });
+
+    siteMapCanvas.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2 && gesture) {
+        const s = twoPointerState();
+        viewRotation = gesture.startRotation + (s.angle - gesture.startAngle);
+        userZoom = Math.min(6, Math.max(0.15, gesture.startZoom * (s.dist / gesture.startDist)));
+        updateCompassUI();
+        updateZoomReadout();
+        calcCAD();
+      }
+    });
+
+    function releaseSiteMapPointer(e) {
+      activePointers.delete(e.pointerId);
+      maybeStartGesture();
+    }
+    siteMapCanvas.addEventListener('pointerup', releaseSiteMapPointer);
+    siteMapCanvas.addEventListener('pointercancel', releaseSiteMapPointer);
 
     document.getElementById('siteMap').addEventListener('click', function(e) {
       const rect = this.getBoundingClientRect();
@@ -1116,6 +1342,8 @@
     loadRopeModel();
     calcHook();
     calcCAD();
+    updateZoomReadout();
+    updateCompassUI();
   </script>
 </body>
 </html>
