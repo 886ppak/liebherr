@@ -1,7 +1,7 @@
 // Bump CACHE_VERSION any time you change index.html or the other cached files —
 // that's what triggers clients to fetch the new version instead of serving stale cache.
-const CACHE_VERSION = 'lfo-v1';
-const CACHE_NAME = `liebherr-fleet-ops-${CACHE_VERSION}`;
+const CACHE_VERSION = 'myslewer-v1';
+const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
 
 // Paths are relative to this file's location (repo root on GitHub Pages).
 const APP_SHELL = [
@@ -27,7 +27,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key.startsWith('liebherr-fleet-ops-') && key !== CACHE_NAME)
+          .filter((key) => key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       )
     ).then(() => self.clients.claim())

@@ -1,7 +1,7 @@
 {
-  "name": "Liebherr Fleet Operations Suite",
-  "short_name": "LFO Suite",
-  "description": "Offline rope retention, hook block, and outrigger positioning reference for Liebherr mobile crane fleet operations.",
+  "name": "Myslewer",
+  "short_name": "Myslewer",
+  "description": "Offline rope retention, hook block, and outrigger positioning reference for mobile crane fleet operations.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
