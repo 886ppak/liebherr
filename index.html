@@ -326,6 +326,7 @@
             <label>Longitudinal Shift (Meters) [+Fwd / -Bwd]</label>
             <input type="number" id="cad-shifty" value="0" step="0.1" oninput="calcCAD()">
           </div>
+          <button class="toolbar-btn" style="margin-top:10px; width:100%;" onclick="resetShift()">Reset Shift to 0/0</button>
         </div>
 
         <div class="card">
@@ -1173,6 +1174,12 @@
       ctx.fillText(`Radius: ${target.r} mm`, boxX + 8, boxY + 36);
       ctx.fillText(`Slew: ${target.dir} ${target.angle.toFixed(1)}°`, boxX + 8, boxY + 52);
       ctx.fillText(`X/Y: ${target.posX} / ${target.posY}`, boxX + 8, boxY + 67);
+    }
+
+    function resetShift() {
+      document.getElementById('cad-shiftx').value = 0;
+      document.getElementById('cad-shifty').value = 0;
+      calcCAD();
     }
 
     function updateZoomReadout() {
