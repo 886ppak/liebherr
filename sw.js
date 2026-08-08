@@ -1,6 +1,6 @@
 // Bump CACHE_VERSION any time you change index.html or the other cached files —
 // that's what triggers clients to fetch the new version instead of serving stale cache.
-const CACHE_VERSION = 'myslewer-v1';
+const CACHE_VERSION = 'myslewer-v2';
 const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
 
 // Paths are relative to this file's location (repo root on GitHub Pages).

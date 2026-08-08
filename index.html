@@ -99,6 +99,16 @@
     .btn:hover { background: var(--accent-gold); opacity: 0.9; }
     .tag-leftbehind { color: var(--warning); font-weight: bold; }
 
+    #update-banner {
+      position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 200;
+      background: var(--card-bg); border: 1px solid var(--accent-gold); border-radius: 8px;
+      padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4); font-size: 0.85rem;
+    }
+    #update-banner span { flex: 1; color: var(--text-main); }
+    #update-banner button { background: var(--accent-gold); color: #000; border: none; border-radius: 6px; padding: 7px 12px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+    #update-banner button[aria-label="Dismiss"] { background: transparent; color: var(--text-muted); padding: 7px 8px; }
+
     @media print {
       body { background: #fff; color: #000; padding-bottom: 0; }
       header { background: #fff; border-bottom: 2px solid #000; position: static; }
@@ -1337,12 +1347,41 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+          .then((reg) => {
+            console.log('Service Worker registered successfully:', reg.scope);
+
+            // Fires when a newly-installed SW has just taken over control
+            // (sw.js already does skipWaiting/clients.claim automatically).
+            // The new cached files are ready in the background; we don't
+            // force-reload the open page since that could interrupt someone
+            // mid-entry — just let them know a refresh will pick it up.
+            reg.addEventListener('updatefound', () => {
+              const installingWorker = reg.installing;
+              if (!installingWorker) return;
+              installingWorker.addEventListener('statechange', () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  showUpdateBanner();
+                }
+              });
+            });
+          })
           .catch(() => {
             // Expected to fail wherever sw.js isn't actually hosted at this origin
             // (e.g. previews). On the deployed GitHub Pages site this succeeds normally.
           });
       });
+    }
+
+    function showUpdateBanner() {
+      if (document.getElementById('update-banner')) return;
+      const banner = document.createElement('div');
+      banner.id = 'update-banner';
+      banner.innerHTML = `
+        <span>A new version is ready.</span>
+        <button onclick="window.location.reload()">Refresh</button>
+        <button onclick="document.getElementById('update-banner').remove()" aria-label="Dismiss">✕</button>
+      `;
+      document.body.appendChild(banner);
     }
 
     // Initialize Page Controls
