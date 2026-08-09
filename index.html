@@ -458,6 +458,18 @@
         <div id="reeve-notation-lines"></div>
         <div class="disclaimer">Diagrams are the actual OEM reeving plan artwork (doc. 98036716), extracted directly — not redrawn. Leading number = winch (1 or 2). Each token is a sheave position with a face suffix — <b>f</b> = boom-head front face, <b>r</b> = boom-head rear face (cab side); bare numbers are hook-block sheave positions. <b>F</b> = rope dead-ends at the fixed anchor point. Cross-check against the current rigging plan before use on site.</div>
       </div>
+
+      <div class="card">
+        <div class="card-title">Offline Availability</div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Diagrams are cached automatically as you view them. To make every diagram available offline right now (e.g. before heading somewhere without signal), download them all in one go.</div>
+        <button class="btn" id="reeve-cache-all-btn" onclick="cacheAllReeveDiagrams()" style="margin-top:0;">Download All Diagrams for Offline Use</button>
+        <div id="reeve-cache-progress-wrap" style="display:none; margin-top:12px;">
+          <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
+            <div id="reeve-cache-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div id="reeve-cache-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1597,6 +1609,73 @@
       if (reeveManifest) { renderReeveWayGrid(); return; }
       document.getElementById('reeve-snippet-wrap').innerHTML = '<span class="loading-text">Loading…</span>';
       ensureReeveManifestLoaded().then(() => renderReeveWayGrid());
+    }
+
+    // Collects every unique SVG filename across every crane/config/way in the
+    // manifest, regardless of which one is currently selected in the UI.
+    function allReeveSvgFilenames(manifest) {
+      const names = new Set();
+      Object.values(manifest).forEach(cfg => {
+        const lists = [];
+        if (cfg.normal) lists.push(cfg.normal.map(d => `way_${d.way}.svg`));
+        if (cfg.american) lists.push(cfg.american.map(d => `way_${d.way}.svg`));
+        if (cfg.configs) lists.push(cfg.configs.map(d => d.svg));
+        lists.flat().forEach(name => { if (name) names.add(name); });
+      });
+      return Array.from(names);
+    }
+
+    async function cacheAllReeveDiagrams() {
+      const btn = document.getElementById('reeve-cache-all-btn');
+      const wrap = document.getElementById('reeve-cache-progress-wrap');
+      const bar = document.getElementById('reeve-cache-progress-bar');
+      const text = document.getElementById('reeve-cache-progress-text');
+
+      btn.disabled = true;
+      btn.textContent = 'Downloading…';
+      wrap.style.display = 'block';
+
+      const manifest = await ensureReeveManifestLoaded();
+      const filenames = allReeveSvgFilenames(manifest);
+      const total = filenames.length;
+      let done = 0;
+      let failed = 0;
+
+      function updateProgress() {
+        const pct = total > 0 ? Math.round((done / total) * 100) : 100;
+        bar.style.width = pct + '%';
+        text.textContent = `${done} of ${total} diagrams cached${failed ? ` (${failed} failed — will retry next time you're online)` : ''}`;
+      }
+      updateProgress();
+
+      // Fetch with limited concurrency rather than all 180+ at once — kinder
+      // to the network and to GitHub Pages' rate limits, and the service
+      // worker's own fetch handler is what actually stores each one into the
+      // persistent CONTENT_CACHE, so this loop just needs to trigger the GET.
+      const CONCURRENCY = 6;
+      let index = 0;
+      async function worker() {
+        while (index < filenames.length) {
+          const name = filenames[index++];
+          try {
+            const res = await fetch(`./reeving/svg/${name}`);
+            if (!res.ok) failed++;
+          } catch (e) {
+            failed++;
+          }
+          done++;
+          updateProgress();
+        }
+      }
+      await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+      btn.disabled = false;
+      btn.textContent = failed
+        ? `Retry Failed Downloads (${failed} remaining)`
+        : 'All Diagrams Cached ✓';
+      if (!failed) {
+        setTimeout(() => { wrap.style.display = 'none'; }, 3000);
+      }
     }
 
     // Initialize Page Controls
