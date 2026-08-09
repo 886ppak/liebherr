@@ -4,7 +4,7 @@
 // reeving diagrams (see CONTENT_CACHE below) — those persist across updates
 // so a crew doesn't lose offline access to plans they've already viewed just
 // because an app update shipped.
-const CACHE_VERSION = 'myslewer-v4';
+const CACHE_VERSION = 'myslewer-v7';
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 
 // Fetched-on-demand content (reeving diagrams, etc). Fixed name, never
@@ -75,4 +75,39 @@ self.addEventListener('fetch', (event) => {
         });
     })
   );
+});
+
+// Manual update check, triggered by the header refresh button. Re-fetches
+// every app-shell file fresh from the network (cache: 'reload' bypasses the
+// HTTP cache too, not just this SW's own cache), overwrites the existing
+// entries in the current APP_SHELL_CACHE in place, and reports back whether
+// index.html actually changed so the page knows whether to reload. This
+// works regardless of whether CACHE_VERSION was bumped on deploy — it
+// doesn't rely on the browser's own (throttled) SW-script update check.
+self.addEventListener('message', (event) => {
+  if (!event.data || event.data.type !== 'CHECK_FOR_UPDATE') return;
+
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(APP_SHELL_CACHE);
+
+      const oldIndexRes = await cache.match('./index.html');
+      const oldIndexText = oldIndexRes ? await oldIndexRes.text() : '';
+
+      await Promise.all(APP_SHELL.map(async (url) => {
+        const res = await fetch(url, { cache: 'reload' });
+        if (res && res.ok) await cache.put(url, res.clone());
+      }));
+
+      const newIndexRes = await cache.match('./index.html');
+      const newIndexText = newIndexRes ? await newIndexRes.text() : '';
+
+      event.source.postMessage({
+        type: 'UPDATE_CHECK_RESULT',
+        changed: oldIndexText !== newIndexText
+      });
+    } catch (e) {
+      event.source.postMessage({ type: 'UPDATE_CHECK_RESULT', error: true });
+    }
+  })());
 });
