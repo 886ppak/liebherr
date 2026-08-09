@@ -1551,7 +1551,7 @@
       { id: '1160', label: 'LTM 1160-5.2', configs: [
           { value: '1160-tele', label: 'Telescopic Boom' }
         ]},
-      { id: '1220', label: 'LTR 1220 / LTM 1200-1', configs: [
+      { id: '1220', label: 'LTR 1220', configs: [
           { value: '1220-tele', label: 'Telescopic Boom' }
         ]},
       { id: '1250', label: 'LTM 1250-5.1', configs: [
@@ -1705,6 +1705,7 @@
       const cacheKey = document.getElementById('reeve-config').value + '::' + id;
       if (reeveSvgCache[cacheKey]) {
         wrap.innerHTML = `<div class="zoom-inner">${reeveSvgCache[cacheKey]}</div>`;
+        fixInjectedSvgSizing(wrap);
         reeveZoomReset();
         return;
       }
@@ -1719,12 +1720,39 @@
           reeveSvgCache[cacheKey] = svgText;
           if (reeveSelectedId === id) {
             wrap.innerHTML = `<div class="zoom-inner">${svgText}</div>`;
+            fixInjectedSvgSizing(wrap);
             reeveZoomReset();
           }
         })
         .catch(() => {
           wrap.innerHTML = '<span class="loading-text">Diagram unavailable offline until first viewed online.</span>';
         });
+    }
+
+    // These reeving diagrams are injected as raw inline <svg> markup (not an
+    // <img>), and the source files only carry a viewBox — no width/height
+    // attributes. CSS `height:auto` on an inline SVG in that state doesn't
+    // reliably derive the correct proportional height in every browser;
+    // before .snippet-wrap had overflow:hidden this just meant the diagram
+    // rendered a bit big, harmlessly. Once overflow:hidden was added (to
+    // support pinch-zoom), that same ambiguity started silently CROPPING
+    // the bottom of every diagram instead — the underlying SVG files are
+    // complete, this was purely a display bug. Setting aspect-ratio
+    // explicitly from the SVG's own viewBox sidesteps the ambiguity
+    // entirely, regardless of what any browser's inline-SVG auto-sizing
+    // algorithm decides to do.
+    function fixInjectedSvgSizing(wrap) {
+      const svg = wrap.querySelector('svg');
+      if (!svg) return;
+      const vb = svg.getAttribute('viewBox');
+      if (!vb) return;
+      const parts = vb.trim().split(/\s+/).map(Number);
+      if (parts.length !== 4 || !parts[2] || !parts[3]) return;
+      const [, , w, h] = parts;
+      svg.style.width = '100%';
+      svg.style.height = 'auto';
+      svg.style.aspectRatio = `${w} / ${h}`;
+      svg.style.display = 'block';
     }
 
     // ---- Pinch-zoom-pan for the reeving diagram viewer ----
