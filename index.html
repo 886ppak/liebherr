@@ -42,7 +42,16 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #update-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1c1e22; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; z-index: 9999; box-shadow: 0 4px 14px rgba(0,0,0,0.45); display: none; max-width: 90vw; text-align: center; }
 
-    .nav-tabs { display: flex; justify-content: center; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
+    .nav-tabs { display: flex; justify-content: flex-start; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
+    /* Centering only kicks in once there's enough width for all 4 tabs to
+       fit without needing to scroll. Applying justify-content:center to a
+       flex container that's ALSO overflow-x:auto and actually overflowing
+       (narrow phones, tabs wider than viewport) can push the first item
+       out of the reachable scroll range in some browsers — better to just
+       not attempt centering at all until it's guaranteed to fit. */
+    @media (min-width: 700px) {
+      .nav-tabs { justify-content: center; }
+    }
     .tab-btn:not(:first-child) { border-left: 1px solid var(--border-color); }
     .nav-tabs::-webkit-scrollbar { display: none; }
     .tab-btn { flex: 0 0 auto; min-width: 140px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
