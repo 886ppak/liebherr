@@ -1,7 +1,16 @@
-// Bump CACHE_VERSION any time you change index.html or the other cached files —
-// that's what triggers clients to fetch the new version instead of serving stale cache.
-const CACHE_VERSION = 'myslewer-v2';
-const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
+// Bump CACHE_VERSION any time you change index.html or the other app-shell
+// files — that's what triggers clients to fetch the new version instead of
+// serving stale cache. This does NOT affect already-cached content like
+// reeving diagrams (see CONTENT_CACHE below) — those persist across updates
+// so a crew doesn't lose offline access to plans they've already viewed just
+// because an app update shipped.
+const CACHE_VERSION = 'myslewer-v4';
+const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
+
+// Fetched-on-demand content (reeving diagrams, etc). Fixed name, never
+// versioned, never cleared automatically — only ever grows. If this ever
+// needs a manual reset, change this constant's name once.
+const CONTENT_CACHE = 'app-content-v1';
 
 // Paths are relative to this file's location (repo root on GitHub Pages).
 const APP_SHELL = [
@@ -16,7 +25,7 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(APP_SHELL_CACHE)
       .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting())
   );
@@ -27,16 +36,22 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          // Only clean up old APP-SHELL versions. CONTENT_CACHE is never in
+          // this deletion list regardless of its name, so previously-viewed
+          // reeving diagrams survive every future app update.
+          .filter((key) => key.startsWith('app-shell-') && key !== APP_SHELL_CACHE)
           .map((key) => caches.delete(key))
       )
     ).then(() => self.clients.claim())
   );
 });
 
-// Cache-first for the app shell, falling back to network, falling back to the
-// cached index.html for any navigation request that fails offline (so deep
-// links / reloads still open the app instead of showing a browser error page).
+// Cache-first for everything, falling back to network. App-shell files are
+// precached above; anything else (reeving diagrams, etc.) gets cached into
+// the persistent CONTENT_CACHE the first time it's successfully fetched.
+// Falls back to the cached index.html for any navigation request that fails
+// offline, so deep links / reloads still open the app instead of a browser
+// error page.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -48,7 +63,7 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.ok) {
             const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+            caches.open(CONTENT_CACHE).then((cache) => cache.put(event.request, responseClone));
           }
           return response;
         })

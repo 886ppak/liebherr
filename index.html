@@ -98,6 +98,18 @@
     .btn { display: block; width: 100%; padding: 12px; background: var(--accent-gold); color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.95rem; text-transform: uppercase; margin-top: 16px; }
     .btn:hover { background: var(--accent-gold); opacity: 0.9; }
     .tag-leftbehind { color: var(--warning); font-weight: bold; }
+    .mode-toggle { display: flex; gap: 8px; }
+    .mode-btn { flex: 1; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 10px; font-size: 0.85rem; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+    .mode-btn.active { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
+    .way-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .way-btn { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 10px 0; font-size: 0.85rem; font-weight: 700; cursor: pointer; text-align: center; }
+    .way-btn.active { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
+    .hook-badge { display: inline-block; background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid var(--success); border-radius: 5px; padding: 4px 10px; font-size: 0.8rem; font-weight: 700; margin-bottom: 12px; }
+    .snippet-wrap { width: 100%; min-height: 120px; border-radius: 6px; border: 1px solid var(--border-color); background: #0f172a; margin-bottom: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; }
+    .snippet-wrap svg { width: 100%; height: auto; display: block; }
+    .snippet-wrap .loading-text { color: var(--text-muted); font-size: 0.85rem; }
+    .notation-line { font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: 700; color: var(--text-main); background: var(--input-bg); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .notation-line:first-child { border-left: 3px solid var(--accent-gold); }
 
     #update-banner {
       position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 200;
@@ -135,6 +147,7 @@
     <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
+    <button class="tab-btn" onclick="switchTab('reeve-tab', event)">Reeving Plan</button>
   </nav>
 
   <div class="container">
@@ -388,6 +401,65 @@
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
     </div>
 
+    <!-- ================= TAB 4: REEVING PLAN ================= -->
+    <div id="reeve-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Crane &amp; Boom Configuration</div>
+        <div class="form-group">
+          <label>Select Configuration</label>
+          <select id="reeve-config" onchange="onReeveConfigChange()">
+            <optgroup label="LTM 1650-8.1">
+              <option value="1650-t3">LTM 1650-8.1 — T3 Telescopic Boom</option>
+            </optgroup>
+            <optgroup label="LRT 1100-2.1">
+              <option value="1100-tele">LRT 1100-2.1 — Telescopic Boom</option>
+              <option value="1100-tip">LRT 1100-2.1 — Auxiliary Tip Head</option>
+            </optgroup>
+            <optgroup label="LTM 1110-5.1">
+              <option value="1110-tele">LTM 1110-5.1 — Telescopic Boom</option>
+              <option value="1110-sks">LTM 1110-5.1 — SKS Head</option>
+            </optgroup>
+            <optgroup label="LTM 1130-5.1">
+              <option value="1130-tele">LTM 1130-5.1 — Telescopic Boom</option>
+            </optgroup>
+            <optgroup label="LTM 1160-5.2">
+              <option value="1160-tele">LTM 1160-5.2 — Telescopic Boom</option>
+            </optgroup>
+            <optgroup label="LTR 1220 / LTM 1200-1">
+              <option value="1220-tele">LTR 1220 / LTM 1200-1 — Telescopic Boom</option>
+            </optgroup>
+            <optgroup label="LTM 1250-5.1">
+              <option value="1250-tele">LTM 1250-5.1 — Telescopic Boom</option>
+              <option value="1250-dkseks">LTM 1250-5.1 — DKS-EKS Head</option>
+              <option value="1250-sonderklapp">LTM 1250-5.1 — Special Folding Jib</option>
+              <option value="1250-fkopf">LTM 1250-5.1 — F-End Section</option>
+              <option value="1250-sks">LTM 1250-5.1 — SKS Head</option>
+            </optgroup>
+            <optgroup label="LTM 1300-6.2">
+              <option value="1300-tele">LTM 1300-6.2 — Telescopic Boom</option>
+            </optgroup>
+            <optgroup label="Shared Accessory">
+              <option value="folding-jib-shared">Folding Jib (1110/1130/1160/1200-1)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="mode-toggle" id="reeve-mode-toggle" style="margin-top:12px;">
+          <button class="mode-btn active" id="reeve-mode-normal" onclick="setReeveMode('normal')">Normal Reeving (1–13)</button>
+          <button class="mode-btn" id="reeve-mode-american" onclick="setReeveMode('american')">American Reeving (14–22)</button>
+        </div>
+        <div id="reeve-config-note" class="disclaimer" style="display:none;"></div>
+        <div class="way-grid" id="reeve-way-grid" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="reeve-way-title" style="color:var(--success);">Reeving 1-way</div>
+        <div id="reeve-hook-badge" class="hook-badge"></div>
+        <div id="reeve-snippet-wrap" class="snippet-wrap"></div>
+        <div id="reeve-notation-lines"></div>
+        <div class="disclaimer">Diagrams are the actual OEM reeving plan artwork (doc. 98036716), extracted directly — not redrawn. Leading number = winch (1 or 2). Each token is a sheave position with a face suffix — <b>f</b> = boom-head front face, <b>r</b> = boom-head rear face (cab side); bare numbers are hook-block sheave positions. <b>F</b> = rope dead-ends at the fixed anchor point. Cross-check against the current rigging plan before use on site.</div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -402,6 +474,7 @@
       document.getElementById(tabId).classList.add('active');
 
       if (tabId === 'cad-tab') calcCAD();
+      if (tabId === 'reeve-tab') initReeveTab();
     }
 
     // Shared helper: fill a <select> from an array, options built via textFn/valueFn.
@@ -1382,6 +1455,148 @@
         <button onclick="document.getElementById('update-banner').remove()" aria-label="Dismiss">✕</button>
       `;
       document.body.appendChild(banner);
+    }
+
+    // --- TAB 4: REEVING PLAN LOGIC ---
+    // Manifest (notation text + hook info, a few KB) loads once when the tab
+    // is first opened. Each diagram's actual SVG artwork (the bulk of the
+    // data) only loads when that specific reeving count is selected, and is
+    // cached in-memory afterward — never fetched twice in one session. The
+    // service worker's generic fetch handler caches these for offline use
+    // automatically after first view, same as everything else in the app.
+    //
+    // Two manifest shapes are supported: T3 (LTM 1650) uses a normal/american
+    // toggle over numbered ways ({normal:[...], american:[...]}); every other
+    // crane/attachment uses a flat, descriptively-labelled list ({configs:[...]})
+    // since most of them mix normal, special, two-hook, and auxiliary-device
+    // configs that don't fit a simple numbered toggle.
+    let reeveManifest = null;
+    let reeveMode = 'normal';
+    let reeveSelectedId = null;
+    const reeveSvgCache = {};
+
+    function ensureReeveManifestLoaded() {
+      if (reeveManifest) return Promise.resolve(reeveManifest);
+      return fetch('./reeving/manifest.json')
+        .then(r => r.json())
+        .then(data => { reeveManifest = data; return data; });
+    }
+
+    function currentReeveConfig() {
+      const key = document.getElementById('reeve-config').value;
+      return reeveManifest ? reeveManifest[key] : null;
+    }
+
+    function isToggleStyle(cfg) {
+      return cfg && (cfg.normal || cfg.american);
+    }
+
+    function onReeveConfigChange() {
+      reeveMode = 'normal';
+      renderReeveWayGrid();
+    }
+
+    function setReeveMode(mode) {
+      reeveMode = mode;
+      document.getElementById('reeve-mode-normal').classList.toggle('active', mode === 'normal');
+      document.getElementById('reeve-mode-american').classList.toggle('active', mode === 'american');
+      renderReeveWayGrid();
+    }
+
+    function activeReeveData() {
+      const cfg = currentReeveConfig();
+      if (!cfg) return [];
+      if (isToggleStyle(cfg)) {
+        const list = reeveMode === 'normal' ? cfg.normal : cfg.american;
+        // normalize T3's {way, hook, lines} shape to the common {id, label, hook, lines, svg} shape
+        return list.map(d => ({ id: String(d.way), label: `Reeving ${d.way}-way`, hook: d.hook, lines: d.lines, svg: `way_${d.way}.svg` }));
+      }
+      return cfg.configs || [];
+    }
+
+    function renderReeveWayGrid() {
+      const cfg = currentReeveConfig();
+      const toggle = isToggleStyle(cfg);
+      document.getElementById('reeve-mode-toggle').style.display = toggle ? 'flex' : 'none';
+
+      const noteEl = document.getElementById('reeve-config-note');
+      const noteText = cfg && (cfg.note || (cfg.notes ? cfg.notes.join(' ') : null));
+      if (noteText) {
+        noteEl.textContent = noteText;
+        noteEl.style.display = 'block';
+      } else {
+        noteEl.style.display = 'none';
+      }
+
+      const grid = document.getElementById('reeve-way-grid');
+      const data = activeReeveData();
+      grid.innerHTML = '';
+      data.forEach((d) => {
+        const btn = document.createElement('button');
+        btn.className = 'way-btn';
+        // numbered configs (most common) show just the number for a compact
+        // grid; anything else (special/aux/2-hook) shows a short label instead
+        btn.textContent = /^\d+$/.test(d.id) ? d.id : d.label.replace(/^Reeving\s*/i, '');
+        btn.style.fontSize = /^\d+$/.test(d.id) ? '' : '0.68rem';
+        btn.id = 'reeve-way-btn-' + d.id;
+        btn.onclick = () => selectReeveWay(d.id);
+        grid.appendChild(btn);
+      });
+      if (data.length) selectReeveWay(data[0].id);
+    }
+
+    function selectReeveWay(id) {
+      reeveSelectedId = id;
+      document.querySelectorAll('#reeve-way-grid .way-btn').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('reeve-way-btn-' + id);
+      if (btn) btn.classList.add('active');
+
+      const d = activeReeveData().find(x => x.id === id);
+      if (!d) return;
+      document.getElementById('reeve-way-title').textContent = d.label;
+      const hookBadge = document.getElementById('reeve-hook-badge');
+      if (d.hook) {
+        hookBadge.textContent = `Hook block: ${d.hook}`;
+        hookBadge.style.display = 'inline-block';
+      } else {
+        hookBadge.style.display = 'none';
+      }
+
+      const linesEl = document.getElementById('reeve-notation-lines');
+      linesEl.innerHTML = '';
+      (d.lines || []).forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'notation-line';
+        div.textContent = line;
+        linesEl.appendChild(div);
+      });
+
+      const wrap = document.getElementById('reeve-snippet-wrap');
+      const cacheKey = document.getElementById('reeve-config').value + '::' + id;
+      if (reeveSvgCache[cacheKey]) {
+        wrap.innerHTML = reeveSvgCache[cacheKey];
+        return;
+      }
+      if (!d.svg) {
+        wrap.innerHTML = '<span class="loading-text">No diagram available for this entry.</span>';
+        return;
+      }
+      wrap.innerHTML = '<span class="loading-text">Loading diagram…</span>';
+      fetch(`./reeving/svg/${d.svg}`)
+        .then(r => r.text())
+        .then(svgText => {
+          reeveSvgCache[cacheKey] = svgText;
+          if (reeveSelectedId === id) wrap.innerHTML = svgText;
+        })
+        .catch(() => {
+          wrap.innerHTML = '<span class="loading-text">Diagram unavailable offline until first viewed online.</span>';
+        });
+    }
+
+    function initReeveTab() {
+      if (reeveManifest) { renderReeveWayGrid(); return; }
+      document.getElementById('reeve-snippet-wrap').innerHTML = '<span class="loading-text">Loading…</span>';
+      ensureReeveManifestLoaded().then(() => renderReeveWayGrid());
     }
 
     // Initialize Page Controls
