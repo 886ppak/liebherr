@@ -114,6 +114,13 @@
     .snippet-wrap { width: 100%; min-height: 120px; border-radius: 6px; border: 1px solid var(--border-color); background: #0f172a; margin-bottom: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; touch-action: none; }
     .zoom-inner { transform-origin: 0 0; will-change: transform; }
     .zoom-inner svg { display: block; max-width: 100%; height: auto; pointer-events: none; }
+    /* Reeving diagrams are extracted OEM artwork meant for a white page.
+       Most already carry a light stroke suited to this dark theme, but any
+       diagram extracted via a plain PDF-to-SVG pass (e.g. a raw pdftocairo
+       run) comes out with pure black strokes instead — invisible against
+       this background. Force the color here so it's correct regardless of
+       what any given source file happens to carry, now or in the future. */
+    .zoom-inner svg path { stroke: #e8eaed !important; }
     .zoom-controls { display: flex; justify-content: center; gap: 8px; margin: -6px 0 12px; }
     .zoom-controls button { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
     .zoom-hint { font-size: 0.72rem; color: var(--text-muted); text-align: center; margin: -6px 0 10px; }
