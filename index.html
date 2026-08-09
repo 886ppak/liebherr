@@ -36,8 +36,14 @@
 
     header { background-color: #181a1d; border-bottom: 1px solid var(--border-color); padding: 16px 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
     header h1 { font-size: 1.15rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-gold); font-weight: 800; }
+    #update-check-btn { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-gold); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+    #update-check-btn svg { width: 18px; height: 18px; transition: transform 0.6s ease; }
+    #update-check-btn.spinning svg { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #update-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1c1e22; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; z-index: 9999; box-shadow: 0 4px 14px rgba(0,0,0,0.45); display: none; max-width: 90vw; text-align: center; }
 
-    .nav-tabs { display: flex; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
+    .nav-tabs { display: flex; justify-content: center; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
+    .tab-btn:not(:first-child) { border-left: 1px solid var(--border-color); }
     .nav-tabs::-webkit-scrollbar { display: none; }
     .tab-btn { flex: 0 0 auto; min-width: 140px; padding: 14px 12px; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; text-align: center; white-space: nowrap; }
     .tab-btn.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); background-color: rgba(229, 169, 0, 0.05); }
@@ -105,7 +111,12 @@
     .way-btn { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 10px 0; font-size: 0.85rem; font-weight: 700; cursor: pointer; text-align: center; }
     .way-btn.active { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
     .hook-badge { display: inline-block; background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid var(--success); border-radius: 5px; padding: 4px 10px; font-size: 0.8rem; font-weight: 700; margin-bottom: 12px; }
-    .snippet-wrap { width: 100%; min-height: 120px; border-radius: 6px; border: 1px solid var(--border-color); background: #0f172a; margin-bottom: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; }
+    .snippet-wrap { width: 100%; min-height: 120px; border-radius: 6px; border: 1px solid var(--border-color); background: #0f172a; margin-bottom: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; touch-action: none; }
+    .zoom-inner { transform-origin: 0 0; will-change: transform; }
+    .zoom-inner svg { display: block; max-width: 100%; height: auto; pointer-events: none; }
+    .zoom-controls { display: flex; justify-content: center; gap: 8px; margin: -6px 0 12px; }
+    .zoom-controls button { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+    .zoom-hint { font-size: 0.72rem; color: var(--text-muted); text-align: center; margin: -6px 0 10px; }
     .snippet-wrap svg { width: 100%; height: auto; display: block; }
     .snippet-wrap .loading-text { color: var(--text-muted); font-size: 0.85rem; }
     .notation-line { font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: 700; color: var(--text-main); background: var(--input-bg); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; letter-spacing: 0.5px; }
@@ -125,6 +136,7 @@
       body { background: #fff; color: #000; padding-bottom: 0; }
       header { background: #fff; border-bottom: 2px solid #000; position: static; }
       header h1 { color: #000; }
+      #update-check-btn { display: none; }
       .card { background: #fff; border: 1px solid #999; break-inside: avoid; }
       .card-title { color: #000; border-bottom: 1px solid #999; }
       input, select { background: #fff; color: #000; border: 1px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -141,6 +153,9 @@
 
   <header>
     <h1>MYSLEWER</h1>
+    <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+    </button>
   </header>
 
   <nav class="nav-tabs">
@@ -160,15 +175,15 @@
           <div class="form-group">
             <label>Crane Model</label>
             <select id="r-model" onchange="loadRopeModel()">
+              <option value="1100">LRT 1100-2.1</option>
+              <option value="1110">LTM 1110-5.1</option>
+              <option value="1130">LTM 1130-5.1</option>
+              <option value="1160">LTM 1160-5.2</option>
+              <option value="1220">LTR 1220</option>
+              <option value="1250">LTM 1250-5.1</option>
+              <option value="1300">LTM 1300-6.2</option>
               <option value="1650-t3">LTM 1650-8.1 (T3 54m)</option>
               <option value="1650-t5">LTM 1650-8.1 (T5 80m)</option>
-              <option value="1300">LTM 1300-6.2</option>
-              <option value="1250">LTM 1250-5.1</option>
-              <option value="1220">LTR 1220</option>
-              <option value="1160">LTM 1160-5.2</option>
-              <option value="1130">LTM 1130-5.1</option>
-              <option value="1110">LTM 1110-5.1</option>
-              <option value="1100">LRT 1100-2.1</option>
             </select>
           </div>
           <div class="form-group">
@@ -332,13 +347,13 @@
           <div class="form-group">
             <label>Select Crane Model</label>
             <select id="cad-crane" onchange="calcCAD()">
-              <option value="1650">LTM 1650-8.1</option>
-              <option value="1300">LTM 1300-6.2</option>
-              <option value="1250">LTM 1250-5.1</option>
-              <option value="1160">LTM 1160-5.2</option>
-              <option value="1130">LTM 1130-5.1</option>
-              <option value="1110">LTM 1110-5.1</option>
               <option value="1100">LRT 1100-2.1</option>
+              <option value="1110">LTM 1110-5.1</option>
+              <option value="1130">LTM 1130-5.1</option>
+              <option value="1160">LTM 1160-5.2</option>
+              <option value="1250">LTM 1250-5.1</option>
+              <option value="1300">LTM 1300-6.2</option>
+              <option value="1650">LTM 1650-8.1</option>
             </select>
           </div>
           <div class="form-group" style="margin-top:10px;">
@@ -406,42 +421,12 @@
       <div class="card">
         <div class="card-title">Crane &amp; Boom Configuration</div>
         <div class="form-group">
-          <label>Select Configuration</label>
-          <select id="reeve-config" onchange="onReeveConfigChange()">
-            <optgroup label="LTM 1650-8.1">
-              <option value="1650-t3">LTM 1650-8.1 — T3 Telescopic Boom</option>
-            </optgroup>
-            <optgroup label="LRT 1100-2.1">
-              <option value="1100-tele">LRT 1100-2.1 — Telescopic Boom</option>
-              <option value="1100-tip">LRT 1100-2.1 — Auxiliary Tip Head</option>
-            </optgroup>
-            <optgroup label="LTM 1110-5.1">
-              <option value="1110-tele">LTM 1110-5.1 — Telescopic Boom</option>
-              <option value="1110-sks">LTM 1110-5.1 — SKS Head</option>
-            </optgroup>
-            <optgroup label="LTM 1130-5.1">
-              <option value="1130-tele">LTM 1130-5.1 — Telescopic Boom</option>
-            </optgroup>
-            <optgroup label="LTM 1160-5.2">
-              <option value="1160-tele">LTM 1160-5.2 — Telescopic Boom</option>
-            </optgroup>
-            <optgroup label="LTR 1220 / LTM 1200-1">
-              <option value="1220-tele">LTR 1220 / LTM 1200-1 — Telescopic Boom</option>
-            </optgroup>
-            <optgroup label="LTM 1250-5.1">
-              <option value="1250-tele">LTM 1250-5.1 — Telescopic Boom</option>
-              <option value="1250-dkseks">LTM 1250-5.1 — DKS-EKS Head</option>
-              <option value="1250-sonderklapp">LTM 1250-5.1 — Special Folding Jib</option>
-              <option value="1250-fkopf">LTM 1250-5.1 — F-End Section</option>
-              <option value="1250-sks">LTM 1250-5.1 — SKS Head</option>
-            </optgroup>
-            <optgroup label="LTM 1300-6.2">
-              <option value="1300-tele">LTM 1300-6.2 — Telescopic Boom</option>
-            </optgroup>
-            <optgroup label="Shared Accessory">
-              <option value="folding-jib-shared">Folding Jib (1110/1130/1160/1200-1)</option>
-            </optgroup>
-          </select>
+          <label>Select Crane</label>
+          <select id="reeve-crane" onchange="onReeveCraneChange()"></select>
+        </div>
+        <div class="form-group" id="reeve-config-group" style="margin-top:10px;">
+          <label>Boom / Head Configuration</label>
+          <select id="reeve-config" onchange="onReeveConfigChange()"></select>
         </div>
         <div class="mode-toggle" id="reeve-mode-toggle" style="margin-top:12px;">
           <button class="mode-btn active" id="reeve-mode-normal" onclick="setReeveMode('normal')">Normal Reeving (1–13)</button>
@@ -455,6 +440,12 @@
         <div class="card-title" id="reeve-way-title" style="color:var(--success);">Reeving 1-way</div>
         <div id="reeve-hook-badge" class="hook-badge"></div>
         <div id="reeve-snippet-wrap" class="snippet-wrap"></div>
+        <div class="zoom-controls">
+          <button type="button" onclick="reeveZoomBy(0.6)">−</button>
+          <button type="button" onclick="reeveZoomReset()">Reset</button>
+          <button type="button" onclick="reeveZoomBy(1.6)">+</button>
+        </div>
+        <div class="zoom-hint">Pinch to zoom, drag to pan, double-tap to reset</div>
         <div id="reeve-notation-lines"></div>
         <div class="disclaimer">Diagrams are the actual OEM reeving plan artwork (doc. 98036716), extracted directly — not redrawn. Leading number = winch (1 or 2). Each token is a sheave position with a face suffix — <b>f</b> = boom-head front face, <b>r</b> = boom-head rear face (cab side); bare numbers are hook-block sheave positions. <b>F</b> = rope dead-ends at the fixed anchor point. Cross-check against the current rigging plan before use on site.</div>
       </div>
@@ -803,35 +794,35 @@
     const reevingFactors = { 1:1.31, 2:1.34, 3:1.36, 4:1.39, 5:1.41, 6:1.44, 7:1.46, 8:1.49, 9:1.52, 10:1.54, 11:1.57, 12:1.60, 13:1.63, 14:1.65, 15:1.68, 16:1.71, 17:1.74, 18:1.77, 19:1.80, 20:1.83, 21:1.87, 22:1.90, 23:1.93, 24:1.96, 25:2.00, 26:2.03, 27:2.06, 28:2.10, 29:2.13, 30:2.17 };
 
     const cranesData = {
-      "LRT 1100t": { ropeDia: 17, minPlateIncrement: 250, blocks: [
+      "LRT 1100-2.1": { ropeDia: 17, minPlateIncrement: 250, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 140, maxWeight: 140 },
         { name: "Hook block 20 EM", sheaves: 1, maxReeving: 3, baseWeight: 325, maxWeight: 325 },
         { name: "Hook block 50 DM", sheaves: 3, maxReeving: 7, baseWeight: 440, maxWeight: 440 },
         { name: "Hook block 80 DM", sheaves: 5, maxReeving: 11, baseWeight: 530, maxWeight: 530 },
         { name: "Hook block 100 DM", sheaves: 7, maxReeving: 14, baseWeight: 760, maxWeight: 760 }
       ]},
-      "LTM 1110t": { ropeDia: 19, minPlateIncrement: 200, blocks: [
+      "LTM 1110-5.1": { ropeDia: 19, minPlateIncrement: 200, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 1450 },
         { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 500, maxWeight: 1500 },
         { name: "Hook block 100 DM", sheaves: 6, maxReeving: 11, baseWeight: 750, maxWeight: 1750 },
         { name: "Hook block 125 DS", sheaves: 7, maxReeving: 12, baseWeight: 1240, maxWeight: 1240 }
       ]},
-      "LTM 1130t": { ropeDia: 21, minPlateIncrement: 400, blocks: [
+      "LTM 1130-5.1": { ropeDia: 21, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 250, maxWeight: 250 },
         { name: "Hook block 30 EM", sheaves: 1, maxReeving: 3, baseWeight: 450, maxWeight: 450 },
         { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 700 },
         { name: "Hook block 100 DM", sheaves: 5, maxReeving: 11, baseWeight: 900, maxWeight: 2500 },
         { name: "Hook block 125 DS", sheaves: 7, maxReeving: 14, baseWeight: 1240, maxWeight: 1240 }
       ]},
-      "LTM 1160t": { ropeDia: 21, minPlateIncrement: 400, blocks: [
+      "LTM 1160-5.2": { ropeDia: 21, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10 E", sheaves: 0, maxReeving: 1, baseWeight: 350, maxWeight: 350 },
         { name: "Hook block 30 EM", sheaves: 1, maxReeving: 3, baseWeight: 650, maxWeight: 650 },
         { name: "Hook block 63 DM", sheaves: 3, maxReeving: 7, baseWeight: 700, maxWeight: 700 },
         { name: "Hook block 100 DM", sheaves: 5, maxReeving: 11, baseWeight: 900, maxWeight: 1300 },
         { name: "Hook block 160 DS", sheaves: 9, maxReeving: 18, baseWeight: 1320, maxWeight: 1320 }
       ]},
-      "LTR 1220t": { ropeDia: 23, minPlateIncrement: 400, blocks: [
+      "LTR 1220": { ropeDia: 23, minPlateIncrement: 400, blocks: [
         { name: "Load hook 10.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1040, maxWeight: 1040 },
@@ -839,7 +830,7 @@
         { name: "Hook block 160 DM", sheaves: 7, maxReeving: 15, baseWeight: 1500, maxWeight: 1500 },
         { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 1900, maxWeight: 1900 }
       ]},
-      "LTM 1250t": { ropeDia: 23, minPlateIncrement: 800, blocks: [
+      "LTM 1250-5.1": { ropeDia: 23, minPlateIncrement: 800, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 32 DM", sheaves: 1, maxReeving: 3, baseWeight: 840, maxWeight: 840 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
@@ -848,7 +839,7 @@
         { name: "Hook block 200 DM", sheaves: 9, maxReeving: 16, baseWeight: 2000, maxWeight: 2000 },
         { name: "Hook block 250 DM", sheaves: 12, maxReeving: 16, baseWeight: 3400, maxWeight: 3400 }
       ]},
-      "LTM 1300t": { ropeDia: 23, minPlateIncrement: 500, blocks: [
+      "LTM 1300-6.2": { ropeDia: 23, minPlateIncrement: 500, blocks: [
         { name: "Load hook 12.5 E", sheaves: 0, maxReeving: 1, baseWeight: 500, maxWeight: 500 },
         { name: "Hook block 40 E", sheaves: 1, maxReeving: 3, baseWeight: 500, maxWeight: 1500 },
         { name: "Hook block 80 DM", sheaves: 3, maxReeving: 7, baseWeight: 1450, maxWeight: 1450 },
@@ -856,7 +847,7 @@
         { name: "Hook block 160 DM", sheaves: 7, maxReeving: 12, baseWeight: 1500, maxWeight: 1500 },
         { name: "Hook block 250 DM", sheaves: 12, maxReeving: 20, baseWeight: 3400, maxWeight: 3400 }
       ]},
-      "LTM 1650-8.1 (650t)": { ropeDia: 25, minPlateIncrement: 375, blocks: [
+      "LTM 1650-8.1": { ropeDia: 25, minPlateIncrement: 375, blocks: [
         { name: "Load hook 16.3 E", sheaves: 0, maxReeving: 1, baseWeight: 700, maxWeight: 700 },
         { name: "Hook block 50 EM", sheaves: 1, maxReeving: 3, baseWeight: 1000, maxWeight: 6000 },
         { name: "Hook block 100 DM", sheaves: 3, maxReeving: 7, baseWeight: 1500, maxWeight: 6500 },
@@ -1469,6 +1460,60 @@
       document.body.appendChild(banner);
     }
 
+    function showToast(msg) {
+      let toast = document.getElementById('update-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'update-toast';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      clearTimeout(toast._hideTimer);
+      toast._hideTimer = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
+    // Manual "check for update" button. Cache-first service workers (this
+    // one included) will happily keep serving an old index.html forever if
+    // the browser's own SW-script-diff check never fires (it's throttled to
+    // ~once/day) or if CACHE_VERSION wasn't bumped on deploy. Rather than
+    // relying on that, this directly re-fetches every app-shell file fresh
+    // from the network (bypassing HTTP cache) and overwrites the existing
+    // cache entries in place — so it works regardless of CACHE_VERSION.
+    async function checkForAppUpdate() {
+      const btn = document.getElementById('update-check-btn');
+      if (!('serviceWorker' in navigator)) { showToast('Offline mode isn\u2019t available in this browser.'); return; }
+
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg || !reg.active) { showToast('App isn\u2019t ready yet \u2014 try again in a moment.'); return; }
+
+      btn.classList.add('spinning');
+      showToast('Checking for updates\u2026');
+
+      const timeout = setTimeout(() => {
+        btn.classList.remove('spinning');
+        showToast('Update check timed out \u2014 check your connection.');
+      }, 8000);
+
+      function handleResult(event) {
+        if (!event.data || event.data.type !== 'UPDATE_CHECK_RESULT') return;
+        clearTimeout(timeout);
+        navigator.serviceWorker.removeEventListener('message', handleResult);
+        btn.classList.remove('spinning');
+        if (event.data.error) {
+          showToast('Update check failed \u2014 check your connection.');
+        } else if (event.data.changed) {
+          showToast('Update found \u2014 reloading\u2026');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast('You\u2019re on the latest version.');
+        }
+      }
+      navigator.serviceWorker.addEventListener('message', handleResult);
+      reg.active.postMessage({ type: 'CHECK_FOR_UPDATE' });
+      reg.update();
+    }
+
     // --- TAB 4: REEVING PLAN LOGIC ---
     // Manifest (notation text + hook info, a few KB) loads once when the tab
     // is first opened. Each diagram's actual SVG artwork (the bulk of the
@@ -1486,6 +1531,79 @@
     let reeveMode = 'normal';
     let reeveSelectedId = null;
     const reeveSvgCache = {};
+
+    // Two-level structure for the crane/config dropdowns: pick a crane
+    // model first, then its boom/head configuration. Ordered smallest to
+    // biggest by the crane's own number — LTM/LRT/LTR prefix is just body
+    // style (tracked/rough-terrain/all-terrain) and irrelevant to size.
+    const REEVE_CRANE_GROUPS = [
+      { id: '1100', label: 'LRT 1100-2.1', configs: [
+          { value: '1100-tele', label: 'Telescopic Boom' },
+          { value: '1100-tip', label: 'Auxiliary Tip Head' }
+        ]},
+      { id: '1110', label: 'LTM 1110-5.1', configs: [
+          { value: '1110-tele', label: 'Telescopic Boom' },
+          { value: '1110-sks', label: 'SKS Head' }
+        ]},
+      { id: '1130', label: 'LTM 1130-5.1', configs: [
+          { value: '1130-tele', label: 'Telescopic Boom' }
+        ]},
+      { id: '1160', label: 'LTM 1160-5.2', configs: [
+          { value: '1160-tele', label: 'Telescopic Boom' }
+        ]},
+      { id: '1220', label: 'LTR 1220 / LTM 1200-1', configs: [
+          { value: '1220-tele', label: 'Telescopic Boom' }
+        ]},
+      { id: '1250', label: 'LTM 1250-5.1', configs: [
+          { value: '1250-tele', label: 'Telescopic Boom' },
+          { value: '1250-dkseks', label: 'DKS-EKS Head' },
+          { value: '1250-sonderklapp', label: 'Special Folding Jib' },
+          { value: '1250-fkopf', label: 'F-End Section' },
+          { value: '1250-sks', label: 'SKS Head' }
+        ]},
+      { id: '1300', label: 'LTM 1300-6.2', configs: [
+          { value: '1300-tele', label: 'Telescopic Boom' }
+        ]},
+      { id: '1650', label: 'LTM 1650-8.1', configs: [
+          { value: '1650-t3', label: 'T3 Telescopic Boom' }
+        ]},
+      { id: 'shared', label: 'Shared Accessory', configs: [
+          { value: 'folding-jib-shared', label: 'Folding Jib (1110/1130/1160/1200-1)' }
+        ]}
+    ];
+
+    function populateReeveCraneSelect() {
+      const sel = document.getElementById('reeve-crane');
+      if (sel.options.length) return; // already populated
+      REEVE_CRANE_GROUPS.forEach(group => {
+        const opt = document.createElement('option');
+        opt.value = group.id;
+        opt.text = group.label;
+        sel.add(opt);
+      });
+      populateReeveConfigSelect();
+    }
+
+    function populateReeveConfigSelect() {
+      const craneId = document.getElementById('reeve-crane').value;
+      const group = REEVE_CRANE_GROUPS.find(g => g.id === craneId) || REEVE_CRANE_GROUPS[0];
+      const sel = document.getElementById('reeve-config');
+      sel.innerHTML = '';
+      group.configs.forEach(cfg => {
+        const opt = document.createElement('option');
+        opt.value = cfg.value;
+        opt.text = cfg.label;
+        sel.add(opt);
+      });
+      // Only show the sub-dropdown when there's an actual choice to make —
+      // matches the same pattern used on the Rope Retentioning tab.
+      document.getElementById('reeve-config-group').style.display = group.configs.length > 1 ? 'flex' : 'none';
+    }
+
+    function onReeveCraneChange() {
+      populateReeveConfigSelect();
+      onReeveConfigChange();
+    }
 
     function ensureReeveManifestLoaded() {
       if (reeveManifest) return Promise.resolve(reeveManifest);
@@ -1586,7 +1704,8 @@
       const wrap = document.getElementById('reeve-snippet-wrap');
       const cacheKey = document.getElementById('reeve-config').value + '::' + id;
       if (reeveSvgCache[cacheKey]) {
-        wrap.innerHTML = reeveSvgCache[cacheKey];
+        wrap.innerHTML = `<div class="zoom-inner">${reeveSvgCache[cacheKey]}</div>`;
+        reeveZoomReset();
         return;
       }
       if (!d.svg) {
@@ -1598,14 +1717,120 @@
         .then(r => r.text())
         .then(svgText => {
           reeveSvgCache[cacheKey] = svgText;
-          if (reeveSelectedId === id) wrap.innerHTML = svgText;
+          if (reeveSelectedId === id) {
+            wrap.innerHTML = `<div class="zoom-inner">${svgText}</div>`;
+            reeveZoomReset();
+          }
         })
         .catch(() => {
           wrap.innerHTML = '<span class="loading-text">Diagram unavailable offline until first viewed online.</span>';
         });
     }
 
+    // ---- Pinch-zoom-pan for the reeving diagram viewer ----
+    // Scoped to #reeve-snippet-wrap only (page-level pinch-zoom stays off
+    // via user-scalable=no, so form inputs elsewhere don't accidentally
+    // zoom). Uses Pointer Events so touch, mouse, and stylus all work the
+    // same way. Applies a CSS transform to a .zoom-inner wrapper around
+    // whatever SVG is currently loaded.
+    let reeveZoom = { scale: 1, panX: 0, panY: 0 };
+
+    function reeveApplyZoom() {
+      const inner = document.querySelector('#reeve-snippet-wrap .zoom-inner');
+      if (inner) inner.style.transform = `translate(${reeveZoom.panX}px, ${reeveZoom.panY}px) scale(${reeveZoom.scale})`;
+    }
+
+    function reeveZoomReset() {
+      reeveZoom = { scale: 1, panX: 0, panY: 0 };
+      reeveApplyZoom();
+    }
+
+    function reeveZoomBy(factor) {
+      const wrap = document.getElementById('reeve-snippet-wrap');
+      const rect = wrap.getBoundingClientRect();
+      reeveZoomAround(rect.width / 2, rect.height / 2, factor);
+    }
+
+    function reeveZoomAround(cx, cy, factor) {
+      const newScale = Math.min(6, Math.max(1, reeveZoom.scale * factor));
+      const actualFactor = newScale / reeveZoom.scale;
+      reeveZoom.panX = cx - (cx - reeveZoom.panX) * actualFactor;
+      reeveZoom.panY = cy - (cy - reeveZoom.panY) * actualFactor;
+      reeveZoom.scale = newScale;
+      if (reeveZoom.scale <= 1.001) { reeveZoom.panX = 0; reeveZoom.panY = 0; reeveZoom.scale = 1; }
+      reeveApplyZoom();
+    }
+
+    function initReeveZoomGestures() {
+      const wrap = document.getElementById('reeve-snippet-wrap');
+      const pointers = new Map();
+      let pinchStartDist = 0, pinchStartScale = 1;
+      let dragStartX = 0, dragStartY = 0, dragStartPanX = 0, dragStartPanY = 0;
+      let lastTapTime = 0;
+
+      const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+      const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+      wrap.addEventListener('pointerdown', (e) => {
+        wrap.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 2) {
+          const pts = Array.from(pointers.values());
+          pinchStartDist = dist(pts[0], pts[1]);
+          pinchStartScale = reeveZoom.scale;
+        } else if (pointers.size === 1) {
+          const rect = wrap.getBoundingClientRect();
+          const now = Date.now();
+          if (now - lastTapTime < 300) {
+            if (reeveZoom.scale > 1) {
+              reeveZoomReset();
+            } else {
+              reeveZoomAround(e.clientX - rect.left, e.clientY - rect.top, 2.5);
+            }
+            lastTapTime = 0;
+          } else {
+            lastTapTime = now;
+          }
+          dragStartX = e.clientX; dragStartY = e.clientY;
+          dragStartPanX = reeveZoom.panX; dragStartPanY = reeveZoom.panY;
+        }
+      });
+
+      wrap.addEventListener('pointermove', (e) => {
+        if (!pointers.has(e.pointerId)) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 2) {
+          const pts = Array.from(pointers.values());
+          const newDist = dist(pts[0], pts[1]);
+          if (pinchStartDist > 0) {
+            reeveZoom.scale = Math.min(6, Math.max(1, pinchStartScale * (newDist / pinchStartDist)));
+            reeveApplyZoom();
+          }
+        } else if (pointers.size === 1 && reeveZoom.scale > 1) {
+          reeveZoom.panX = dragStartPanX + (e.clientX - dragStartX);
+          reeveZoom.panY = dragStartPanY + (e.clientY - dragStartY);
+          reeveApplyZoom();
+        }
+      });
+
+      function endPointer(e) {
+        pointers.delete(e.pointerId);
+        if (pointers.size === 1) {
+          const remaining = Array.from(pointers.values())[0];
+          dragStartX = remaining.x; dragStartY = remaining.y;
+          dragStartPanX = reeveZoom.panX; dragStartPanY = reeveZoom.panY;
+        }
+        if (reeveZoom.scale <= 1.001) { reeveZoom.panX = 0; reeveZoom.panY = 0; reeveZoom.scale = 1; reeveApplyZoom(); }
+      }
+      wrap.addEventListener('pointerup', endPointer);
+      wrap.addEventListener('pointercancel', endPointer);
+      wrap.addEventListener('pointerleave', endPointer);
+    }
+
     function initReeveTab() {
+      populateReeveCraneSelect();
       if (reeveManifest) { renderReeveWayGrid(); return; }
       document.getElementById('reeve-snippet-wrap').innerHTML = '<span class="loading-text">Loading…</span>';
       ensureReeveManifestLoaded().then(() => renderReeveWayGrid());
@@ -1684,6 +1909,7 @@
     calcCAD();
     updateZoomReadout();
     updateCompassUI();
+    initReeveZoomGestures();
   </script>
 </body>
 </html>
