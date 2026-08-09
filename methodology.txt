@@ -337,4 +337,126 @@ Verified, current state (checked directly against index.html):
   live index.html directly (grep for the specific crane ID or feature)
   before trusting any specific factual claim in this document, including
   claims elsewhere in this same document. Errors can and do slip in.
+
+--------------------------------------------------------------------------------
+9. HOW TO RE-EXTRACT REEVING DIAGRAMS FROM AN OEM SOURCE PDF  [CONVERSATION]
+--------------------------------------------------------------------------------
+Use this whenever a reeving diagram is missing, incomplete, or genuinely
+wrong for some crane/config, and the person can supply the source
+"EINSCHERPLAN" PDF for it. First done for LTR 1220 (all 15 diagrams: ways
+1-14 + 16), which turned out to have TWO separate bugs worth telling apart
+before jumping to this procedure:
+
+  a) DISPLAY bug (fixed once, fixed everywhere, no re-extraction needed):
+     inline <svg> elements with only a viewBox (no width/height attrs)
+     don't reliably compute proportional height via CSS height:auto, and
+     once .snippet-wrap got overflow:hidden (for pinch-zoom), that
+     ambiguity started silently cropping the BOTTOM of every diagram.
+     Fixed globally in fixInjectedSvgSizing() (section 4.7-adjacent JS) by
+     explicitly setting aspect-ratio from the SVG's own viewBox at
+     injection time. If a diagram looks cut off at the bottom, check this
+     is actually still working before assuming the source data is bad.
+  b) DATA gap (needs this section's procedure): the SVG file itself is
+     genuinely missing content — verified by rendering the raw file's
+     path data independently (see 9.1) rather than trusting the app's own
+     display. LTR 1220's diagrams were missing the hook symbol + caption
+     text entirely; the original extraction (whoever/whatever did it,
+     see section 5) simply hadn't captured that part of each diagram.
+
+9.1 Diagnose before re-extracting — confirm it's actually a data gap
+  No SVG rendering tool is available in this sandbox by default
+  (rsvg-convert, inkscape, cairosvg all absent; ImageMagick's convert
+  delegates to rsvg-convert, which is also absent). matplotlib IS
+  available and can render the path data manually:
+    - Parse the SVG's viewBox and every <path d="..." transform="matrix(...)">.
+    - For each path, tokenize the d-string (this fleet's diagrams only
+      ever use M/L commands — straight segments, no curves — so a simple
+      "M x y L x y L x y..." tokenizer is sufficient; check first with
+      `grep -oE '[A-Za-z]' file.svg | sort -u` before assuming this holds
+      for a new document).
+    - Apply the path's own transform matrix to every point, plot with
+      matplotlib, set axis limits to the viewBox, invert the y-axis
+      (SVG y grows downward), aspect='equal', axis off.
+  If the rendered result already contains the full diagram, the bug is
+  (a), not (b) — don't re-extract, go fix the display code instead.
+
+9.2 Get a clean full-page vector extraction
+    pdftoppm -png -r 150 source.pdf /tmp/page       # raster reference
+    pdftocairo -svg source.pdf /tmp/page_full.svg    # full-page vector
+  Both worked despite these PDFs being RC4-encrypted with copy:no — the
+  encryption only blocks text/content extraction via some tools, not
+  rendering/rasterization via poppler's own tools. If pdftocairo ever
+  fails outright on a future document, that's the point to flag rather
+  than force it.
+  pdftocairo's output has NO per-diagram cropping — it's the whole page,
+  one flat list of hundreds of <path> elements, each usually sharing one
+  transform matrix. This is a DIFFERENT, independent extraction pipeline
+  from whatever produced the original ~161 diagrams (see section 5.3) —
+  it will NOT reproduce their exact styling by default (see 9.5).
+
+9.3 Locate each diagram's crop box precisely — do NOT guess proportions
+  The naive approach (assume N evenly-spaced columns across page width,
+  e.g. column width = page_width/N) DRIFTS across a wide grid and will
+  clip content by the 4th-7th column even though the first 1-2 columns
+  look fine. This happened on the first attempt here — don't repeat it.
+  Reliable method: detect each "Reeving N-way" LABEL's precise pixel
+  position via ink-density column/row scanning on the RASTER image,
+  restricted to a tight y-band (or x-band, for rows) that contains ONLY
+  the label glyphs — not the underline beneath them, not pulley circles,
+  not caption text below. Getting this band wrong (e.g. accidentally
+  scanning the underline instead of the letters) gives confidently wrong
+  clustered positions that still look plausible — cross-check against a
+  manual crop-and-view of at least one column before trusting it.
+  Concretely (numpy on the raster array):
+    col_ink = (255 - arr[y0:y1, :]).sum(axis=0)   # darkness per x-column
+    threshold = col_ink.max() * 0.1
+    # find contiguous runs above threshold, merge runs <150px apart
+    # (one run per glyph-cluster; merge gap bridges letter-spacing)
+  Do this once for columns (using a y-band that isolates label text) and
+  once for rows (using an x-band inside one known-good column, scanning
+  the full page height). Verify the detected pitch is CONSISTENT across
+  the full range (e.g. 927px every column, not drifting) before trusting
+  it — if one detected gap is a clear outlier vs the rest, trust the
+  consistent pitch and treat that one detection as noise.
+  Crop box per diagram = (label_x - margin, label_y - margin,
+  label_x - margin + crop_width, next_row_y - margin), where crop_width
+  should comfortably clear the widest diagram content (checked visually)
+  without bleeding significantly into the next column.
+
+9.4 Filter paths into per-diagram files (don't duplicate the whole page)
+  Convert each pixel crop box to the SVG's own coordinate space using the
+  scale factor (PDF page point-size / raster pixel-size — pdfinfo gives
+  the former, the PNG's own dimensions give the latter). Then, rather
+  than writing the ENTIRE full-page path list into every output file
+  (which would bloat each one to ~1.5MB), filter to only the paths whose
+  OWN transformed bounding box intersects that diagram's crop rectangle
+  (small padding, ~5 units, to avoid edge-case exclusion). This keeps
+  output file sizes in the same 50-95KB range as the rest of the fleet's
+  diagrams. Write each as a standalone
+    <svg xmlns="..." viewBox="x y w h">...filtered paths...</svg>
+
+9.5 Fix the stroke color — pdftocairo output does not match fleet convention
+  The ~161 pre-existing diagrams all use stroke="#e8eaed" (light,
+  legible against this app's dark background). A fresh pdftocairo
+  extraction outputs plain stroke="rgb(0%, 0%, 0%)" (black) instead —
+  invisible against the dark background, and easy to miss in review
+  since the SVG itself still "looks right" in isolation on a white
+  background. Fix both the specific new files (sed replace the stroke
+  value) AND rely on the permanent CSS safety net already in index.html
+  (`.zoom-inner svg path { stroke: #e8eaed !important; }`) which forces
+  the correct color regardless of what any diagram file carries — added
+  specifically so this can't silently recur on a future re-extraction.
+
+9.6 Verify before deploying
+  Render every new file with the same manual matplotlib technique from
+  9.1, tile them into one contact-sheet image, and visually check the
+  whole set at once (label, full diagram, caption all present, nothing
+  bleeding badly from a neighboring column) before replacing the live
+  files. This caught the stroke-color issue and confirmed the crop grid
+  was correct across all 15 files in one pass, rather than discovering
+  problems one crane at a time after deploy.
+  Then: bump CACHE_VERSION in sw.js, copy the new SVGs into
+  reeving/svg/, redeploy. No manifest.json changes needed if the
+  filenames match what's already referenced there.
+
 ================================================================================
