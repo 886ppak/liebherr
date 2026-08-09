@@ -1,0 +1,300 @@
+================================================================================
+MYSLEWER — MOBILE CRANE FLEET OPERATIONS APP
+BUILD METHODOLOGY & REASONING LOG (SOURCED VERSION)
+================================================================================
+Purpose: for a different AI model, or a fresh session of this one, picking
+this project back up — explains not just WHAT the app does but WHY, and
+where each explanation actually came from.
+
+SOURCING KEY — every section below is marked with how it's known:
+  [CONVERSATION]  — confirmed directly by the person across chat sessions
+  [CODE]          — reverse-engineered from inspecting the actual files
+                    (comments, data patterns, structural evidence)
+  [INFERRED]      — reasonable inference, not confirmed either way — treat
+                    with more caution than the two tags above
+
+COVERAGE NOTE: before writing this, chat history was searched (multiple
+queries: app/brand name, reeving diagrams, outrigger/CAD, hook block/
+ballast). Only ONE other conversation surfaced beyond the thread this
+document was written in — a same-day chat about setting up Claude Code
+with the person's GitHub repo (886ppak/liebherr) on an Android tablet. That
+chat covers tooling setup only, not any actual build decisions. Tabs 1-3 and
+the rebrand below are [CONVERSATION]-sourced from the thread this file was
+written in, which had direct, detailed access to that build process. Tab 4
+(Reeving Plan) was found already fully built, integrated, and working
+partway through that same thread — its origin is almost certainly a
+separate Claude Code session (the tablet one referenced above), but that
+session's actual transcript is not accessible through chat search. Tab 4's
+explanations below are therefore [CODE]-sourced: reconstructed by reading
+the actual implementation, not from anyone describing it. Where something
+about Tab 4 genuinely isn't knowable from the code alone, that's stated
+explicitly rather than guessed.
+
+--------------------------------------------------------------------------------
+1. OVERALL STRUCTURE  [CODE + CONVERSATION]
+--------------------------------------------------------------------------------
+Single-file HTML/CSS/JS Progressive Web App, no build step, no framework, no
+backend. Static files, deployed via GitHub Pages.
+Repo: 886ppak/liebherr (repo name is a legacy artifact from before the
+rebrand to "Myslewer" — see section 7).
+
+  index.html              - entire app: HTML + <style> + <script>, 4 tabs
+  manifest.json            - PWA install manifest
+  sw.js                    - service worker (offline caching)
+  icons/                    - 4 PNG icon sizes
+  reeving/manifest.json    - reeving-diagram dataset (NOT the same file as
+                              root manifest.json - different purpose, don't
+                              confuse or merge them)
+  reeving/svg/              - 182 SVG diagram files
+
+Four tabs: Rope Retentioning - Minimum Hook Block Weights - Outrigger
+Support Positioning ("CAD tab" internally) - Reeving Plan.
+
+--------------------------------------------------------------------------------
+2. TAB 1 - ROPE RETENTIONING  [CONVERSATION]
+--------------------------------------------------------------------------------
+Purpose: how many parts of line (reeving) are needed to strip enough rope
+off the drum for retentioning work, plus the resulting tensioning test
+weight.
+
+DO NOT "FIX" THIS FORMULA:
+  reeving = Math.ceil((rope - totalLength) / totalLength)
+This was explicitly confirmed by the person, more than once, as intentional
+- it is NOT a lifting-capacity reeving calculation, even though it looks
+like one at a glance and an AI reviewing it cold is likely to assume it's a
+bug. It calculates minimum parts of line to spool sufficient rope off the
+drum. Leave it exactly as-is unless the person explicitly asks to change
+what the calculation is FOR, not just how it looks.
+
+Data: FLEET_BLOCK_SPEC, one entry per crane/boom-config (1650-t3 and
+1650-t5 are separate top-level keys - different drum lengths). Each has
+w1/p1, w2/p2 (winch drum length/pull), boom length, and blocks[] - each
+block has real OEM ballast plate COMBINATIONS (aux[]), not generic weight
+increments. This was a deliberate correction after the person's actual
+ballast data showed generic "types" didn't match real available plate
+combos. r-hook / r-checkweight fields are READONLY, driven only by
+dropdown selection - specifically to stop someone entering a ballast number
+that doesn't correspond to a real physical plate combination.
+
+--------------------------------------------------------------------------------
+3. TAB 2 - MINIMUM HOOK BLOCK WEIGHTS  [CONVERSATION]
+--------------------------------------------------------------------------------
+Formula: G_kg = L x M x n x F
+  L = boom length, M = rope weight/m (by diameter), n = reeving/falls,
+  F = empirical reeving-factor table indexed by n.
+
+UNRESOLVED, FLAGGED NOT FIXED: n appears both as a direct multiplier and
+inside F (which itself scales with n) - looks like possible double-counting
+of the same effect. Raised with the person once; not confirmed wrong, so
+left unchanged. Don't silently "correct" this in a future pass - ask again
+first, or at minimum re-flag before changing behavior.
+
+Out-of-range rope diameter or reeving count leads to an explicit warning
+banner, not a silent fallback. An earlier version silently fell back to a
+default value, which was identified as actively dangerous for a tool used
+to pick ballast in the field.
+
+minPlateIncrement per crane was corrected from generic assumed values to
+each crane's actual confirmed OEM increment (1650: 375kg, 1300: 500kg,
+1110: 200kg, etc.), cross-checked against Tab 1's aux[] data for
+consistency.
+
+--------------------------------------------------------------------------------
+4. TAB 3 - OUTRIGGER SUPPORT POSITIONING ("CAD tab")  [CONVERSATION]
+--------------------------------------------------------------------------------
+The most conceptually involved tab - nearly every sign convention here was
+arrived at through iteration and explicit correction, not derived cleanly
+from first principles. Read this fully before touching the math.
+
+4.1 Coordinate system
+  Origin = crane's slew center (turret rotation axis), NOT chassis center.
+  Front = boom end = top of OEM diagram = internally NEGATIVE Y.
+  Rear = cab/counterweight end = bottom of OEM diagram = internally POSITIVE Y.
+  baseX = r*sin(angle), baseY = r*cos(angle).
+  User "+FWD" input must DECREASE internal Y: shiftY = -shiftYinput.
+  This inversion was a specific confirmed correction - removing it silently
+  reverses forward/back on the canvas.
+
+4.2 Outrigger labeling (do not renumber)
+  P1 = Rear Right, P2 = Front Right, P3 = Front Left, P4 = Rear Left.
+  Slew direction symbol: positive angle points "<", negative angle points
+  ">" - this was initially backwards and had to be corrected once already.
+
+4.3 Which pads MUST move
+  Only the LATERAL component of a shift determines which pads are in the
+  crane's actual path of travel:
+    shiftX > 0 (right) -> P1, P2 must move
+    shiftX < 0 (left)  -> P3, P4 must move
+    shiftX === 0 (pure fwd/bwd) -> nothing is required to move
+  Confirmed rationale: pads sit laterally offset from the crane's own
+  footprint, so a pure fwd/bwd walk never runs the crane over a pad - even
+  on a diagonal shift, the lateral component alone governs.
+
+4.4 Three reference frames per leg, shown in the results table
+  a) "If Moved" - from CURRENT position: newX = baseX+shiftX, newY = baseY+shiftY
+  b) "If Left in Place" - from NEW crane center: relX = baseX-shiftX, relY = baseY-shiftY
+  c) "Baseline" - standard OEM target offset, unaffected by any shift.
+  Plus a MUST MOVE / optional tag (per 4.3).
+
+4.5 Chassis footprint collision check
+  Flags when a pad's "If Moved" target is currently under the crane's own
+  chassis - physically impossible to pre-place a mat there before the crane
+  actually moves.
+  FOOTPRINTS{} = {width, front, rear} per crane, measured from slew center;
+  boom overhang deliberately excluded (boom is airborne mid-walk, doesn't
+  interfere with ground mats - confirmed, not assumed).
+  Collision test: |x| <= width/2 AND -front <= y <= rear.
+  Width: pulled from each OEM sheet's "B" dimension (525/80 R25 tire row,
+  the fleet's confirmed standard tire). LRT 1100's sheet uses a different
+  layout than the LTM sheets - its width (3300mm) had to be confirmed
+  directly by the person against the raw drawing, not assumed from the
+  dimension that looked most likely at a glance.
+  Front/rear (slew-center-relative, not chassis-center) had no single
+  printed dimension anywhere - every crane's split was derived via two
+  independently cross-validated methods:
+    METHOD A ("top-line"): total boom-tip-to-rear-tip dimension at the top
+      of the drawing, minus the printed tail segment, minus the front
+      overhang segment (boom-tip to front-of-cab) - remainder is
+      slew-center-to-front-of-cab.
+    METHOD B ("bottom-chain"): sum the individual axle-spacing segments
+      along the bottom of the drawing, front-to-back, stopping at the
+      point nearest slew center - which sometimes lands PARTWAY through a
+      printed segment, not on a clean boundary (e.g. 1300 required
+      subtracting exactly 320mm from partway through one segment; 1650
+      needed only 1550mm out of a printed 2450mm segment). This partial-
+      segment behavior is real, confirmed by the person, not a rounding
+      artifact - don't assume a full segment boundary marks the slew
+      center without checking.
+  Every crane's final front/rear numbers were confirmed by the person
+  running at least one method themselves and comparing against the
+  independent P1/P4 cross-check (4.6) before being accepted.
+
+4.6 Cross-validation technique (useful for adding cranes later)
+  Each leg's stored r/angle already encodes its own slew-center distance via
+  r*cos(angle) - compare that against a hand-measured front/rear split as a
+  sanity check. A >1-2% disagreement means one of them is wrong. This
+  caught a ~220mm error in an early auto-derived guess for the 1160.
+
+4.7 Canvas rendering
+  Footprint rectangle centered on the CURRENT (unshifted) origin.
+  Every optional (non-MUST-MOVE) leg gets a second "ghost" dot at its "If
+  Moved" position, connected by a thin line, red-ringed if it collides with
+  the footprint. Added specifically because on a pure fwd/bwd shift EVERY
+  leg is optional (4.3) - without the ghost dot nothing visibly changes on
+  the canvas even though the numbers underneath do, which confused the
+  person before this was added.
+
+--------------------------------------------------------------------------------
+5. TAB 4 - REEVING PLAN  [CODE - see coverage note at top]
+--------------------------------------------------------------------------------
+Everything in this section is reconstructed from reading the actual
+implementation. No conversation record of its design decisions was found.
+
+5.1 What it does
+  Lets someone pick a crane + boom/head configuration, then a reeving
+  way-count (or a named special/auxiliary config), and see: the OEM sheave-
+  routing notation as text, a hook-block-type badge, and a diagram.
+
+5.2 Data shape - reeving/manifest.json
+  Maps config keys (e.g. "1650-t3", "1250-sks") to one of two shapes:
+    a) {normal: [...], american: [...]} - toggle style, for configs with a
+       simple numbered progression (most telescopic booms). Each entry:
+       {way, hook, lines}. SVG filename for these is NOT stored per-entry -
+       it's constructed at render time as way_${way}.svg (seen directly in
+       the activeReeveData() function).
+    b) {configs: [...]} - flat style, for configs mixing special/auxiliary-
+       device/two-hook variants that don't fit a numbered toggle. Each
+       entry: {id, label, hook, lines, svg} - svg IS stored explicitly here,
+       sometimes null where no artwork is linked.
+  isToggleStyle(cfg) picks which shape a given config uses by checking
+  whether cfg.normal or cfg.american exists.
+
+5.3 Diagram artwork provenance [CODE - verified by direct inspection]
+  All 182 SVGs share the identical transform matrix
+  "matrix(0.999726, 0, 0, -0.999726, 0, 2389.082419)" (LRT 1100 files use a
+  proportionally scaled variant), each cropped to a different viewBox
+  region of the same underlying coordinate space. This is strong physical
+  evidence for a single batch PDF-to-SVG vector extraction from one source
+  document, matching the in-app disclaimer's own claim: "Diagrams are the
+  actual OEM reeving plan artwork (doc. 98036716), extracted directly - not
+  redrawn." Not hand-traced; not independently generated per crane.
+
+5.4 UI fix made in this thread (not part of original build)
+  Dropdown option text was edited to include the crane model name in every
+  <option> itself, not just the parent <optgroup> label - a collapsed
+  <select> only ever displays the selected OPTION's own text, so the
+  original version showed just "T3 Telescopic Boom" with no crane name
+  visible unless the dropdown was reopened. Read as ambiguous.
+
+5.5 Offline bulk-download feature (added in this thread)
+  A button that walks the ENTIRE manifest - every crane/config/way, not
+  just the currently-selected one - dedupes every referenced SVG filename
+  via allReeveSvgFilenames(), and fetches them with limited concurrency (6
+  at a time) so every diagram becomes available offline in one action
+  instead of only caching on-demand as each is viewed. Relies entirely on
+  the existing service-worker fetch-caching behavior (6) - the button
+  itself has no direct Cache API access, it just triggers the GETs.
+
+5.6 KNOWN DATA GAP [CODE - verified]
+  21 SVG files exist on disk (mostly lrt1100_tele_* and ltm1110_sks_*)
+  that are not referenced by ANY manifest entry - confirmed by diffing the
+  full set of manifest-referenced filenames against the actual svg/
+  directory listing. Whether these are meant to replace currently-linked
+  files, fill in existing null svg fields, or are simply unused leftover
+  exports is NOT determinable from the code alone. Don't silently link them
+  in without asking the person first.
+
+--------------------------------------------------------------------------------
+6. SERVICE WORKER / OFFLINE CACHING  [CONVERSATION + CODE]
+--------------------------------------------------------------------------------
+Two deliberately separate caches:
+  APP_SHELL_CACHE (versioned, e.g. 'app-shell-myslewer-v4') - precaches
+    index.html, manifest.json, icons. Bump CACHE_VERSION on any change to
+    those files. Old app-shell-* caches deleted on activate.
+  CONTENT_CACHE (fixed name 'app-content-v1', never versioned or auto-
+    cleared) - holds on-demand fetched content, primarily reeving diagrams.
+    Deliberately separate so a crew member who's already viewed certain
+    diagrams offline doesn't lose access just because an unrelated app
+    update bumped CACHE_VERSION. If this cache ever needs a genuine reset,
+    change its name once - don't fold it into the versioned cleanup logic.
+Fetch handler: cache-first, network fallback, cached-index.html fallback
+for failed navigation (so reloads/deep-links work offline).
+
+--------------------------------------------------------------------------------
+7. REBRANDING (Liebherr -> Myslewer)  [CONVERSATION]
+--------------------------------------------------------------------------------
+Originally built as "Liebherr Fleet Operations" (the manufacturer's name),
+rebranded to the person's own brand "Myslewer." Changed: <title>, visible
+<h1>, manifest.json name/short_name, all 4 icons (regenerated as a plain
+bold text wordmark - several graphic concepts were explored first: a
+slew-ring motif, an outrigger-cross motif matching the CAD tab's own site
+plan, a stylized double-hook based on a reference photo the person
+provided - but plain text was chosen as simplest and most legible at small
+icon sizes), and the service worker's cache name/version bumped
+accordingly.
+Deliberate exception: Tab 1's disclaimer text ("cross-check reeving, pull
+rating, and ballast against the current Liebherr load chart...") still
+says "Liebherr" - correctly, since it refers to the actual crane
+manufacturer's OEM load charts, not the app's own branding. Don't strip
+this in a future rebrand pass.
+
+--------------------------------------------------------------------------------
+8. KNOWN GAPS - DO NOT ASSUME COMPLETE
+--------------------------------------------------------------------------------
+- LTR 1220 and LTM 1150 have partial/missing data across Tabs 1-3 (no
+  published hook-block chart for 1150; no CAD/mat-position chart for
+  1220/1150 at time of writing). UI greys out / disables these options
+  with an explanatory note rather than omitting them silently or inventing
+  values - preserve that pattern, don't guess numbers to fill a gap.
+- 21 orphaned reeving SVGs not linked into any manifest entry (5.6).
+- Tab 2's possible n double-counting in G = L x M x n x F - flagged, never
+  resolved either way.
+- Tab 4's actual design/build reasoning is NOT recoverable from chat
+  history - only from code inspection (see coverage note at top). If the
+  person can locate the Claude Code / tablet session that built it, that
+  would be a strictly better source than this document's section 5.
+- This document should be updated whenever a future session makes a
+  material change to any convention above - especially section 4 (CAD
+  tab), since those sign conventions are easy to silently reverse and hard
+  to notice visually until a real shift scenario is tested.
+================================================================================
