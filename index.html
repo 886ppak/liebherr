@@ -900,15 +900,30 @@
           { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25,
             hotspots: [{ points: '300,1000 650,1000 650,1230 300,1230' }, { points: '1190,1000 1560,1000 1560,1230 1190,1230' }] },
           { id: 'p5x2', name: 'Counterweight Plate 5t ×2', weight: 10,
-            hotspots: [{ points: '380,165 650,165 650,225 380,225' }] },
-          { id: 'p10_2', name: 'Counterweight Plate 10t ×2', weight: 20, slotGroup: 'ten',
-            hotspots: [{ points: '380,225 650,225 650,320 380,320' }] },
-          { id: 'p10_4', name: 'Counterweight Plate 10t ×4', weight: 40, slotGroup: 'ten', hotspots: [] },
-          { id: 'p10_6', name: 'Counterweight Plate 10t ×6', weight: 60, slotGroup: 'ten', hotspots: [] },
-          { id: 'p10_8', name: 'Counterweight Plate 10t ×8', weight: 80, slotGroup: 'ten', hotspots: [] },
-          { id: 'p10_10', name: 'Counterweight Plate 10t ×10', weight: 100, slotGroup: 'ten', hotspots: [] },
-          { id: 'p10_12', name: 'Counterweight Plate 10t ×12', weight: 120, slotGroup: 'ten', hotspots: [] },
-          { id: 'p10_14', name: 'Counterweight Plate 10t ×14', weight: 140, slotGroup: 'ten', hotspots: [] },
+            hotspots: [{ points: '380,165 650,165 650,225 380,225' }, { points: '1195,165 1470,165 1470,225 1195,225' }] },
+          // quantityGroup: unlike LTM 1110's Winch2*/Replacement Ballast
+          // slotGroup (mutually exclusive ALTERNATIVES, cycled via repeat
+          // clicks on one hidden hotspot), this is a quantity LADDER - the
+          // diagram draws all 7 physical plate positions per side, so
+          // every one of them gets its own hotspot and its own direct
+          // click target, matching what's actually visible. Clicking a
+          // level fills the stack up to and including that level;
+          // clicking the current top level removes it. See
+          // selectCwtSlotLevel() and methodology.txt 10.10.
+          { id: 'p10_2', name: 'Counterweight Plate 10t ×2', weight: 20, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,225 650,225 650,320 380,320' }, { points: '1195,225 1470,225 1470,320 1195,320' }] },
+          { id: 'p10_4', name: 'Counterweight Plate 10t ×4', weight: 40, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,320 650,320 650,410 380,410' }, { points: '1195,320 1470,320 1470,410 1195,410' }] },
+          { id: 'p10_6', name: 'Counterweight Plate 10t ×6', weight: 60, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,410 650,410 650,500 380,500' }, { points: '1195,410 1470,410 1470,500 1195,500' }] },
+          { id: 'p10_8', name: 'Counterweight Plate 10t ×8', weight: 80, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,500 650,500 650,592 380,592' }, { points: '1195,500 1470,500 1470,592 1195,592' }] },
+          { id: 'p10_10', name: 'Counterweight Plate 10t ×10', weight: 100, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,592 650,592 650,687 380,687' }, { points: '1195,592 1470,592 1470,687 1195,687' }] },
+          { id: 'p10_12', name: 'Counterweight Plate 10t ×12', weight: 120, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,687 650,687 650,782 380,782' }, { points: '1195,687 1470,687 1470,782 1195,782' }] },
+          { id: 'p10_14', name: 'Counterweight Plate 10t ×14', weight: 140, slotGroup: 'ten', quantityGroup: true,
+            hotspots: [{ points: '380,782 650,782 650,875 380,875' }, { points: '1195,782 1470,782 1470,875 1195,875' }] },
           { id: 'w2', name: 'Winch 2 (incl. rope)', weight: 4.7, countsToward: false,
             hotspots: [{ points: '800,650 1000,650 1000,870 800,870' }] },
           { id: 'w3', name: 'Winch 3 (incl. rope + luffing pulley block)', weight: 7.9, countsToward: false,
@@ -1057,6 +1072,26 @@
       renderCwtTab();
     }
 
+    // For a quantity ladder (e.g. LTM 1650's repeated 10t plate, up to 14
+    // of them) where every physical position has its own visible hotspot:
+    // clicking a level fills the stack up to and including that level;
+    // clicking the CURRENT top level removes it (one step back down).
+    // Unlike cycleCwtSlotGroup, this jumps straight to the clicked level
+    // rather than always advancing by one.
+    function selectCwtSlotLevel(groupName, memberId) {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const members = COUNTERWEIGHT_DATA[modelKey].components.filter(c => c.slotGroup === groupName).map(c => c.id);
+      const clickedIdx = members.indexOf(memberId);
+      const activeIdx = members.findIndex(id => cwtSelected.has(id));
+      members.forEach(id => cwtSelected.delete(id));
+      if (clickedIdx === activeIdx) {
+        if (clickedIdx - 1 >= 0) cwtSelected.add(members[clickedIdx - 1]);
+      } else {
+        cwtSelected.add(members[clickedIdx]);
+      }
+      renderCwtTab();
+    }
+
     function populateCwtComboSelect() {
       const modelKey = document.getElementById('cwt-crane').value;
       const data = COUNTERWEIGHT_DATA[modelKey];
@@ -1084,14 +1119,31 @@
       hotspotsEl.innerHTML = '';
       data.components.forEach(c => {
         (c.hotspots || []).forEach(hs => {
-          // For a slotGroup hotspot (e.g. Winch 2* / Replacement Ballast
-          // sharing one clickable region), show/label whichever member of
-          // the group is currently selected, not just this component's own.
-          const activeInGroup = c.slotGroup
-            ? data.components.find(m => m.slotGroup === c.slotGroup && cwtSelected.has(m.id))
-            : null;
-          const displayComp = activeInGroup || c;
-          const isSelected = c.slotGroup ? !!activeInGroup : cwtSelected.has(c.id);
+          let displayComp, isSelected, activate;
+          if (c.quantityGroup) {
+            // Quantity ladder (see selectCwtSlotLevel): every level has its
+            // own hotspot and its own identity - highlight it whenever the
+            // selected quantity is at LEAST this level, so the whole stack
+            // up to the active level lights up, not just the exact match.
+            const groupMembers = data.components.filter(m => m.slotGroup === c.slotGroup);
+            const activeIdx = groupMembers.findIndex(m => cwtSelected.has(m.id));
+            const thisIdx = groupMembers.findIndex(m => m.id === c.id);
+            displayComp = c;
+            isSelected = activeIdx >= 0 && thisIdx <= activeIdx;
+            activate = () => selectCwtSlotLevel(c.slotGroup, c.id);
+          } else if (c.slotGroup) {
+            // Mutually-exclusive alternatives sharing one clickable region
+            // (e.g. Winch 2* / Replacement Ballast) - show/label whichever
+            // member is currently active, cycle through on repeat clicks.
+            const activeInGroup = data.components.find(m => m.slotGroup === c.slotGroup && cwtSelected.has(m.id));
+            displayComp = activeInGroup || c;
+            isSelected = !!activeInGroup;
+            activate = () => cycleCwtSlotGroup(c.slotGroup);
+          } else {
+            displayComp = c;
+            isSelected = cwtSelected.has(c.id);
+            activate = () => toggleCwtPlate(c.id);
+          }
 
           const poly = document.createElementNS(SVG_NS, 'polygon');
           poly.setAttribute('points', hs.points);
@@ -1102,7 +1154,6 @@
           const title = document.createElementNS(SVG_NS, 'title');
           title.textContent = `${displayComp.name} — ${displayComp.weight.toFixed(1)} t`;
           poly.appendChild(title);
-          const activate = c.slotGroup ? () => cycleCwtSlotGroup(c.slotGroup) : () => toggleCwtPlate(c.id);
           poly.addEventListener('click', activate);
           poly.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }

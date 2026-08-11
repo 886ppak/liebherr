@@ -921,20 +921,48 @@ in a visual stack, or jump straight to a known combination from a dropdown.
      quantities of 0/2/4/6/8/10/12/14 (in just the partial data available
      - could go higher) - hand-listing 7 lettered copies (p10a...p10g) was
      judged unwieldy and, more importantly, doesn't communicate "this is a
-     quantity, always in steps of 2" the way a stepper does. Reused the
-     slotGroup/cycleCwtSlotGroup mechanism (built for 1110's Winch 2*/
-     Replacement Ballast mutually-exclusive slot) for a NEW purpose it
-     wasn't originally designed for: a quantity stepper. Components
-     p10_2/p10_4/.../p10_14 share slotGroup:'ten'; only p10_2 carries the
-     actual hotspot; clicking cycles none -> 2 -> 4 -> ... -> 14 -> none.
-     This worked with ZERO changes to the shared toggle/render logic -
-     cycleCwtSlotGroup() was already generic over "however many named
-     members share this slotGroup," it didn't care that this time the
-     members represent quantities of the same physical part rather than
-     alternatives. Reuse this same trick for a future crane's repeated-
-     plate pattern once the repeat count gets unwieldy for 1160's letter-
-     per-copy approach (rough guideline: 3 copies, list them; 6+, use the
-     stepper).
+     quantity, always in steps of 2" the way a stepper does. Components
+     p10_2/p10_4/.../p10_14 share slotGroup:'ten'.
+     FIRST ATTEMPT (shipped, then corrected same session): reused
+     cycleCwtSlotGroup() unmodified from 1110's Winch 2*/Replacement
+     Ballast pattern - only p10_2 carried a hotspot, repeat clicks on that
+     one spot cycled through the quantities. This was a real usability bug,
+     not just a style choice: the diagram itself draws all 7 physical
+     plate positions per side (14 icons total, all identical-looking,
+     all equally "clickable-looking" to someone reading the picture), but
+     only ONE of those 14 icons actually did anything - the person
+     reported "I can't select the slabs to build up to the different
+     combos" almost immediately after this shipped. Caught by the
+     person's own use of the feature, not by this session's own testing
+     (Playwright testing had confirmed the single hidden hotspot DID work
+     when clicked - it just never checked whether the OTHER 13 visible,
+     equally-plausible click targets also worked, which is exactly the
+     kind of gap automated testing of a predetermined interaction misses
+     and a real user immediately finds).
+     FIX: added `quantityGroup: true` to distinguish this ladder pattern
+     from 1110's alternatives pattern, gave every one of the 7 levels its
+     own hotspot on BOTH the left and right diagram icons (14 hotspots for
+     this one component group), and added a new function,
+     selectCwtSlotLevel(), with different semantics from
+     cycleCwtSlotGroup(): clicking a level jumps straight to that
+     quantity (fills the stack from the bottom up to and including the
+     clicked level, highlighting every icon up to there, not just the one
+     clicked) rather than always advancing by one step; clicking the
+     CURRENT top level removes it, one step back down. This matches how
+     someone would actually think about a physical stack - "I want it
+     built up to here" / "take the top one off" - and every visible icon
+     in the diagram now does something, which is the real fix (the
+     original bug was fundamentally "there are visible things that look
+     clickable but aren't," not "the cycle direction is wrong").
+     cycleCwtSlotGroup() itself is unchanged and still correct for 1110's
+     genuinely-alternative (not quantity) slotGroup case - the two
+     functions coexist, selected by the quantityGroup flag at render time.
+     LESSON for any future quantity-ladder crane: if the source diagram
+     draws multiple physical copies of a repeated part, give EVERY drawn
+     copy its own hotspot from the start - don't default to "one hidden
+     hotspot, cycle on repeat click" just because it's less code. A
+     hotspot that doesn't line up with something the diagram visibly shows
+     is a trap, not a shortcut.
      "Counterweight plate 5t" only ever appears at a fixed quantity of 2
      in the confirmed data (never 0-but-not-2) - modeled as a single plain
      toggle (weight=10, the pair's combined contribution), NOT a stepper,
