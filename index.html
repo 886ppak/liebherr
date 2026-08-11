@@ -656,18 +656,23 @@
       // applied. See methodology.txt 10.7 before adding another crane.
       '1110': {
         label: 'LTM 1110-5.1',
-        sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
-        diagramImage: './counterweight/img/ltm1110-cwt-exploded.png',
-        diagramAlt: 'Liebherr LTM 1110-5.1 counterweight exploded-view diagram, parts 1-8',
-        diagramWidth: 1831,
-        diagramHeight: 1335,
-        figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01) — actual OEM exploded-view artwork, extracted directly, not redrawn',
+        sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltm1110-cwt-exploded-v2.png',
+        diagramAlt: 'Liebherr LTM 1110-5.1 counterweight exploded CAD line diagram, parts 1-8',
+        diagramWidth: 1122,
+        diagramHeight: 1400,
+        figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
         // p3/p4 are ALWAYS present together in every published combo (never
-        // one without the other) and their silhouettes overlap in the
-        // source diagram with no clean dividing line to trace - rather than
-        // guess a boundary, p4 owns the one clickable region for both and
-        // is linked to p3 (toggling p4 toggles p3 in sync); p3 itself has
-        // no hotspot of its own. See methodology.txt 10.7.
+        // one without the other) - unlike the old extracted-photo diagram
+        // (see methodology.txt 10.7), this CAD tracing has a clean split
+        // between them (side by side, not overlapping), so each now gets
+        // its own precise hotspot - still kept in sync both ways via
+        // linkedId on both sides, matching the physical reality that
+        // they're always fitted or removed together. See methodology.txt
+        // 10.18 for how box->plate identity was confirmed here, including
+        // a real mix-up in the person's own exploded CAD model (plates 6
+        // and 7 were swapped) caught via the manufacturer's weight stamp
+        // ("2,5t"/"3,6t") baked into the CAD geometry itself.
         // p8w/p8b ("Winch 2*" / "Replacement ballast") occupy the same
         // physical mounting slot (confirmed by the diagram - slot 8, above
         // plate 7) and are mutually exclusive - at most one is ever
@@ -681,22 +686,23 @@
         // real, confirmed OEM rule, not a data-entry gap - do not "fix" it
         // to count like every other item. See methodology.txt 10.7.
         components: [
-          { id: 'p1', name: 'Receptacle Plate 1', weight: 7.7, shortLabel: '',
-            hotspots: [{ points: '819,1160 768,1185 695,1178 590,1133 578,1032 538,1037 534,1137 315,1158 313,1073 262,1072 263,1165 100,1197 96,1262 226,1309 819,1309' }] },
-          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.1, shortLabel: '',
-            hotspots: [{ points: '779,917 724,942 624,910 132,973 122,1003 184,1019 779,1019' }] },
-          { id: 'p3', name: 'Counterweight Plate 3', weight: 6.0, shortLabel: '', hotspots: [] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.0, linkedId: 'p3', shortLabel: '',
-            hotspots: [{ points: '50,645 820,645 820,895 50,895' }] },
-          { id: 'p5', name: 'Counterweight Plate 5', weight: 3.6, shortLabel: '',
-            hotspots: [{ points: '829,649 829,560 777,576 777,546 601,491 564,493 555,520 181,569 122,552 90,561 94,608 217,649' }] },
-          { id: 'p6', name: 'Counterweight Plate 6', weight: 0.3, shortLabel: '',
-            hotspots: [{ points: '588,422 584,414 574,411 544,415 434,412 396,417 364,437 330,443 329,463 333,469 352,471 540,450 580,441' }] },
-          { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5, shortLabel: '',
-            hotspots: [{ points: '799,244 689,276 552,230 149,279 121,286 120,309 266,359 799,359' }] },
-          { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8', shortLabel: '',
-            hotspots: [{ points: '440,11 409,7 279,25 274,50 267,53 274,76 276,180 319,192 326,159 416,147 422,162 464,173 468,143 456,146 448,122 455,32' }] },
-          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', shortLabel: '', hotspots: [] }
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 7.7, shortLabel: '1',
+            hotspots: [{ points: '1069,1341 53,1341 53,1000 1069,1000' }] },
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.1, shortLabel: '2',
+            hotspots: [{ points: '1069,963 53,963 53,891 1069,891' }] },
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 6.0, linkedId: 'p4', shortLabel: '3',
+            hotspots: [{ points: '53,878 531,878 531,658 53,658' }] },
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.0, linkedId: 'p3', shortLabel: '4',
+            hotspots: [{ points: '1069,878 591,878 591,660 1069,660' }] },
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 3.6, shortLabel: '5',
+            hotspots: [{ points: '1069,628 53,628 53,543 1069,543' }] },
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 0.3, shortLabel: '6',
+            hotspots: [{ points: '806,396 316,396 316,351 806,351' }] },
+          { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5, shortLabel: '7',
+            hotspots: [{ points: '989,511 133,511 133,428 989,428' }] },
+          { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8', shortLabel: '8 / Winch #2',
+            hotspots: [{ points: '694,320 404,320 404,54 694,54' }] },
+          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', shortLabel: '8', hotspots: [] }
         ],
         // 25.4t appears twice with genuinely different compositions (a
         // real OEM chart quirk, not a duplicate/typo) - {2,3,4,5,8w} and

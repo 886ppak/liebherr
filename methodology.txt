@@ -1279,4 +1279,68 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   (42.0t, also real, dropdown updates again), then removing plate 2 only
   (39.6t, not a published combo, dropdown drops to no selection).
 
+10.18 LTM 1110-5.1 diagram replaced too - same DXF-exploded-CAD process as
+      10.15, plus a real box-to-plate mix-up in the person's own CAD
+      export, caught via the manufacturer's weight stamp baked into the
+      geometry instead of guessed
+  Same overall pipeline as 10.15 (DXF "boxes" layer -> render PDF_Visible/
+  PDF_TANGENT_LINES geometry -> exact affine vector-to-pixel math -> new
+  diagram + hotspots), so this entry only covers what's different.
+  First upload had 7 boxes; needed 8 (one per component that owns a
+  hotspot: p1, p2, p4 (see below), p5, p6, p7, p8w, plus - unlike 1130 -
+  a genuinely separate 8th here because this crane's p3/p4 pair turned
+  out to have its own clean split, see below). Same "count is short by
+  exactly one, don't guess the shape, ask for the missing box" call as
+  10.15 - the person confirmed and re-sent with the 8th box added.
+  Orientation: raw CAD Y-up (unflipped) was correct again, same as 10.15
+  - box0 (smallest Y) is the bottom of the stack, item 1.
+  The person warned up front that they'd mixed up two plates while
+  exploding the 3D model, so position/order alone couldn't be fully
+  trusted this time (unlike 10.15, where the naive top-to-bottom guess
+  turned out right). Rather than ask them to re-check by eye, checked the
+  DXF geometry itself first: two of the boxes contain actual embossed
+  weight text as part of the traced CAD geometry (the physical plates
+  have their tonnage cast/stamped into the steel, and since this is a
+  literal 3D-model trace rather than a photo, that text came through as
+  real vector line-work, legible after rendering) - one box clearly reads
+  "2,5t" (matches plate 7's 2.5t) and another reads "3,6t" (matches plate
+  5's 3.6t). That pinned two positions with certainty rather than
+  inference. The box sitting where the naive bottom-up count expected
+  "plate 6" was the one stamped "2,5t" - i.e. actually plate 7 - and the
+  thin sliver box one level up (proportioned right for the lightest
+  plate, 0.3t) was actually plate 6. Confirmed this read back to the
+  person with the interpreted image before touching index.html, same as
+  every other ambiguous case this session - they confirmed it verbatim,
+  plus clarified which physical side of the 3/4 pair is which (box2=4,
+  box3=3 - doesn't change app behavior either way since they're linked,
+  but worth getting right for anyone reading the data later).
+  Lesson: when a person flags their own source data might have an error,
+  don't just re-ask them to double check by eye - look for independent
+  evidence in the data itself first (here, literal printed numbers that
+  had nothing to do with position/order) and lead with that. It's a
+  stronger confirmation than "does this look right to you" on a second
+  pass of the same reasoning that produced the mistake in the first
+  place.
+  p3/p4 upgrade: 10.7 originally merged these into one shared hotspot
+  because the OLD extracted-photo diagram had no clean dividing line
+  between their silhouettes. This new CAD tracing has a real, clean split
+  (they sit side by side, not overlapping), so they now each get their
+  own precise hotspot - kept in sync both directions via linkedId on
+  BOTH components now (previously only p4 had linkedId: 'p3'; toggling
+  p3's own hotspot did nothing since it had none). Verified both
+  directions: tapping plate 3 alone selects plate 4 too and vice versa,
+  and toggling either back off deselects both. This is a real, confirmed
+  fleet rule per the person directly ("those two slabs always get
+  selected together cause you can't use one and not the other ever"),
+  not just a diagram-tracing artifact - keep the linkedId even if a
+  future diagram somehow made them look separable.
+  Since this new diagram also has no baked-in printed reference numbers
+  (only the incidental weight stamps noted above, not "1".."8" leader-
+  line labels), it gets the same on-diagram shortLabel treatment as 1130
+  (10.16) - '1' through '7', plus '8 / Winch #2' / '8' for the p8w/p8b
+  slot pair, matching 1130's "N / Winch #M" convention for a plate/winch
+  dual-purpose slot.
+  New file: counterweight/img/ltm1110-cwt-exploded-v2.png (1122x1400).
+  Old ltm1110-cwt-exploded.png deleted, nothing else referenced it.
+
 ================================================================================
