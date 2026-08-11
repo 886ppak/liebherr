@@ -1886,3 +1886,37 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   session.
 
 ================================================================================
+
+10.31 Second, genuinely separate gap on LTM 1300 Receptacle Plate 1,
+      found via a person-supplied alignment DXF pointing at it directly
+  Person drew a single LINE entity over a screenshot of the diagram (a
+  downscaled ~1996x559 copy of the shipped 4643x1300 PNG - image_size in
+  the DXF's own IMAGE entity confirmed the scale factor, same recovery
+  method as the LTM 1650 alignment DXF, 10.22) and sent the DXF rather
+  than describing coordinates. Converted the line's endpoints through the
+  same wcs-to-pixel math, scaled up by the ratio between the reference
+  image and the shipped PNG (4643/1996 = 2.326), landing on x=2535-2683,
+  y=1079 in the full image.
+  This is NOT the same defect as 10.30 (same general area, easy to
+  confuse) - 10.30 was a missing VERTICAL segment on the support post;
+  this is a missing HORIZONTAL segment on the wedge-shaped part directly
+  below it, where the wedge's flat top should run continuously into the
+  post's edge but instead had a 143px gap (x=2538-2681 at y=1079) between
+  the end of the ramp's diagonal-then-flat top and where the vertical
+  post line crosses that row. Confirmed both the gap's existence and its
+  exact extent via a raw pixel row/column scan (not just eyeballing a
+  crop) before patching - the visual crop alone was ambiguous about
+  whether a line was continuous through that junction or not, since the
+  post's vertical line crosses directly through the same area.
+  Fixed the same way as 10.30: sampled the existing segment's exact color
+  (6,6,6, near-black, distinct from the gray (129,129,129) used for
+  10.30's line - different parts/layers in the source use different
+  shades) and width (~3px), drew the missing stroke with PIL. Same
+  dimensions, hotspots unaffected, re-verified click-through in-browser.
+  Method worth keeping: when a person can supply a DXF with even a single
+  guide line over a screenshot, that's far more precise and far less back
+  -and-forth than describing "there's a gap around here" - convert
+  through the image's own embedded scale info exactly like the alignment
+  DXFs, don't ask them to estimate pixel coordinates by hand.
+
+================================================================================
