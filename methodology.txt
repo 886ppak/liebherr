@@ -1109,4 +1109,32 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   tap does, worth remembering when testing future touch-only interaction
   bugs on this tab.
 
+10.14 CORRECTION to 10.13 - the red was the person's own annotation, not
+      a rendering bug. Real issue: a hotspot undershot its own plate.
+  10.13's diagnosis was wrong. The person clarified the red in their
+  screenshot was THEIR OWN markup, drawn on top of the screenshot to
+  point at a real problem: the gold "selected" highlight box for the
+  bottom-most (7th, ×14) level of the 10t-plate quantity ladder didn't
+  fully cover that plate's actual printed outline - a visible sliver of
+  the real plate stuck out past the bottom of the highlight box, dark/
+  unhighlighted, even though that hotspot correctly had the "selected"
+  CSS class applied (confirmed by direct DOM inspection - this was never
+  a logic/class bug, only a coordinate one).
+  Root cause: p10_14's hotspot y-range (782-900 area) was derived from a
+  pixel-grid crop of the source diagram that was itself cropped too
+  short (per-side grid images used in 10.10's original derivation only
+  extended to y=940-970), so the last plate's true bottom edge - actually
+  around y=900 - got read as y=875, undershooting by ~25px on both the
+  left and right hotspot. Fixed by re-cropping generously past the
+  believed edge and re-measuring directly against the raw image (same
+  "pad crop boxes more generously than seems necessary" lesson from
+  10.4/10.8, now applying to a hotspot's own boundary, not just the crop
+  box used to derive it).
+  10.13's actual fix (outline:none on the base .cwt-hotspot rule for
+  touch taps) was real and worth keeping - it's just not what this
+  specific report was about. Two independent, unrelated things happened
+  to look similar in a compressed screenshot; don't assume a single
+  explanation covers everything a screenshot shows without confirming
+  which parts are the app's own rendering vs. the person's own markup.
+
 ================================================================================
