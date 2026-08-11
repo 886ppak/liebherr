@@ -1761,3 +1761,65 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   only.
 
 ================================================================================
+
+10.28 Real bug: counterweight diagrams could never actually update on a
+      returning user's device, regardless of how many times
+      CACHE_VERSION was bumped
+  Person reported still seeing the old black-background LTM 1650 diagram
+  after refreshing, despite 10.27's fix being live on main with a fresh
+  CACHE_VERSION. Root cause: counterweight diagram images were never in
+  sw.js's APP_SHELL list (only index.html/manifest/icons were) - the
+  service worker's fetch handler cache-first-then-network's everything
+  NOT in APP_SHELL into CONTENT_CACHE, a permanently-unversioned cache
+  that the activate handler explicitly never clears (intentional, so a
+  crew doesn't lose offline access to reeving diagrams they've already
+  viewed across app updates). The first time anyone's browser fetched a
+  counterweight diagram, it landed in CONTENT_CACHE and stayed there
+  forever - every subsequent CACHE_VERSION bump only ever touched
+  APP_SHELL_CACHE, which these images were never part of. This means
+  EVERY counterweight diagram fix shipped this session (10.24's LTM 1160
+  replacement, 10.23's LTM 1300 addition, 10.27's LTM 1650 invert) was
+  invisible to anyone who'd viewed that crane's tab before the fix
+  shipped, no matter how many version bumps followed.
+  Fix, two parts:
+  a) Added all 6 counterweight diagram paths to APP_SHELL, so they're
+     precached and refreshed on every CACHE_VERSION bump exactly like
+     index.html.
+  b) That alone isn't sufficient - a stale copy could already be sitting
+     in CONTENT_CACHE from before this fix, and caches.match() (used by
+     the fetch handler for anything not explicitly checked against a
+     named cache first) doesn't guarantee it prefers the newer entry in
+     APP_SHELL_CACHE over an older one in CONTENT_CACHE; iteration order
+     across caches isn't something to rely on. Fixed by (1) making the
+     fetch handler check APP_SHELL_CACHE explicitly FIRST and return
+     immediately on a hit, before ever consulting CONTENT_CACHE, and (2)
+     having the activate handler purge any CONTENT_CACHE entry whose URL
+     matches something now in APP_SHELL, cleaning up the orphaned
+     duplicate rather than leaving it to linger unused.
+  Verified with a real service-worker lifecycle test, not just a code
+  read-through - Playwright against a local server, swapping the served
+  sw.js and image mid-test to simulate "old file cached on a device" then
+  "fix deployed to origin, browser checks for SW update":
+    1. Serve the OLD sw.js (pre-fix, matching what was actually live) and
+       the OLD black image. Load the app, browse to LTM 1650, confirm the
+       image is black and lands in CONTENT_CACHE (reproducing the bug).
+    2. Swap the served files to the NEW sw.js and the NEW white image
+       (simulating a fresh deploy to origin) without touching the
+       already-loaded page.
+    3. Call registration.update() and wait for the controllerchange
+       event specifically (not just polling reg.active, which can
+       resolve fractionally before THIS client's controller actually
+       flips over and produced a false negative on an earlier, less
+       careful pass at this same test).
+    4. Reload and re-check the same <img> element used by the real
+       Counterweight tab: black -> white, confirmed pixel-for-pixel.
+  Also confirmed CONTENT_CACHE's stale entry for the same URL was gone
+  after the new SW activated, not just shadowed.
+  This class of bug - "shipped a fix, bumped the version, it's still not
+  visible" - won't recur for future counterweight diagram changes now
+  that they're in APP_SHELL, but is worth remembering as a category: any
+  asset that CAN change over the app's development lifetime needs to be
+  in the versioned precache, not left to fall into the permanent content
+  cache by default just because it's an image fetched on demand.
+
+================================================================================
