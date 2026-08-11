@@ -897,8 +897,19 @@
         diagramHeight: 1266,
         figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03)',
         components: [
-          { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25,
+          { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center',
             hotspots: [{ points: '300,1000 650,1000 650,1230 300,1230' }, { points: '1190,1000 1560,1000 1560,1230 1190,1230' }] },
+          // Item 4 ("Center section") is fixed machine structure, not a
+          // counterweight component - never appears in any combo's own
+          // composition list, zero weight, never sold/removed separately.
+          // But it's physically bolted between the two receptacles and is
+          // never NOT there once receptacles are fitted, so it's linked to
+          // p1 purely for the visual: selecting the 25t receptacles also
+          // highlights this center section on the diagram, matching what
+          // a crew member actually sees mounted, rather than leaving it
+          // dark next to a highlighted item 1 (reported as confusing).
+          { id: 'p4center', name: 'Center Section', weight: 0, linkedId: 'p1',
+            hotspots: [{ points: '750,960 1080,960 1080,1230 750,1230' }] },
           { id: 'p5x2', name: 'Counterweight Plate 5t ×2', weight: 10,
             hotspots: [{ points: '380,165 650,165 650,225 380,225' }, { points: '1195,165 1470,165 1470,225 1195,225' }] },
           // quantityGroup: unlike LTM 1110's Winch2*/Replacement Ballast
@@ -1016,7 +1027,12 @@
     }
 
     function cwtFindMatchingCombo(modelKey, selectedIds) {
-      const target = [...selectedIds].sort().join(',');
+      // Zero-weight components (e.g. LTM 1650's "Center Section," a purely
+      // visual echo of the receptacles via linkedId) are never listed in
+      // the OEM's own combos - they don't affect which weight-based
+      // combination this is, so exclude them before comparing.
+      const map = cwtComponentMap(modelKey);
+      const target = [...selectedIds].filter(id => map[id].weight !== 0).sort().join(',');
       return COUNTERWEIGHT_DATA[modelKey].combos.find(c => [...c.items].sort().join(',') === target);
     }
 
@@ -1040,6 +1056,16 @@
       const idx = document.getElementById('cwt-combo-select').value;
       const combo = COUNTERWEIGHT_DATA[modelKey].combos[idx];
       cwtSelected = new Set(combo.items);
+      // Published combos list only the components that carry weight (e.g.
+      // LTM 1650's combos never mention "Center Section" since it's
+      // zero-weight, purely-visual). Pull in any linkedId partner too, so
+      // jumping via the dropdown highlights the same thing a manual click
+      // on the linked component would.
+      const map = cwtComponentMap(modelKey);
+      [...cwtSelected].forEach(id => {
+        const linked = map[id] && map[id].linkedId;
+        if (linked) cwtSelected.add(linked);
+      });
       renderCwtTab();
     }
 

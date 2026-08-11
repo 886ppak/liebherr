@@ -981,11 +981,46 @@ in a visual stack, or jump straight to a known combination from a dropdown.
      p5x2 represent both-sides-combined quantities, not per-side toggles),
      revisit this.
   d) "Center section" (item 4 in the diagram - frame lower/upper section,
-     ballasting device, assembly winch) is NOT a counterweight component,
-     same treatment as 1130's centering cone (item 10) and 1160's implicit
-     turntable structure - it's fixed machine structure, never appears in
-     any combination's composition list, correctly excluded from
-     components/hotspots.
+     ballasting device, assembly winch) is NOT a counterweight component
+     and never appears in any combo's own composition list - same
+     starting treatment as 1130's centering cone (item 10) and 1160's
+     implicit turntable structure (fixed machine structure, zero weight).
+     UPDATE (same session, after ship): initially excluded from
+     components/hotspots entirely, matching those other two fixtures.
+     Person reported that selecting the base 25t receptacles left item 4
+     dark/unhighlighted on the diagram, when physically it's bolted
+     between the two receptacle halves and is never NOT there once
+     receptacles are fitted - leaving it unhighlighted looked like an
+     omission, not a deliberate "this isn't counterweight" statement.
+     Difference from 1130/1160's fixtures: those are genuinely separate,
+     unrelated hardware (a mounting cone, the turntable itself) that a
+     crew member wouldn't expect to see highlighted alongside ballast
+     plates. This one is functionally inseparable from item 1 specifically
+     - not a general "highlight all fixed structure" request.
+     Fix: added item 4 as a real component (id 'p4center', weight 0) with
+     its own hotspot, linked bidirectionally to p1 via `linkedId` (p1 ->
+     'p4center' and p4center -> 'p1') so selecting either highlights both,
+     the same linkedId mechanism 1110 uses for its always-paired plates
+     3/4 - reused as-is, no new mechanism needed. Two follow-on fixes this
+     required, both worth remembering for any future zero-weight/purely-
+     visual linked component:
+       - onCwtComboSelect() only set cwtSelected from the combo's own
+         items[] list, which (correctly) never mentions a zero-weight
+         component - so jumping via the dropdown left item 4 unhighlighted
+         even though clicking p1 directly worked. Fixed by having
+         onCwtComboSelect() also pull in any linkedId partner after
+         setting the base selection, mirroring what toggleCwtPlate()
+         already did for direct clicks.
+       - cwtFindMatchingCombo() compares the exact SET of selected ids
+         against each combo's items[] - once p4center joined cwtSelected
+         alongside p1, the set no longer matched any stored combo
+         (p4center is never listed in the OEM's own combo definitions),
+         so the 25t combo started reporting as "not approved" despite
+         being exactly right. Fixed by filtering out weight-0 components
+         before comparing, since a zero-weight item can never be part of
+         what defines a weight-based combination in the first place. This
+         is the general fix - it wasn't specific to p4center, and now
+         applies to any future zero-weight linked/echo component too.
   e) Diagram (Fig.156378) is the cleanest yet for hotspot purposes -
      genuinely non-overlapping, symmetric left/right layout with every
      part drawn as its own separate, unambiguous shape (unlike 1160's
