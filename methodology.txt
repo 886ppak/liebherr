@@ -1455,3 +1455,53 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   this was noticed; neither had a stale reference left over.
 
 ================================================================================
+
+10.22 LTM 1650-8.1 hotspots re-traced from a user-supplied alignment DXF -
+      the 10.13/10.14 undershoot was systemic, not one bad box
+  Unlike 1130/1110/1250, this crane's diagramImage stayed the original OEM
+  JPG (Fig.156378) - no exploded-CAD replacement was available for it. What
+  the person supplied instead: the SAME JPG re-opened in AutoCAD with an
+  IMAGE entity anchored at insert (0,0) and u_pixel/v_pixel scaled so DXF
+  world coordinates map directly onto the JPG's pixel grid (confirmed by
+  image_size 1831x1266 in the IMAGE entity matching this crane's existing
+  diagramWidth/diagramHeight exactly, and by rendering the DXF geometry
+  over the actual JPG and checking it lands on the real edges rather than
+  guessing blind). On top of that image the person hand-traced boundary
+  LINEs (layer '0', the 8 real plate/receptacle edges per stack) and
+  LWPOLYLINEs (winches w2/w3, the combined p1 receptacle footprint with a
+  notch cut out for p4center) directly on the true printed edges - i.e.
+  the DXF's only job here was precise pixel measurement of an existing
+  image, not a new rendering.
+  Conversion: pixel = (dxf_x / 1.313675, image_height - dxf_y / 1.313675).
+  The scale factor is u_pixel's magnitude, NOT 1 - the DXF world extents
+  (2405.3 x 1663.1) are the image's pixel size already multiplied by that
+  factor, and skipping the division silently produces coordinates that
+  are still roughly plausible-looking (all boxes land in the right
+  general area, right order, right relative spacing) but are wrong by a
+  constant factor - the kind of error that only surfaces by overlaying
+  the result on the source image and looking, not by inspecting the
+  numbers alone. First attempt here made exactly that mistake.
+  Result vs. old hand-picked rectangles (10.10e/10.13/10.14): every
+  10t-plate quantity-ladder level (p10_2..p10_14) shifts up to ~27px off
+  the true printed edge, in both directions independently (a hotspot's
+  top and bottom don't drift by the same amount, since the old ones were
+  evenly-spaced guesses rather than measurements of the real, unevenly-
+  gapped plate positions). p5x2 shrinks from a 60px-tall guess to its
+  true ~38px (it really is a thinner plate than the 10t ones - confirmed
+  by the DXF, not assumed). w2/w3 and p1/p4center also tightened to the
+  DXF-measured boundaries. All 21 hotspots re-verified by rendering them
+  as red outlines over the actual diagramImage and confirming each one
+  hugs its real printed edge before shipping.
+  p4center's hotspot now spans the full center-column height (932-1249),
+  merging the DXF's small upper "notch" polyline (932-1001, physically
+  just the bit of the center section poking up above the two receptacles)
+  with the unmarked gap below it (1001-1249, same y-range as the p1
+  boxes) - the DXF only explicitly traced the notch, but the wider outer
+  polyline's path shows that lower gap belongs visually to the center
+  section, not to either p1 receptacle, consistent with the original
+  hand-picked p4center already covering that same full height.
+  No combo data, weights, or component list changed - hotspot geometry
+  only. diagramImage/diagramWidth/diagramHeight all unchanged (still the
+  same 1831x1266 JPG).
+
+================================================================================

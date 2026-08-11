@@ -923,10 +923,10 @@
         diagramAlt: 'Liebherr LTM 1650-8.1 counterweight diagram, receptacles/plates/winches',
         diagramWidth: 1831,
         diagramHeight: 1266,
-        figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03) — actual OEM exploded-view artwork, extracted directly, not redrawn',
+        figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03) — actual OEM exploded-view artwork, extracted directly, not redrawn. Hotspots re-traced from a user-supplied alignment DXF (guide lines drawn directly over this JPG at 1:1 scale) - replaces the earlier hand-picked-rectangle estimates, which drifted up to ~25px off the true plate edges. See methodology.txt 10.22.',
         components: [
           { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center', shortLabel: '',
-            hotspots: [{ points: '300,1000 650,1000 650,1230 300,1230' }, { points: '1190,1000 1560,1000 1560,1230 1190,1230' }] },
+            hotspots: [{ points: '333,1001 745,1001 745,1249 333,1249' }, { points: '1087,1001 1500,1001 1500,1249 1087,1249' }] },
           // Item 4 ("Center section") is fixed machine structure, not a
           // counterweight component - never appears in any combo's own
           // composition list, zero weight, never sold/removed separately.
@@ -937,9 +937,9 @@
           // a crew member actually sees mounted, rather than leaving it
           // dark next to a highlighted item 1 (reported as confusing).
           { id: 'p4center', name: 'Center Section', weight: 0, linkedId: 'p1', shortLabel: '',
-            hotspots: [{ points: '750,960 1080,960 1080,1230 750,1230' }] },
+            hotspots: [{ points: '745,932 1087,932 1087,1249 745,1249' }] },
           { id: 'p5x2', name: 'Counterweight Plate 5t ×2', weight: 10, shortLabel: '',
-            hotspots: [{ points: '380,165 650,165 650,225 380,225' }, { points: '1195,165 1470,165 1470,225 1195,225' }] },
+            hotspots: [{ points: '382,174 649,174 649,212 382,212' }, { points: '1195,178 1460,178 1460,216 1195,216' }] },
           // quantityGroup: unlike LTM 1110's Winch2*/Replacement Ballast
           // slotGroup (mutually exclusive ALTERNATIVES, cycled via repeat
           // clicks on one hidden hotspot), this is a quantity LADDER - the
@@ -950,23 +950,23 @@
           // clicking the current top level removes it. See
           // selectCwtSlotLevel() and methodology.txt 10.10.
           { id: 'p10_2', name: 'Counterweight Plate 10t ×2', weight: 20, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,225 650,225 650,320 380,320' }, { points: '1195,225 1470,225 1470,320 1195,320' }] },
+            hotspots: [{ points: '382,243 649,243 649,316 382,316' }, { points: '1195,249 1460,249 1460,321 1195,321' }] },
           { id: 'p10_4', name: 'Counterweight Plate 10t ×4', weight: 40, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,320 650,320 650,410 380,410' }, { points: '1195,320 1470,320 1470,410 1195,410' }] },
+            hotspots: [{ points: '382,347 649,347 649,421 382,421' }, { points: '1195,352 1460,352 1460,426 1195,426' }] },
           { id: 'p10_6', name: 'Counterweight Plate 10t ×6', weight: 60, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,410 650,410 650,500 380,500' }, { points: '1195,410 1470,410 1470,500 1195,500' }] },
+            hotspots: [{ points: '382,453 649,453 649,525 382,525' }, { points: '1195,456 1460,456 1460,531 1195,531' }] },
           { id: 'p10_8', name: 'Counterweight Plate 10t ×8', weight: 80, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,500 650,500 650,592 380,592' }, { points: '1195,500 1470,500 1470,592 1195,592' }] },
+            hotspots: [{ points: '382,556 649,556 649,630 382,630' }, { points: '1195,562 1460,562 1460,634 1195,634' }] },
           { id: 'p10_10', name: 'Counterweight Plate 10t ×10', weight: 100, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,592 650,592 650,687 380,687' }, { points: '1195,592 1470,592 1470,687 1195,687' }] },
+            hotspots: [{ points: '382,661 649,661 649,734 382,734' }, { points: '1195,666 1460,666 1460,738 1195,738' }] },
           { id: 'p10_12', name: 'Counterweight Plate 10t ×12', weight: 120, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,687 650,687 650,782 380,782' }, { points: '1195,687 1470,687 1470,782 1195,782' }] },
+            hotspots: [{ points: '382,764 649,764 649,840 382,840' }, { points: '1195,770 1460,770 1460,843 1195,843' }] },
           { id: 'p10_14', name: 'Counterweight Plate 10t ×14', weight: 140, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
-            hotspots: [{ points: '380,782 650,782 650,900 380,900' }, { points: '1195,782 1470,782 1470,900 1195,900' }] },
+            hotspots: [{ points: '382,874 649,874 649,945 382,945' }, { points: '1195,874 1460,874 1460,945 1195,945' }] },
           { id: 'w2', name: 'Winch 2 (incl. rope)', weight: 4.7, countsToward: false, shortLabel: '',
-            hotspots: [{ points: '800,650 1000,650 1000,870 800,870' }] },
+            hotspots: [{ points: '826,691 999,691 999,859 826,859' }] },
           { id: 'w3', name: 'Winch 3 (incl. rope + luffing pulley block)', weight: 7.9, countsToward: false, shortLabel: '',
-            hotspots: [{ points: '800,340 1035,340 1035,635 800,635' }] }
+            hotspots: [{ points: '799,371 1047,371 1047,635 799,635' }] }
         ],
         combos: [
           { items: [] },
