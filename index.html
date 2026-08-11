@@ -648,12 +648,15 @@
         ]
       },
       // Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07
-      // "Counterweight" (pages 12-20/49), (c) Liebherr-Werk Ehingen GmbH
-      // 2021. 38 combos below (incl. one repeated total, see combos[]
+      // "Counterweight" (pages 12-21/49), (c) Liebherr-Werk Ehingen GmbH
+      // 2021. 39 combos below (incl. one repeated total, see combos[]
       // comment) verified the same way as 1250's - every printed total
-      // checked against the subset-sum of its listed components, all 38
+      // checked against the subset-sum of its listed components, all 39
       // reconcile exactly once the Winch 2* exclusion rule (see below) is
-      // applied. See methodology.txt 10.7 before adding another crane.
+      // applied. One entry on page 21 (28.7t) does NOT reconcile even
+      // with that rule applied and was deliberately left out - see
+      // methodology.txt 10.19. See methodology.txt 10.7 before adding
+      // another crane.
       '1110': {
         label: 'LTM 1110-5.1',
         sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
@@ -701,8 +704,11 @@
           { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5, shortLabel: '7',
             hotspots: [{ points: '989,511 133,511 133,428 989,428' }] },
           { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8', shortLabel: '8 / Winch #2',
+            slotWarning: 'Winch 2* and Replacement Ballast fill the same slot and weigh the same, but they are NOT interchangeable. This is Winch 2* — an actual auxiliary winch is fitted here, giving the crane winch 2 capability. It is not just extra dead weight.',
             hotspots: [{ points: '694,320 404,320 404,54 694,54' }] },
-          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', shortLabel: '8', hotspots: [] }
+          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', shortLabel: '8',
+            slotWarning: 'Winch 2* and Replacement Ballast fill the same slot and weigh the same, but they are NOT interchangeable. This is Replacement Ballast — dead weight only, no winch fitted. The crane does NOT have winch 2 capability with this selected.',
+            hotspots: [] }
         ],
         // 25.4t appears twice with genuinely different compositions (a
         // real OEM chart quirk, not a duplicate/typo) - {2,3,4,5,8w} and
@@ -747,7 +753,14 @@
           { items: ['p1', 'p3', 'p4', 'p5', 'p7', 'p8b'] },
           { items: ['p1', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8b'] },
           { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p7'] },
-          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8w'] }
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8w'] },
+          // 29.0t: added from a supplementary page the person located
+          // after noticing the app's full-stack total (28.2t, Winch 2*)
+          // didn't match what they expected (29t) - turned out to be a
+          // genuinely different, separately-published combo (full stack
+          // + Replacement Ballast instead of Winch 2*), not the same
+          // combo miscalculated. See methodology.txt 10.19.
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8b'] }
         ]
       },
       // Source: Liebherr doc LTM 1130-5-1-008 (0212849-05), chapter 4.07
@@ -1265,6 +1278,15 @@
         if (!(cwtSelected.has('p3') && cwtSelected.has('p4'))) {
           notices.push(`${c.name} is only confirmed centered correctly when plates 3 and 4 are both also fitted. With this selection, ${c.name.toLowerCase()} may not be centered correctly and can be damaged — verify physical centering before use.`);
         }
+      });
+      // slotWarning: for slot-sharing alternatives that are NOT functionally
+      // equivalent despite matching weight (e.g. LTM 1110's Winch 2* vs
+      // Replacement Ballast - one gives actual winch capability, the other
+      // is dead weight) - flag whichever one is currently selected so
+      // nobody reads the matching weight/slot as "these are basically the
+      // same part."
+      data.components.filter(c => c.slotWarning && cwtSelected.has(c.id)).forEach(c => {
+        notices.push(c.slotWarning);
       });
       if (notices.length) {
         noticeEl.style.display = 'block';

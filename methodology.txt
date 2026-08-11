@@ -1343,4 +1343,75 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   New file: counterweight/img/ltm1110-cwt-exploded-v2.png (1122x1400).
   Old ltm1110-cwt-exploded.png deleted, nothing else referenced it.
 
+10.19 LTM 1110-5.1 combo list gap - a genuinely missing 29.0t combo, found
+      by trusting the person's arithmetic over my own extraction
+  The person asked why the "full stack" combo showed 28.2t instead of
+  29.0t. I explained the countsToward:false rule (correct, unchanged) but
+  that didn't fully answer them - they went and checked their own PDF and
+  came back with more pages ("it was cut off from the pdf i supplied").
+  Re-extracted the new pages with the same -29 decode as always and ran
+  every entry through the same subset-sum check used throughout this
+  whole feature. Result: 39 real combos on the supplementary pages, 38 of
+  which were ALREADY in the app's data (this new PDF overlapped almost
+  entirely with the original extraction) and exactly one new one: 29.0t =
+  full 7-plate stack + Replacement Ballast (as opposed to the existing
+  28.2t = full stack + Winch 2*). Two different, both genuinely
+  published, full-stack combos - not the same combo miscounted. Added it
+  to the '1110' combos array (see comment there) and to the crane's combo
+  count in the header comment.
+  Also found a real anomaly while doing this: one entry on the new pages
+  prints "28.7 t" for a composition (plates 1,2,3,4,5,6 + Replacement
+  Ballast) that actually sums to 26.5t - a 2.2t gap that does NOT match
+  the countsToward:false/Winch-2* exclusion pattern (no Winch 2* is even
+  present in that entry's own component list) and doesn't correspond to
+  any known plate weight either. Checked this thoroughly before writing
+  it off: pulled the raw per-character codes for that specific text run
+  via get_text("rawdict") and decoded them by hand against the same -29
+  shift used everywhere else - the digits "28.7" really are what's
+  encoded in the PDF, not a decode error on my end, and there is no
+  hidden/overlapping text block near it that could be a dropped 7th
+  component. This is a single, isolated instance in the whole fleet's
+  extracted data (every other entry across all 5 cranes has reconciled
+  exactly) - treated as a genuine printing error in Liebherr's own
+  document rather than invented a 7th component to make it add up.
+  NOT added to the app. If a future page of this same document clarifies
+  it, revisit; until then this specific 28.7t line should be treated as
+  unreliable if anyone encounters it in the physical manual too.
+  Lesson for next time this kind of question comes up: when someone
+  pushes back on a total that "should" be a round/expected number, don't
+  just re-explain the existing rule and stop there - the discrepancy can
+  be a real gap in what was extracted, not a misunderstanding on their
+  end. Re-checking the source here found a real missing combo AND a real
+  document error, neither of which a second explanation of the same rule
+  would have surfaced.
+
+10.20 Winch 2* vs Replacement Ballast - added an explicit non-
+      interchangeability warning, LTM 1110 only so far
+  Prompted by the same conversation as 10.19: once the person understood
+  the weight/total mechanics, they raised the more important point - the
+  app was presenting these two as basically the same choice (same slot,
+  same 0.8t, one UI toggle) with nothing calling out that they are NOT
+  interchangeable in what the crane can actually do. Winch 2* fitted
+  means the crane has a working second auxiliary winch. Replacement
+  Ballast in the same slot means it does not - that slot is inert dead
+  weight only. Someone rigging for a job that needs winch 2 could easily
+  read "same weight, same slot" as "doesn't matter which," which is
+  wrong and could leave them without a winch they were counting on.
+  New per-component field `slotWarning` (set on both p8w and p8b, worded
+  from each one's own perspective) plus a small addition to renderCwtTab's
+  existing notices-array pattern (same mechanism already used for
+  "combination not OEM-approved" and LTM 1250's centerTrim warning) - any
+  currently-selected component with a slotWarning string gets it appended
+  to the warning box, regardless of which one is active. Verified both
+  directions render correctly (selecting Winch 2* shows the "this IS a
+  winch" wording, cycling to Replacement Ballast swaps to the "this is
+  NOT a winch" wording).
+  Scope note: only LTM 1110 has this slotGroup pattern with a real
+  functional (not just cosmetic) difference between alternatives right
+  now. If another crane's data ever has a similar "same slot, same
+  weight, different real-world capability" pair, give it a slotWarning
+  too - don't assume every slotGroup/quantityGroup pairing needs one
+  (LTM 1650's 10t plate quantity ladder, for example, has no such
+  distinction - every rung really is just more of the identical plate).
+
 ================================================================================
