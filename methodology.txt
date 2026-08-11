@@ -1967,3 +1967,44 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   geometry only.
 
 ================================================================================
+
+10.33 LTM 1160 and LTM 1300's interchangeable Plate 3 copies weren't
+      actually interchangeable for combo-matching purposes - swept every
+      crane for the same latent bug flagged back in 10.24
+  Person reported directly: selecting p1+p2+p3a on LTM 1160 correctly
+  flagged 30t as OEM-approved, but p1+p2+p3b (or p3c) - same weight,
+  physically identical plate - did not. Root cause was exactly what
+  10.24 predicted when fixing LTM 1650's interchangeable 10t positions:
+  "This wasn't needed for LTM 1160's own repeated-plate components
+  (p3a/b/c, 10.9) since that crane's combos only ever reach 3 total
+  copies and were already always listed as the same front-loaded
+  canonical subset - the mismatch risk exists there too in principle,
+  just never surfaced... flagging here in case it's worth doing if 1160
+  ever gets the same free-click complaint." It did.
+  Fix was one line per component - just adding
+  interchangeableGroup: 'plate3_1160' to p3a/p3b/p3c. No logic changes
+  needed; cwtMatchSignature() (built for 1650) already handles any
+  interchangeableGroup-tagged component generically.
+  Person then asked for a full sweep, not just the reported crane.
+  Checked every crane's component list for duplicate `name` values
+  (the actual signal for "physically identical/interchangeable part")
+  lacking the tag. Found three affected cranes total:
+    - LTM 1160: p3a/p3b/p3c ("Counterweight Plate 3" x3) - fixed here.
+    - LTM 1300: p3a/p3b ("Counterweight Plate 3" x2) - same bug, same
+      fix, same session (was flagged as a known risk in 10.31/10.32's
+      area but not yet triggered/fixed until now).
+    - LTM 1650: p10a-p10g - already fixed in 10.24, confirmed still
+      correctly tagged, no action needed.
+  LTM 1250, 1110, and 1130 have NO duplicate-named components at all -
+  every part in those three is uniquely positioned, so this bug class
+  structurally cannot occur there. Nothing to fix, not just nothing
+  found.
+  Verified both fixes directly: LTM 1160 p1+p2+p3b now correctly reads
+  30.0t/OEM-approved (previously flagged as not approved despite correct
+  weight). LTM 1300 p1+p5+p2+p3b (note p5 is mandatory in every listed
+  1300 combo, unlike 1160 - a first test pass without it correctly
+  showed "not approved" for the RIGHT reason, worth remembering before
+  assuming a not-approved result means the interchangeableGroup fix
+  didn't work) now correctly reads 36.0t/OEM-approved.
+
+================================================================================
