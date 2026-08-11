@@ -755,4 +755,269 @@ in a visual stack, or jump straight to a known combination from a dropdown.
       process gap (verify-against-source-image doesn't catch an undersized
       crop, only a bad trace within a correctly-sized crop), not a one-off.
 
+10.8 LTM 1130-5.1 added - different diagram style, per-unit weight trap
+  Source: Liebherr doc LTM 1130-5-1-008 (0212849-05), chapter 4.07
+  "Counterweight" (pages 2-15/39), (c) Liebherr-Werk Ehingen GmbH 2020.
+  28 combos, all verified by subset-sum - but only after catching a real
+  data trap on the first pass (below). Same PyMuPDF -29 character-shift
+  decode as every prior crane, unchanged.
+
+  a) Per-unit vs combined-pair weight - a real trap, not a formatting
+     quirk. The source chart lists "2x auxiliary ballast 8 / Individual
+     weight 6.35" for one line. First-pass subset-sum check using 6.35 as
+     the item's TOTAL contribution failed by exactly 6.35t on every combo
+     that included it (e.g. the 39.1t combo undershot to 32.75 using
+     6.35, but landed exactly on 39.1 using 12.7). "Individual weight"
+     here means weight PER SIDE, doubled for the pair's actual
+     contribution - the opposite convention from LTM 1250's "2x Hook
+     Ballast 8 / 20.0t" line, where 20.0 WAS already the combined total,
+     not per-unit (confirmed the same way, via its own subset-sum check
+     passing directly with no doubling needed - see 10.2). Two "2x ..."
+     items on two different cranes' charts, two different conventions -
+     the label format alone doesn't tell you which one you're looking at.
+     ALWAYS verify every "2x"/"pair"-style line item's convention via
+     subset-sum before trusting it, per-crane, no matter how similar the
+     wording looks to a crane already done. Modeled here with the doubled
+     value (12.7) baked directly into the component's weight field, same
+     pattern as 1250's p8 (a single combined-weight component with two
+     hotspots, not two separate weighted components).
+  b) "Replacement weight 7 or winch 2*" is ONE line item here (single
+     name, single weight, 2.9t) that always counts fully toward the
+     total in every combo it appears in - confirmed by subset-sum, no
+     exclusion needed. Do NOT assume this crane needs 1110's
+     countsToward/slotGroup treatment just because the name pattern
+     ("winch...*") looks similar - 1110's Winch 2*/Replacement Ballast
+     were two distinctly named, distinctly weighed, mutually-exclusive
+     items with an asymmetric counting rule; this crane's chart presents
+     the winch-or-replacement-weight choice as a single pre-merged line,
+     no asymmetry to encode. Check each crane's chart on its own terms.
+  c) Several totals carry a trailing "*" in the source chart (e.g. "0.0*",
+     "2.2*", "5.9*") with no footnote text captured in this excerpt
+     explaining what it means - possibly a road-travel-configuration flag
+     (the doc's intro references chapter 3.04 for road-travel counterweight
+     distribution) but this is NOT confirmed, don't assume it. The
+     asterisk is not encoded in the app's data at all - stripped, numeric
+     value used as normal. If a future full manual or the person confirms
+     what it means, come back and encode it (e.g. as a badge/note) rather
+     than guessing now.
+  d) Diagram (Fig.103261) is a different STYLE from 1250/1110 - a side/
+     front elevation view (plates as flat horizontal bands, each spanning
+     the full stack width, weight printed directly on each band) plus a
+     separate rear view below it showing the two auxiliary-ballast wings
+     (item 8) mounted left/right. This is actually SIMPLER to make
+     hotspots for: plates 1-7's boundaries are straight horizontal lines,
+     so plain rectangles (read directly off a pixel grid, no OpenCV
+     contour tracing needed) fit them exactly - unlike the isometric
+     1250/1110 diagrams where a rectangle was only ever an approximation.
+     The two auxiliary-ballast wings (item 8) DID get the full OpenCV
+     contour treatment (mirror-image shapes, worth tracing properly) -
+     and hit the SAME crop-too-narrow failure as 1250's plate 1 on the
+     first attempt (right edge of the crop cut through the wing's real
+     shape, so the traced contour silently stopped at the crop boundary
+     instead of the part's actual edge) - re-confirms 10.4's lesson that
+     "verify by redrawing on the source image" only catches a bad trace
+     within a correctly-sized crop, not an undersized crop; still have to
+     deliberately check each part's true extent, every time.
+     Item "10" printed on the diagram (a small centering cone) is NOT a
+     counterweight component - it's a mounting fixture mentioned in the
+     text ("taking down counterweight plate 1 on the centering cone 10"),
+     zero weight, never appears in any combination's composition list.
+     Correctly excluded from components/hotspots - don't add it if a
+     future pass looks at this diagram and wonders why "10" has no data.
+  Scope: same as every prior crane - no fastening/tightening-torque/
+  bitt detail (sections 1.2-2.3 of this doc) surfaced in the tool.
+
+10.9 LTM 1160-5.2 added - repeated identical plates, imprecise hotspots
+  Source: Liebherr doc LTM 1160-5-2-003 (0212601-04), chapter 4.07
+  "Counterweight" (pages 8-10/28), (c) Liebherr-Werk Ehingen GmbH 2021 -
+  a short 3-page excerpt (just the combination chart, no assembly/
+  fastening pages included this time, unlike 1110/1130). Same PyMuPDF
+  -29 decode as every prior crane.
+
+  a) Repeated identical plates, not present/absent. The chart's
+     "Composition" breakdown lists "Counterweight plate 3 / 10" up to
+     THREE times in a single combo (e.g. the 50t combo lists it 3x) -
+     confirmed against the diagram, which shows three separate physical
+     10t plates each individually numbered "3" by their own callout line
+     (plus a 4th, differently-numbered "2", visually identical/same
+     weight but a distinct part). This is a genuinely different pattern
+     from every prior crane (present-or-absent, or 1110's mutually-
+     exclusive slot) - here the same named plate can be included 0, 1, 2,
+     or 3 times. Modeled as three separate components (p3a/p3b/p3c) with
+     the SAME name ("Counterweight Plate 3") and SAME weight (10t) rather
+     than inventing a quantity/counter UI control - this matches how the
+     source doc itself presents it (repeated line items, not "3x"), reuses
+     the existing per-component toggle/hotspot machinery with zero new
+     mechanism, and the Composition table naturally ends up showing
+     "Counterweight Plate 3" multiple times too, same as the OEM chart.
+     If a future crane needs an even larger repeat count, this same
+     pattern (one lettered component per physical copy) still works, it
+     just means more entries - reconsider only if the count gets large
+     enough that hand-listing every copy stops being reasonable.
+  b) Diagram (Fig.124343) is a JPEG (not PNG like every prior crane) and
+     is WHITE-ON-BLACK (inverted from every prior crane's white-
+     background/black-line convention) - handled fine as-is, the
+     .cwt-image-wrap's white background CSS just never shows through
+     since the JPEG has no transparency and fully covers the wrap. Also
+     the smallest fleet plate set encountered so far - just 4 distinct
+     named components (1, 2, 3, 4) versus 1250/1110's 7-8.
+  c) Hotspot precision is LOWER than every other crane so far, and this
+     is a deliberate, documented trade-off, not an oversight. The diagram
+     shows the SAME 5 physical plates from two simultaneously-visible,
+     overlapping isometric faces (front-left face and front-right face of
+     one stack, at different screen positions due to the projection), all
+     tightly interlocked with no clean gaps between them - the flood-fill
+     contour method that worked cleanly for 1250/1110's more separated
+     isometric plates was not attempted here because there's no clean
+     "outside" region between adjacent plates for it to find. Hotspots
+     are hand-picked rectangles read off a pixel grid (same category as
+     1250's original v1 attempt, before it was upgraded to traced
+     outlines per the person's feedback) - functional and roughly
+     positioned, but not outline-accurate. If this needs the same
+     polish pass 1250 got, that's a known follow-up, not a bug.
+  Scope: same as every prior crane, no fastening/bitt detail (none was
+  even included in this particular excerpt to begin with).
+
+10.10 LTM 1650-8.1 added - PARTIAL DATA, quantity stepper, load-chart-vs-
+      total-weight distinction (a THIRD independent confirmation of the
+      Winch-doesn't-count pattern)
+  Source: Liebherr doc LTM 1650-8-1-000 (0213131-03), chapter 4.07
+  "Counterweight" - person supplied pages 3-19, but the doc's own footer
+  reads "4.07 ± 19/93" - this is 17 pages out of a 93-PAGE chapter. This
+  is the fleet's flagship 700t-class crane; the confirmed data only
+  covers "load chart" configurations 0 through 175t, and the document
+  almost certainly continues well past that (an 8-axle crane this size
+  routinely ballasts heavier than 175t). DO NOT present this crane's data
+  as complete anywhere - the in-app sourceNote says so explicitly
+  ("PARTIAL DATA... confirmed combinations from 0-175t only"), keep that
+  wording (or equivalent) if this section is ever edited. If the person
+  supplies the remaining ~76 pages later, this is a data-extension job,
+  not a rebuild - same components, more combos entries, possibly more
+  qty10 slotGroup members if quantities go past 14.
+
+  a) "According to the load chart" vs "Total weight" - a third,
+     independent confirmation of the same pattern first found on LTM 1110
+     (Winch 2*) and reasoned-about differently on LTM 1130 (single merged
+     line, no exclusion needed there). This document is explicit about it
+     in plain prose, no reverse-engineering required this time: "When
+     calculating the counterweight combinations, winch 2 and winch 3 are
+     not taken into consideration, but are still listed in the total
+     weight column." Two winches, both countsToward:false, confirmed
+     against every one of the 64 non-zero-level combos (each load-chart
+     level has 4 winch variants: neither, winch 2 only, winch 3 only,
+     both - all 4 correctly compute to the SAME load-chart total once
+     their weights are excluded, exactly as the doc states). Winch 2 =
+     4.7t, Winch 3 = 7.9t (includes luffing pulley block per the doc).
+     Three cranes, three different presentations of "some component's
+     weight doesn't count toward the number that matters" (1110: two
+     separate mutually-exclusive named items; 1130: merged into one
+     line, no exclusion; 1650: two independent items, explicit prose
+     rule) - reinforces 10.7's lesson that this needs checking per-crane,
+     every time, never assumed from a prior crane's pattern.
+  b) Quantity, again, but too many repeats for 1160's approach. LTM 1160's
+     three physically-identical plates got three separate lettered
+     components (p3a/p3b/p3c) because three was a manageable number to
+     hand-list. This crane's "Counterweight plate 10t" appears in
+     quantities of 0/2/4/6/8/10/12/14 (in just the partial data available
+     - could go higher) - hand-listing 7 lettered copies (p10a...p10g) was
+     judged unwieldy and, more importantly, doesn't communicate "this is a
+     quantity, always in steps of 2" the way a stepper does. Reused the
+     slotGroup/cycleCwtSlotGroup mechanism (built for 1110's Winch 2*/
+     Replacement Ballast mutually-exclusive slot) for a NEW purpose it
+     wasn't originally designed for: a quantity stepper. Components
+     p10_2/p10_4/.../p10_14 share slotGroup:'ten'; only p10_2 carries the
+     actual hotspot; clicking cycles none -> 2 -> 4 -> ... -> 14 -> none.
+     This worked with ZERO changes to the shared toggle/render logic -
+     cycleCwtSlotGroup() was already generic over "however many named
+     members share this slotGroup," it didn't care that this time the
+     members represent quantities of the same physical part rather than
+     alternatives. Reuse this same trick for a future crane's repeated-
+     plate pattern once the repeat count gets unwieldy for 1160's letter-
+     per-copy approach (rough guideline: 3 copies, list them; 6+, use the
+     stepper).
+     "Counterweight plate 5t" only ever appears at a fixed quantity of 2
+     in the confirmed data (never 0-but-not-2) - modeled as a single plain
+     toggle (weight=10, the pair's combined contribution), NOT a stepper,
+     since there's only one nonzero state to represent. If the missing
+     76 pages reveal other 5t quantities, promote it to a slotGroup the
+     same way p10 was done.
+  c) Symmetry requirement stated as a hard rule in the source ("only
+     permissible with a symmetrically assembled counterweight... left and
+     right stacks must be symmetric") - not encoded as a runtime check,
+     because every published combo in the chart is already internally
+     symmetric by construction (plates always added in the pairs the
+     chart itself specifies) - there's no way to reach an asymmetric state
+     through this tool's own UI using only the documented items, so a
+     redundant runtime check wasn't added. If a future free-click state
+     could somehow desync left/right (it currently can't, since p10_x/
+     p5x2 represent both-sides-combined quantities, not per-side toggles),
+     revisit this.
+  d) "Center section" (item 4 in the diagram - frame lower/upper section,
+     ballasting device, assembly winch) is NOT a counterweight component,
+     same treatment as 1130's centering cone (item 10) and 1160's implicit
+     turntable structure - it's fixed machine structure, never appears in
+     any combination's composition list, correctly excluded from
+     components/hotspots.
+  e) Diagram (Fig.156378) is the cleanest yet for hotspot purposes -
+     genuinely non-overlapping, symmetric left/right layout with every
+     part drawn as its own separate, unambiguous shape (unlike 1160's
+     interlocked isometric view). Hotspots here are still hand-picked
+     rectangles (not OpenCV-traced) purely as a time/effort call given
+     this crane's data is already partial and will need revisiting once
+     the rest of the source document is available - not a statement that
+     this diagram couldn't support traced outlines like 1250/1110's.
+  Scope: same as every prior crane, no fastening/bitt detail surfaced.
+
+10.11 LTM 1300-6.2 EU-model PDF - EXTRACTED, DELIBERATELY NOT SHIPPED
+  Person supplied a counterweight-combination PDF explicitly filenamed
+  with "GG 918110808 EU model" and flagged directly, unprompted, before
+  processing: this is the EU-market variant (different road-axle load
+  limits than the global/export version already referenced elsewhere in
+  this app as plain "LTM 1300-6.2" / crane id '1300' in Tab 1/2/3), and
+  the person will source the global variant separately later.
+  Extracted and fully verified anyway (10 combos: 13/16/26/36/46/56/66/
+  76/86/96t, all reconciled by subset-sum against 7 components -
+  Receptacle Plate 1 (13t), Plate 7 (3t), Plate 2 (10t), Plate 3 (10t,
+  appears as 1 or 2 copies), Plate 4 (10t), Auxiliary Ballast 5 (10t x2),
+  Auxiliary Ballast 6 (10t x2)). Diagram (Fig.121718) also extracted.
+  Notable data point if/when this does get used: at the 66t/86t "special
+  ballast" tiers, three spacer pins physically replace what would
+  otherwise be a second Plate 3 - those tiers use only ONE Plate 3 copy
+  (same as the 36-46t tiers) plus the aux ballast items, NOT a second
+  Plate 3 - a real branch in the data, not a simplification.
+  Deliberately NOT wired into COUNTERWEIGHT_DATA under '1300' or any
+  other key - the diagram and combo data are saved outside the repo (this
+  session's scratchpad, not committed) specifically so they don't get
+  mistaken for shippable data. DO NOT add a '1300' entry to
+  COUNTERWEIGHT_DATA using this PDF's data without first confirming with
+  the person whether it actually matches the global-variant crane already
+  in Tab 1/2/3's '1300' entries, or whether it needs its own separate key
+  (e.g. '1300-eu') to avoid silently overwriting/conflating two distinct
+  physical counterweight systems under one crane id.
+
+10.12 LRT 1100-2.1 PDF - HELD, subsection mismatch found
+  Person supplied a 1-page counterweight-combination excerpt filenamed
+  for LRT 1100-2.1, and the document's own footer confirms "LRT 1100-2-
+  1-002" - but the actual visible content on that single page is headed
+  "2.1 LRT 1090-2.1", a DIFFERENT model number, with its own small
+  combination table (0t / 8t* / 12t, keyed to "crane type" rather than a
+  plate-combination breakdown - this appears to be a much simpler
+  fixed-block counterweight system than every other crane processed so
+  far, consistent with the LRT 1100/1090 being a smaller rough-terrain
+  class machine, not modular multi-plate). Whether "LRT 1090-2.1" here is
+  a genuinely different variant sharing this chapter with "LRT 1100-2.1"
+  (most likely, given the doc explicitly numbers this as subsection "2.1"
+  implying a "2.2" or similar likely exists elsewhere in the source
+  document for the 1100 itself), or some other explanation, is NOT
+  determinable from the one page supplied.
+  NOT extracted into the app. Diagrams (Fig.151204 "Counterweight" and
+  Fig.145613 "Counterweight 1", showing a single fixed counterweight
+  block bolted to the superstructure plus a small "centering cone" fixture
+  - same non-component-fixture pattern as 1130's item 10 and 1650's item
+  4) were pulled for reference but not saved as shippable assets pending
+  clarification. If the person confirms "1090" data is fine to use for
+  the "1100" crane entry, or supplies the correct page, this is a small,
+  fast job (far simpler data model than any crane so far - just 3 fixed
+  states, no plate combinations) - don't over-build for it.
+
 ================================================================================
