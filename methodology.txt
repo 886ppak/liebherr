@@ -1218,4 +1218,65 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   numbered item is which plate) was never actually in question, only
   hotspot precision. This is purely a diagram + hotspot-geometry swap.
 
+10.16 On-diagram plate number labels - LTM 1130 ONLY, deliberately not
+      applied fleet-wide
+  Added a small text label (e.g. "7 / Winch #2") centered on each hotspot,
+  always visible (not just on hover/select) - new `shortLabel` field per
+  component, new cwtPolygonCenter() helper (average of a hotspot's own
+  vertices - good enough for these mostly-convex plate outlines, not a
+  true area centroid), rendered as an SVG <text> with a white stroke halo
+  (paint-order:stroke) so it stays legible over both black line art and
+  white background. pointer-events:none so the label never blocks the
+  polygon's own click target underneath it.
+  Tried this on all 5 cranes first, then reverted everything except LTM
+  1130. Reason: 1250, 1110, 1160, and 1650's diagrams are the actual OEM
+  artwork extracted directly (see 10.4/10.7/10.9/10.10) and already have
+  the manufacturer's own printed reference numbers baked into the image
+  with leader lines - adding another number layer on top just duplicated
+  them, and for 1650's quantity-ladder plates (7 stacked hotspots per
+  side, all labeled "10t") the labels overlapped into an unreadable mess
+  since those hotspots are packed tightly together. LTM 1130 is the one
+  exception with nothing baked in (10.15's diagram is a plain CAD line
+  trace, no printed labels at all), so it's also the one crane where this
+  actually adds information instead of duplicating it.
+  Mechanism: `shortLabel: ''` on a component means "render no label"
+  (falsy, skipped) - used for every non-1130 component and for 1650's
+  zero-weight linked Center Section. Omitting `shortLabel` entirely would
+  fall back to the full `name` string as the label, which is worse than
+  either option here, so every component across all 5 cranes now sets it
+  explicitly one way or the other - don't add a new component without
+  also setting this, or it'll silently fall back to printing its full
+  name on the diagram.
+  If the person re-does another crane's diagram from CAD (per 10.15's
+  process) the way they did for 1130, give it real shortLabels too at
+  that point - the reason to skip it is "this diagram already has printed
+  numbers," not "this feature is 1130-specific by design."
+
+10.17 "Jump to Known Combination" dropdown now syncs to manual selection
+  Previously the dropdown only ever changed the selection (one-way: pick
+  a combo -> plates highlight). Tapping plates by hand never touched the
+  dropdown, so a person building a combo manually who happened to land on
+  a real OEM-published total had no way to see that confirmed there
+  except the "OEM-approved combination" checkmark on the total-weight
+  card - the dropdown itself stayed on whatever it last showed (usually
+  "0.0 t - No counterweight"), which read as if the app hadn't noticed.
+  Fixed by making it two-way: cwtFindMatchingCombo now returns the
+  matched combo's own index in COUNTERWEIGHT_DATA[model].combos (was
+  previously just the combo object via Array.find - switched to
+  findIndex and spread the index onto the returned object as `.idx`, one
+  call site, no other callers to break), and renderCwtTab sets
+  #cwt-combo-select's value to that index whenever a match exists. When
+  the manual selection does NOT match any published combo, the dropdown
+  is explicitly set to selectedIndex = -1 (no visible selection) rather
+  than left showing a stale/misleading previous value - the existing
+  "not an OEM-approved combination" warning box already covers that case
+  so there's no need for the dropdown to also try to communicate it.
+  Verified both directions still work correctly together: picking from
+  the dropdown drives the selection (unchanged, onCwtComboSelect), and
+  building the same combo by hand now drives the dropdown back (new) -
+  tested by tapping LTM 1130's plates 1-7 one at a time (lands on the
+  real 29.3t combo, dropdown updates to show it), then adding plate 8
+  (42.0t, also real, dropdown updates again), then removing plate 2 only
+  (39.6t, not a published combo, dropdown drops to no selection).
+
 ================================================================================

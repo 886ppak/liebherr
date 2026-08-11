@@ -156,6 +156,7 @@
     .cwt-hotspot { fill: transparent; stroke: transparent; stroke-width: 4; cursor: pointer; outline: none; transition: fill 0.15s ease, stroke 0.15s ease; }
     .cwt-hotspot:hover, .cwt-hotspot:focus-visible { stroke: rgba(229,169,0,0.55); }
     .cwt-hotspot.selected { fill: rgba(229,169,0,0.32); stroke: var(--accent-gold); }
+    .cwt-hotspot-label { font-size: 34px; font-weight: 700; fill: #1a1200; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; pointer-events: none; user-select: none; }
 
     #update-banner {
       position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 200;
@@ -602,21 +603,21 @@
         // not pixel-perfect - see methodology.txt 10.4 before re-deriving
         // these for a different/rescanned diagram image.
         components: [
-          { id: 'p1', name: 'Receptacle Plate 1', weight: 11.0,
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 11.0, shortLabel: '',
             hotspots: [{ points: '1295,1543 1281,1502 1193,1429 1144,1414 1134,1317 1110,1320 1107,1415 830,1432 829,1361 775,1342 767,1385 800,1395 806,1366 804,1470 759,1454 758,1437 641,1463 643,1489 759,1569' }] },
-          { id: 'p2', name: 'Counterweight Plate 2', weight: 10.0,
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 10.0, shortLabel: '',
             hotspots: [{ points: '1414,1100 1041,1100 742,1123 567,1162 564,1212 662,1284 1414,1284' }] },
-          { id: 'p3', name: 'Counterweight Plate 3', weight: 10.0,
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 10.0, shortLabel: '',
             hotspots: [{ points: '1414,1044 1414,935 1363,953 1279,894 744,915 567,949 567,981 657,1044' }] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 10.0,
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 10.0, shortLabel: '',
             hotspots: [{ points: '1419,834 1419,738 1379,752 1279,683 762,703 569,737 569,765 668,834' }] },
-          { id: 'p5', name: 'Counterweight Plate 5', weight: 12.0,
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 12.0, shortLabel: '',
             hotspots: [{ points: '1405,589 1401,565 1301,506 1300,471 987,466 974,495 835,505 809,479 572,522 570,579 648,634 1401,613' }] },
-          { id: 'p6', name: 'Counterweight Plate 6', weight: 5.0, centerTrim: true,
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 5.0, centerTrim: true, shortLabel: '',
             hotspots: [{ points: '1311,370 1294,334 1221,317 1203,298 897,308 693,345 694,358 796,429 1038,389 1065,398 1302,392' }] },
-          { id: 'p7', name: 'Counterweight 7', weight: 10.0,
+          { id: 'p7', name: 'Counterweight 7', weight: 10.0, shortLabel: '',
             hotspots: [{ points: '1305,47 1087,32 576,89 574,220 658,232 676,254 685,225 818,205 843,228 966,225 1011,190 1197,187 1214,215 1221,187 1304,177' }] },
-          { id: 'p8', name: '2x Hook Ballast 8', weight: 20.0, separate: true,
+          { id: 'p8', name: '2x Hook Ballast 8', weight: 20.0, separate: true, shortLabel: '',
             hotspots: [
               { points: '120,517 121,690 142,704 386,720 388,587 410,586 417,541 399,530 358,534 339,520 340,488 323,476 284,482 270,471' },
               { points: '1427,397 1433,441 1456,453 1456,553 1569,633 1722,588 1726,422 1700,402 1480,384' }
@@ -680,22 +681,22 @@
         // real, confirmed OEM rule, not a data-entry gap - do not "fix" it
         // to count like every other item. See methodology.txt 10.7.
         components: [
-          { id: 'p1', name: 'Receptacle Plate 1', weight: 7.7,
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 7.7, shortLabel: '',
             hotspots: [{ points: '819,1160 768,1185 695,1178 590,1133 578,1032 538,1037 534,1137 315,1158 313,1073 262,1072 263,1165 100,1197 96,1262 226,1309 819,1309' }] },
-          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.1,
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.1, shortLabel: '',
             hotspots: [{ points: '779,917 724,942 624,910 132,973 122,1003 184,1019 779,1019' }] },
-          { id: 'p3', name: 'Counterweight Plate 3', weight: 6.0, hotspots: [] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.0, linkedId: 'p3',
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 6.0, shortLabel: '', hotspots: [] },
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.0, linkedId: 'p3', shortLabel: '',
             hotspots: [{ points: '50,645 820,645 820,895 50,895' }] },
-          { id: 'p5', name: 'Counterweight Plate 5', weight: 3.6,
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 3.6, shortLabel: '',
             hotspots: [{ points: '829,649 829,560 777,576 777,546 601,491 564,493 555,520 181,569 122,552 90,561 94,608 217,649' }] },
-          { id: 'p6', name: 'Counterweight Plate 6', weight: 0.3,
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 0.3, shortLabel: '',
             hotspots: [{ points: '588,422 584,414 574,411 544,415 434,412 396,417 364,437 330,443 329,463 333,469 352,471 540,450 580,441' }] },
-          { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5,
+          { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5, shortLabel: '',
             hotspots: [{ points: '799,244 689,276 552,230 149,279 121,286 120,309 266,359 799,359' }] },
-          { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8',
+          { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8', shortLabel: '',
             hotspots: [{ points: '440,11 409,7 279,25 274,50 267,53 274,76 276,180 319,192 326,159 416,147 422,162 464,173 468,143 456,146 448,122 455,32' }] },
-          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', hotspots: [] }
+          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', shortLabel: '', hotspots: [] }
         ],
         // 25.4t appears twice with genuinely different compositions (a
         // real OEM chart quirk, not a duplicate/typo) - {2,3,4,5,8w} and
@@ -760,25 +761,25 @@
         diagramHeight: 1030,
         figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
         components: [
-          { id: 'p1', name: 'Counterweight Plate 1', weight: 3.7,
+          { id: 'p1', name: 'Counterweight Plate 1', weight: 3.7, shortLabel: '1',
             hotspots: [{ points: '1439,985 576,985 576,777 1439,777' }] },
-          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.4,
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.4, shortLabel: '2',
             hotspots: [{ points: '1439,749 576,749 576,719 1439,719' }] },
-          { id: 'p3', name: 'Counterweight Plate 3', weight: 9.9,
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 9.9, shortLabel: '3',
             hotspots: [{ points: '1439,694 576,694 576,558 1439,558' }] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.7,
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.7, shortLabel: '4',
             hotspots: [{ points: '1439,529 576,529 576,435 1439,435' }] },
-          { id: 'p5', name: 'Counterweight Plate 5', weight: 1.5,
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 1.5, shortLabel: '5',
             hotspots: [{ points: '1439,406 576,406 576,370 1439,370' }] },
-          { id: 'p6', name: 'Counterweight Plate 6', weight: 2.2,
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 2.2, shortLabel: '6',
             hotspots: [{ points: '1439,360 576,360 576,314 1439,314' }] },
-          { id: 'p7', name: 'Replacement Weight 7 / Winch 2*', weight: 2.9,
+          { id: 'p7', name: 'Replacement Weight 7 / Winch 2*', weight: 2.9, shortLabel: '7 / Winch #2',
             hotspots: [{ points: '1275,286 741,286 741,46 1275,46' }] },
           // combined pair, same modeling as 1250's "2x Hook Ballast" - one
           // toggle, weight is the two sides added together (see 10.8 for
           // why that's NOT what the source doc's own "Individual weight"
           // column shows for this item).
-          { id: 'p8', name: '2x Auxiliary Ballast 8', weight: 12.7, separate: true,
+          { id: 'p8', name: '2x Auxiliary Ballast 8', weight: 12.7, separate: true, shortLabel: '8',
             hotspots: [
               { points: '78,627 496,627 496,337 78,337' },
               { points: '1937,627 1520,627 1520,337 1937,337' }
@@ -842,17 +843,17 @@
         // cranes' hotspots; see methodology.txt 10.9 before assuming this
         // approach generalizes.
         components: [
-          { id: 'p1', name: 'Receptacle Plate 1', weight: 10,
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 10, shortLabel: '',
             hotspots: [{ points: '300,700 2020,700 2020,800 300,800' }, { points: '0,650 800,650 800,1100 0,1100' }] },
-          { id: 'p2', name: 'Counterweight Plate 2', weight: 10,
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 10, shortLabel: '',
             hotspots: [{ points: '450,640 2020,640 2020,710 450,710' }] },
-          { id: 'p3a', name: 'Counterweight Plate 3', weight: 10,
+          { id: 'p3a', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
             hotspots: [{ points: '600,570 2020,570 2020,640 600,640' }] },
-          { id: 'p3b', name: 'Counterweight Plate 3', weight: 10,
+          { id: 'p3b', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
             hotspots: [{ points: '750,500 2020,500 2020,570 750,570' }] },
-          { id: 'p3c', name: 'Counterweight Plate 3', weight: 10,
+          { id: 'p3c', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
             hotspots: [{ points: '900,435 2020,435 2020,500 900,500' }] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 4,
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 4, shortLabel: '',
             hotspots: [{ points: '870,230 1650,230 1650,460 870,460' }] }
         ],
         combos: [
@@ -902,7 +903,7 @@
         diagramHeight: 1266,
         figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03) — actual OEM exploded-view artwork, extracted directly, not redrawn',
         components: [
-          { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center',
+          { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center', shortLabel: '',
             hotspots: [{ points: '300,1000 650,1000 650,1230 300,1230' }, { points: '1190,1000 1560,1000 1560,1230 1190,1230' }] },
           // Item 4 ("Center section") is fixed machine structure, not a
           // counterweight component - never appears in any combo's own
@@ -913,9 +914,9 @@
           // highlights this center section on the diagram, matching what
           // a crew member actually sees mounted, rather than leaving it
           // dark next to a highlighted item 1 (reported as confusing).
-          { id: 'p4center', name: 'Center Section', weight: 0, linkedId: 'p1',
+          { id: 'p4center', name: 'Center Section', weight: 0, linkedId: 'p1', shortLabel: '',
             hotspots: [{ points: '750,960 1080,960 1080,1230 750,1230' }] },
-          { id: 'p5x2', name: 'Counterweight Plate 5t ×2', weight: 10,
+          { id: 'p5x2', name: 'Counterweight Plate 5t ×2', weight: 10, shortLabel: '',
             hotspots: [{ points: '380,165 650,165 650,225 380,225' }, { points: '1195,165 1470,165 1470,225 1195,225' }] },
           // quantityGroup: unlike LTM 1110's Winch2*/Replacement Ballast
           // slotGroup (mutually exclusive ALTERNATIVES, cycled via repeat
@@ -926,23 +927,23 @@
           // level fills the stack up to and including that level;
           // clicking the current top level removes it. See
           // selectCwtSlotLevel() and methodology.txt 10.10.
-          { id: 'p10_2', name: 'Counterweight Plate 10t ×2', weight: 20, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_2', name: 'Counterweight Plate 10t ×2', weight: 20, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,225 650,225 650,320 380,320' }, { points: '1195,225 1470,225 1470,320 1195,320' }] },
-          { id: 'p10_4', name: 'Counterweight Plate 10t ×4', weight: 40, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_4', name: 'Counterweight Plate 10t ×4', weight: 40, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,320 650,320 650,410 380,410' }, { points: '1195,320 1470,320 1470,410 1195,410' }] },
-          { id: 'p10_6', name: 'Counterweight Plate 10t ×6', weight: 60, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_6', name: 'Counterweight Plate 10t ×6', weight: 60, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,410 650,410 650,500 380,500' }, { points: '1195,410 1470,410 1470,500 1195,500' }] },
-          { id: 'p10_8', name: 'Counterweight Plate 10t ×8', weight: 80, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_8', name: 'Counterweight Plate 10t ×8', weight: 80, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,500 650,500 650,592 380,592' }, { points: '1195,500 1470,500 1470,592 1195,592' }] },
-          { id: 'p10_10', name: 'Counterweight Plate 10t ×10', weight: 100, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_10', name: 'Counterweight Plate 10t ×10', weight: 100, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,592 650,592 650,687 380,687' }, { points: '1195,592 1470,592 1470,687 1195,687' }] },
-          { id: 'p10_12', name: 'Counterweight Plate 10t ×12', weight: 120, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_12', name: 'Counterweight Plate 10t ×12', weight: 120, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,687 650,687 650,782 380,782' }, { points: '1195,687 1470,687 1470,782 1195,782' }] },
-          { id: 'p10_14', name: 'Counterweight Plate 10t ×14', weight: 140, slotGroup: 'ten', quantityGroup: true,
+          { id: 'p10_14', name: 'Counterweight Plate 10t ×14', weight: 140, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
             hotspots: [{ points: '380,782 650,782 650,900 380,900' }, { points: '1195,782 1470,782 1470,900 1195,900' }] },
-          { id: 'w2', name: 'Winch 2 (incl. rope)', weight: 4.7, countsToward: false,
+          { id: 'w2', name: 'Winch 2 (incl. rope)', weight: 4.7, countsToward: false, shortLabel: '',
             hotspots: [{ points: '800,650 1000,650 1000,870 800,870' }] },
-          { id: 'w3', name: 'Winch 3 (incl. rope + luffing pulley block)', weight: 7.9, countsToward: false,
+          { id: 'w3', name: 'Winch 3 (incl. rope + luffing pulley block)', weight: 7.9, countsToward: false, shortLabel: '',
             hotspots: [{ points: '800,340 1035,340 1035,635 800,635' }] }
         ],
         combos: [
@@ -1038,7 +1039,22 @@
       // combination this is, so exclude them before comparing.
       const map = cwtComponentMap(modelKey);
       const target = [...selectedIds].filter(id => map[id].weight !== 0).sort().join(',');
-      return COUNTERWEIGHT_DATA[modelKey].combos.find(c => [...c.items].sort().join(',') === target);
+      const combos = COUNTERWEIGHT_DATA[modelKey].combos;
+      const idx = combos.findIndex(c => [...c.items].sort().join(',') === target);
+      // idx tags along so callers (e.g. the "Jump to Known Combination"
+      // dropdown sync in renderCwtTab) can select the matching <option>
+      // without re-searching combos themselves.
+      return idx === -1 ? undefined : { ...combos[idx], idx };
+    }
+
+    // Average of a hotspot polygon's own vertices - good enough for label
+    // placement on the roughly-convex plate outlines used here, without
+    // needing a true polygon-area centroid calculation.
+    function cwtPolygonCenter(pointsStr) {
+      const pts = pointsStr.trim().split(/\s+/).map(p => p.split(',').map(Number));
+      const x = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+      const y = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      return { x, y };
     }
 
     function cwtDescribeCombo(modelKey, items) {
@@ -1190,11 +1206,37 @@
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
           });
           hotspotsEl.appendChild(poly);
+
+          // Plate number/short label, always visible (not just on hover or
+          // select) - e.g. "7" or "7 / Winch #2". shortLabel is per-
+          // component; falls back to the full name if unset, and is
+          // skipped entirely for purely-visual echo components that set
+          // shortLabel to '' (e.g. LTM 1650's linked Center Section).
+          const labelText = displayComp.shortLabel !== undefined ? displayComp.shortLabel : displayComp.name;
+          if (labelText) {
+            const pos = cwtPolygonCenter(hs.points);
+            const label = document.createElementNS(SVG_NS, 'text');
+            label.setAttribute('x', pos.x);
+            label.setAttribute('y', pos.y);
+            label.setAttribute('class', 'cwt-hotspot-label');
+            label.textContent = labelText;
+            hotspotsEl.appendChild(label);
+          }
         });
       });
 
       const total = cwtComboWeight(modelKey, [...cwtSelected]);
       const match = cwtFindMatchingCombo(modelKey, cwtSelected);
+      // Keep "Jump to Known Combination" in sync with manual plate taps -
+      // if the current selection happens to equal a published combo, show
+      // it selected there too; otherwise leave nothing selected (the
+      // "not an OEM-approved combination" warning box already covers that
+      // case, no need to also show a stale/misleading dropdown value).
+      const comboSelectEl = document.getElementById('cwt-combo-select');
+      if (comboSelectEl) {
+        if (match) comboSelectEl.value = String(match.idx);
+        else comboSelectEl.selectedIndex = -1;
+      }
       const statusEl = document.getElementById('cwt-status');
       if (cwtSelected.size === 0) {
         statusEl.innerHTML = `<div class="metric-card"><div class="metric-label">Total Counterweight</div><div class="metric-value">0.0 t</div><div class="metric-sub">No counterweight selected</div></div>`;
