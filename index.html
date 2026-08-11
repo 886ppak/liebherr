@@ -525,7 +525,7 @@
         </div>
         <div id="cwt-status" style="margin-top:12px;"></div>
         <div id="cwt-notice" class="warn-box" style="display:none; margin-top:10px;"></div>
-        <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. <span id="cwt-fig-ref"></span> — actual OEM exploded-view artwork, extracted directly, not redrawn. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
+        <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. <span id="cwt-fig-ref"></span>. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
       </div>
 
       <div class="card">
@@ -583,7 +583,7 @@
         diagramAlt: 'Liebherr LTM 1250-5.1 counterweight exploded-view diagram, parts 1-8',
         diagramWidth: 1831,
         diagramHeight: 1620,
-        figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02)',
+        figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — actual OEM exploded-view artwork, extracted directly, not redrawn',
         // weight in t. centerTrim: flagged by the source doc as needing
         // plates 3 AND 4 both fitted to sit centered correctly on its own.
         // separate: mounts to the SIDES of the stack, not stacked at all
@@ -660,7 +660,7 @@
         diagramAlt: 'Liebherr LTM 1110-5.1 counterweight exploded-view diagram, parts 1-8',
         diagramWidth: 1831,
         diagramHeight: 1335,
-        figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01)',
+        figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01) — actual OEM exploded-view artwork, extracted directly, not redrawn',
         // p3/p4 are ALWAYS present together in every published combo (never
         // one without the other) and their silhouettes overlap in the
         // source diagram with no clean dividing line to trace - rather than
@@ -753,35 +753,35 @@
       // weight gotcha this crane's aux ballast item required catching.
       '1130': {
         label: 'LTM 1130-5.1',
-        sourceNote: 'Source: Liebherr doc LTM 1130-5-1-008 (0212849-05), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2020. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
-        diagramImage: './counterweight/img/ltm1130-cwt-exploded.png',
-        diagramAlt: 'Liebherr LTM 1130-5.1 counterweight side-view diagram, parts 1-8',
-        diagramWidth: 2055,
-        diagramHeight: 2944,
-        figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05)',
+        sourceNote: 'Source: Liebherr doc LTM 1130-5-1-008 (0212849-05), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2020. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltm1130-cwt-exploded-v2.png',
+        diagramAlt: 'Liebherr LTM 1130-5.1 counterweight exploded CAD line diagram, parts 1-8',
+        diagramWidth: 1999,
+        diagramHeight: 1030,
+        figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
         components: [
           { id: 'p1', name: 'Counterweight Plate 1', weight: 3.7,
-            hotspots: [{ points: '420,1140 1210,1140 1210,1230 420,1230' }] },
+            hotspots: [{ points: '1439,985 576,985 576,777 1439,777' }] },
           { id: 'p2', name: 'Counterweight Plate 2', weight: 2.4,
-            hotspots: [{ points: '420,1005 1210,1005 1210,1140 420,1140' }] },
+            hotspots: [{ points: '1439,749 576,749 576,719 1439,719' }] },
           { id: 'p3', name: 'Counterweight Plate 3', weight: 9.9,
-            hotspots: [{ points: '420,825 1210,825 1210,1005 420,1005' }] },
+            hotspots: [{ points: '1439,694 576,694 576,558 1439,558' }] },
           { id: 'p4', name: 'Counterweight Plate 4', weight: 6.7,
-            hotspots: [{ points: '420,650 1210,650 1210,825 420,825' }] },
+            hotspots: [{ points: '1439,529 576,529 576,435 1439,435' }] },
           { id: 'p5', name: 'Counterweight Plate 5', weight: 1.5,
-            hotspots: [{ points: '420,600 1210,600 1210,650 420,650' }] },
+            hotspots: [{ points: '1439,406 576,406 576,370 1439,370' }] },
           { id: 'p6', name: 'Counterweight Plate 6', weight: 2.2,
-            hotspots: [{ points: '420,535 1210,535 1210,600 420,600' }] },
+            hotspots: [{ points: '1439,360 576,360 576,314 1439,314' }] },
           { id: 'p7', name: 'Replacement Weight 7 / Winch 2*', weight: 2.9,
-            hotspots: [{ points: '1045,15 1210,15 1210,230 1045,230' }] },
+            hotspots: [{ points: '1275,286 741,286 741,46 1275,46' }] },
           // combined pair, same modeling as 1250's "2x Hook Ballast" - one
           // toggle, weight is the two sides added together (see 10.8 for
           // why that's NOT what the source doc's own "Individual weight"
           // column shows for this item).
           { id: 'p8', name: '2x Auxiliary Ballast 8', weight: 12.7, separate: true,
             hotspots: [
-              { points: '759,2235 578,2170 498,2169 480,2271 474,2228 445,2220 192,2336 40,2434 26,2540 176,2649 759,2649' },
-              { points: '1300,2239 1300,2649 1899,2649 2047,2541 2033,2435 1888,2341 1628,2221 1599,2229 1591,2274 1575,2170 1495,2170' }
+              { points: '78,627 496,627 496,337 78,337' },
+              { points: '1937,627 1520,627 1520,337 1937,337' }
             ] }
         ],
         combos: [
@@ -833,7 +833,7 @@
         diagramAlt: 'Liebherr LTM 1160-5.2 counterweight exploded-view diagram, parts 1-4',
         diagramWidth: 2126,
         diagramHeight: 1200,
-        figRef: 'Fig. 124343, Liebherr doc LTM 1160-5-2-003 (0212601-04)',
+        figRef: 'Fig. 124343, Liebherr doc LTM 1160-5-2-003 (0212601-04) — actual OEM exploded-view artwork, extracted directly, not redrawn',
         // Hotspots here are hand-approximated rectangles, NOT OpenCV-
         // traced outlines like other cranes - this diagram shows the same
         // 5 plates from two overlapping visible faces at once (isometric
@@ -900,7 +900,7 @@
         diagramAlt: 'Liebherr LTM 1650-8.1 counterweight diagram, receptacles/plates/winches',
         diagramWidth: 1831,
         diagramHeight: 1266,
-        figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03)',
+        figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03) — actual OEM exploded-view artwork, extracted directly, not redrawn',
         components: [
           { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center',
             hotspots: [{ points: '300,1000 650,1000 650,1230 300,1230' }, { points: '1190,1000 1560,1000 1560,1230 1190,1230' }] },

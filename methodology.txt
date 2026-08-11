@@ -1137,4 +1137,85 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   explanation covers everything a screenshot shows without confirming
   which parts are the app's own rendering vs. the person's own markup.
 
+10.15 LTM 1130-5.1 diagram replaced entirely - DXF-sourced exploded CAD
+      line drawing, pixel-exact hotspots straight from vector geometry
+  Superseded 10.8's photo-style side-elevation PNG for THIS crane only.
+  The person offered to draw precise rectangles over the existing diagram
+  to fix imprecise hand-measured hotspots (the general fix-up effort that
+  also produced 10.14). For LTM 1130 specifically they instead extracted
+  and exploded the actual 3D CAD model, added a dedicated "boxes" DXF
+  layer with one rectangle per plate, and sent the DXF directly - a
+  different, cleaner diagram, not an annotation of the old PNG. Confirmed
+  this before touching anything: the two drawings don't share a scale or
+  aspect ratio (old PNG is a 2055x2944 illustrated portrait diagram with
+  printed weight labels; the DXF traces a wide exploded elevation with no
+  labels at all), so proportionally mapping DXF coordinates onto the old
+  PNG was never viable - the DXF had to become the new diagram image.
+  Process:
+  - Parsed the DXF with ezdxf. Modelspace had three relevant layers:
+    PDF_Visible (the traced line geometry, 290ish entities), PDF_TANGENT_
+    LINES (13 tangent/silhouette edges for curved features), and boxes (a
+    layer the person added themselves, purpose-built as one closed
+    LWPOLYLINE rectangle per plate).
+  - First pass only found 8 boxes on the "boxes" layer. Needed 9: 7 for
+    the main stack (plates 1-7) + 2 for the auxiliary ballast pair (item
+    8's left/right wings, which sit apart from the main column). Rendered
+    the boxes layer overlaid on the PDF_Visible geometry (matplotlib) and
+    found a real, fully-drawn plate outline between two of the boxes with
+    no rectangle around it - the person confirmed this was the one they'd
+    missed ("I MISSED a box") and sent a corrected DXF with a 9th box
+    filling exactly that gap. Lesson carried over from 10.4/10.8/10.14:
+    when a count looks short by exactly one, render the underlying
+    geometry and look for the missing outline directly rather than
+    guessing coordinates for it.
+  - Orientation was NOT recoverable from geometry alone. DXF Y-up vs.
+    image Y-down is a coin flip without an external reference, and this
+    diagram has no printed labels to anchor against (unlike the old PNG,
+    which had "1".."8" and weights baked into the artwork). Rendered both
+    orientations, sent both to the person with an explicit guess overlaid
+    ("box0 = item 7" etc.), and they corrected it: box0 (smallest DXF Y)
+    is the BOTTOM of the stack (item 1), box5 (largest DXF Y) is the TOP
+    (item 7) - i.e. raw CAD Y-up, unflipped, was correct. Don't assume a
+    flip is needed just because "image space is usually Y-down" - check.
+  - Final box->component mapping (bottom to top): box0=p1, box1=p2,
+    box2=p3, box3=p4, box8=p5 (the recovered 9th box), box4=p6, box5=p7.
+    box6/box7 (the two wings, symmetric about the main column, gaps to
+    the column matching within ~0.1 units) = p8's two hotspots.
+  - Rendered the final diagram by plotting PDF_Visible + PDF_TANGENT_
+    LINES directly (LWPOLYLINE/ARC/SPLINE, flattening splines via ezdxf's
+    own .flattening()) with matplotlib, axes filling the full figure
+    (add_axes([0,0,1,1]), no autoscale padding) so the saved PNG's pixel
+    grid has an exact, known affine relationship to DXF coordinates:
+    pixel_x = (dxf_x - xmin) / (xmax-xmin) * png_width
+    pixel_y = (ymax - dxf_y) / (ymax-ymin) * png_height   (note the flip:
+      image rows increase downward, confirmed-correct DXF Y increases
+      upward, so this axis - and only this axis - needs inverting)
+    Cropped to the boxes' bounding extent plus padding, not the DXF's
+    full extent - the full PDF_Visible bbox reached far outside the
+    boxes (unrelated page content, e.g. other views/title block), which
+    would have wasted resolution rendering things nobody needed.
+  - Applied that same formula to every box's own corner coordinates to
+    get its hotspot polygon - no hand measurement, no visual tracing,
+    exact vector-to-pixel math. Verified by drawing the computed polygons
+    back onto the rendered PNG before touching index.html at all (a
+    disposable Python/PIL check, not a Playwright test) - confirmed each
+    polygon sat exactly on its own plate before shipping.
+  - New file: counterweight/img/ltm1130-cwt-exploded-v2.png (1999x1030,
+    landscape - the exploded wings push the aspect ratio wide, a real
+    difference from every other crane's portrait/near-square diagram, not
+    a bug). Old ltm1130-cwt-exploded.png deleted, nothing else referenced
+    it.
+  - Found and fixed a wording bug while touching this: the shared
+    disclaimer under the diagram had "actual OEM exploded-view artwork,
+    extracted directly, not redrawn" hardcoded as a suffix after every
+    crane's figRef. True for the other 4 cranes, no longer true for this
+    one (it's now a redrawn CAD tracing). Moved that claim out of the
+    shared HTML and into each crane's own figRef string instead, so it
+    can vary - 1130 now says "diagram re-drawn from an exploded 3D CAD
+    model, not the original OEM artwork" where the others keep the
+    original "extracted directly, not redrawn" wording.
+  Combos/weights/component names were untouched - identity (which
+  numbered item is which plate) was never actually in question, only
+  hotspot precision. This is purely a diagram + hotspot-geometry swap.
+
 ================================================================================
