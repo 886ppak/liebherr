@@ -1823,3 +1823,34 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   cache by default just because it's an image fetched on demand.
 
 ================================================================================
+
+10.29 LTM 1300 diagram line weight thickened - was 1-2px on a 4643px
+      canvas, effectively invisible at the app's actual display width
+  Measured before touching anything: sampled dark-pixel run lengths
+  across the image and confirmed line strokes were 1-2px wide on a
+  4643x1300 canvas - at the app's real display size (~900px wide in a
+  normal viewport), that's sub-pixel, explaining why it read as washed-
+  out/faint compared to the other diagrams.
+  Deliberately did NOT re-render from the source DXF to fix this - the
+  DXF's own $EXTMIN/$EXTMAX header didn't cleanly match the existing
+  PNG's 4643x1300 aspect ratio (7162x1775 modelspace units vs a 3.57
+  aspect ratio image), meaning the exact figsize/dpi/margins used for the
+  original render aren't recoverable from the DXF header alone, and
+  guessing at them risks silently shifting where each plate lands in
+  pixel space - which would have broken every hotspot coordinate already
+  measured and shipped for this crane (10.23/10.24). Thickening the
+  EXISTING raster in place sidesteps that risk entirely: it's a pure
+  image-space operation (PIL ImageFilter.MinFilter, grayscale erosion,
+  applied once) that darkens/expands existing dark pixels without moving
+  anything, so every previously-derived hotspot rectangle is still
+  exactly as valid as before.
+  Tested single vs double MinFilter(3) pass side by side, downscaled to
+  the app's actual ~900px display width before judging (full-resolution
+  comparison would have been misleading - the goal is legibility at
+  display size, not at 4643px). Single pass was the right call - clearly
+  more defined, "10t" labels still crisp; double pass started looking
+  heavy-handed on the small text. Same 4643x1300 dimensions preserved,
+  re-verified hotspot click-through and alignment in-browser before
+  shipping - unaffected, as expected from a pixel-darkening-only change.
+
+================================================================================
