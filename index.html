@@ -1547,7 +1547,14 @@
         compEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">No counterweight selected.</div>`;
       } else {
         const map = cwtComponentMap(modelKey);
-        const rows = [...cwtSelected].map(id => map[id]).sort((a, b) => a.name.localeCompare(b.name))
+        // Zero-weight components (e.g. LTM 1650's "Center Section," a
+        // purely visual echo of the receptacles via linkedId - see
+        // methodology.txt 10.10) are already excluded from combo matching
+        // and the OEM's own combo lists; excluded here too so the
+        // breakdown only shows things that actually contribute to the
+        // total, not a "0.0 t" line that just restates the receptacles
+        // are one physical assembly.
+        const rows = [...cwtSelected].map(id => map[id]).filter(c => c.weight !== 0).sort((a, b) => a.name.localeCompare(b.name))
           .map(c => `<tr><td style="text-align:left;">${c.name}${c.countsToward === false ? ' <span style="color:var(--text-muted);">(not counted in total)</span>' : ''}</td><td>${c.weight.toFixed(1)} t</td></tr>`).join('');
         compEl.innerHTML = `<table><thead><tr><th style="text-align:left;">Component</th><th>Weight</th></tr></thead><tbody>${rows}</tbody></table>`;
       }
