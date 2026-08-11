@@ -1414,4 +1414,44 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   (LTM 1650's 10t plate quantity ladder, for example, has no such
   distinction - every rung really is just more of the identical plate).
 
+10.21 LTM 1250-5.1 diagram replaced too - same DXF process, plus the
+      first case where weight stamps couldn't fully disambiguate
+  Same pipeline as 10.15/10.18. 9 boxes on the DXF's "boxes" layer for 8
+  components (7 main-stack plates + 2 wing halves for p8) - correct count
+  first try, no missing box this time.
+  Orientation: raw CAD Y-up again correct, same as every crane so far -
+  box0 (smallest Y) = bottom = plate 1.
+  Identity: plates 1 (11t), 5 (12t), 6 (5t), and both p8 wings (10t each)
+  were all confirmed via the manufacturer's own weight stamps baked into
+  the CAD geometry, same as 10.18. But plates 2, 3, and 4 are all
+  coincidentally 10.0t EACH - three boxes, all stamped "10t", with
+  nothing in the geometry itself to tell them apart. This is different
+  from 10.18's swap: there weight stamps resolved the ambiguity directly;
+  here they can't, because the stamps themselves are identical across
+  the genuinely different plates. Identity of 2 vs 3 vs 4 matters for
+  real - the combos array picks specific subsets (e.g. {p1,p2,p4,p5}
+  without p3), so getting the order wrong would highlight the wrong
+  physical plate for a real published combo even though the total
+  weight would still happen to come out right in some cases.
+  Sent the rendered guess (bottom-to-top positional order matching the
+  OLD diagram's already-established 1-2-3-4-5-6-7 order, i.e. assuming
+  this new export preserves the same physical stacking sequence) and the
+  person confirmed it directly rather than independently re-deriving it -
+  worth being explicit that this one component of the mapping rests on
+  their confirmation plus positional continuity with prior data, not on
+  independent evidence the way 10.18's swap catch did. If a future
+  diagram for this crane ever contradicts this order, 10.18's swap is the
+  reminder that position-matches-old-diagram is a reasonable prior, not a
+  guarantee.
+  New file: counterweight/img/ltm1250-cwt-exploded-v2.png (2625x1400).
+  Old ltm1250-cwt-exploded.png deleted. Also caught and fixed a stale
+  reference this time before shipping: the tab's static HTML had a
+  hardcoded placeholder `<img src>` and default SVG viewBox pointing at
+  LTM 1250's OLD file/dimensions (used only as the pre-JS initial markup,
+  overwritten by renderCwtTab() on load, but still worth keeping correct
+  so there's no flash of a broken image / wrong-aspect-ratio hotspot
+  layer before the first render call completes) - updated both to the
+  new file and 2625x1400. Checked 1130 and 1110 for the same issue when
+  this was noticed; neither had a stale reference left over.
+
 ================================================================================

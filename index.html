@@ -521,8 +521,8 @@
       <div class="card">
         <div class="card-title">Counterweight Stack</div>
         <div id="cwt-image-wrap" class="cwt-image-wrap">
-          <img src="./counterweight/img/ltm1250-cwt-exploded.png" alt="Liebherr LTM 1250-5.1 counterweight exploded-view diagram, parts 1-8">
-          <svg id="cwt-hotspots" class="cwt-hotspots-svg" viewBox="0 0 1831 1620" preserveAspectRatio="xMidYMid meet"></svg>
+          <img src="./counterweight/img/ltm1250-cwt-exploded-v2.png" alt="Liebherr LTM 1250-5.1 counterweight exploded CAD line diagram, parts 1-8">
+          <svg id="cwt-hotspots" class="cwt-hotspots-svg" viewBox="0 0 2625 1400" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
         <div id="cwt-status" style="margin-top:12px;"></div>
         <div id="cwt-notice" class="warn-box" style="display:none; margin-top:10px;"></div>
@@ -579,48 +579,51 @@
     const COUNTERWEIGHT_DATA = {
       '1250': {
         label: 'LTM 1250-5.1',
-        sourceNote: 'Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
-        diagramImage: './counterweight/img/ltm1250-cwt-exploded.png',
-        diagramAlt: 'Liebherr LTM 1250-5.1 counterweight exploded-view diagram, parts 1-8',
-        diagramWidth: 1831,
-        diagramHeight: 1620,
-        figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — actual OEM exploded-view artwork, extracted directly, not redrawn',
+        sourceNote: 'Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltm1250-cwt-exploded-v2.png',
+        diagramAlt: 'Liebherr LTM 1250-5.1 counterweight exploded CAD line diagram, parts 1-8',
+        diagramWidth: 2625,
+        diagramHeight: 1400,
+        figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
         // weight in t. centerTrim: flagged by the source doc as needing
         // plates 3 AND 4 both fitted to sit centered correctly on its own.
         // separate: mounts to the SIDES of the stack, not stacked at all
         // (confirmed via OEM exploded-view diagram; see CSS note).
         // Declaration order below = confirmed bottom-to-top mounting order
         // for plates 1-7 (turntable up), per that same diagram.
+        // Box-to-plate identity for this DXF: plates 1 (11t), 5 (12t), 6
+        // (5t) and 8 (10t x2) were confirmed via the manufacturer's own
+        // weight stamps baked into the CAD geometry (same method as
+        // methodology.txt 10.18's LTM 1110 swap catch). Plates 2, 3, and 4
+        // are all coincidentally 10t each with identical stamps, so they
+        // COULDN'T be told apart that way - positional order (bottom to
+        // top: 2, 3, 4) was confirmed directly by the person instead. See
+        // methodology.txt 10.21.
         // hotspots: SVG polygon point lists, in the diagram image's own
-        // natural pixel space (1831x1620 viewBox) - one per component,
-        // p8 gets two (see below). These trace the actual plate silhouette
-        // rather than a generic bounding box - derived algorithmically
-        // (OpenCV contour extraction on the raster diagram: threshold ->
-        // flood-fill the exterior -> take the complement as the plate's
-        // silhouette -> morphological opening to strip thin leader-line
-        // artifacts -> polygon-simplify), then visually verified against
-        // the source image before being pasted in here. Not hand-traced,
-        // not pixel-perfect - see methodology.txt 10.4 before re-deriving
-        // these for a different/rescanned diagram image.
+        // natural pixel space (2625x1400 viewBox) - one per component, p8
+        // gets two (the two wing halves). Traced directly from the DXF
+        // "boxes" layer's own vertex coordinates via exact affine vector-
+        // to-pixel math - not hand-traced, not OpenCV-derived. See
+        // methodology.txt 10.15 for the general method.
         components: [
-          { id: 'p1', name: 'Receptacle Plate 1', weight: 11.0, shortLabel: '',
-            hotspots: [{ points: '1295,1543 1281,1502 1193,1429 1144,1414 1134,1317 1110,1320 1107,1415 830,1432 829,1361 775,1342 767,1385 800,1395 806,1366 804,1470 759,1454 758,1437 641,1463 643,1489 759,1569' }] },
-          { id: 'p2', name: 'Counterweight Plate 2', weight: 10.0, shortLabel: '',
-            hotspots: [{ points: '1414,1100 1041,1100 742,1123 567,1162 564,1212 662,1284 1414,1284' }] },
-          { id: 'p3', name: 'Counterweight Plate 3', weight: 10.0, shortLabel: '',
-            hotspots: [{ points: '1414,1044 1414,935 1363,953 1279,894 744,915 567,949 567,981 657,1044' }] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 10.0, shortLabel: '',
-            hotspots: [{ points: '1419,834 1419,738 1379,752 1279,683 762,703 569,737 569,765 668,834' }] },
-          { id: 'p5', name: 'Counterweight Plate 5', weight: 12.0, shortLabel: '',
-            hotspots: [{ points: '1405,589 1401,565 1301,506 1300,471 987,466 974,495 835,505 809,479 572,522 570,579 648,634 1401,613' }] },
-          { id: 'p6', name: 'Counterweight Plate 6', weight: 5.0, centerTrim: true, shortLabel: '',
-            hotspots: [{ points: '1311,370 1294,334 1221,317 1203,298 897,308 693,345 694,358 796,429 1038,389 1065,398 1302,392' }] },
-          { id: 'p7', name: 'Counterweight 7', weight: 10.0, shortLabel: '',
-            hotspots: [{ points: '1305,47 1087,32 576,89 574,220 658,232 676,254 685,225 818,205 843,228 966,225 1011,190 1197,187 1214,215 1221,187 1304,177' }] },
-          { id: 'p8', name: '2x Hook Ballast 8', weight: 20.0, separate: true, shortLabel: '',
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 11.0, shortLabel: '1',
+            hotspots: [{ points: '821,1028 1806,1028 1806,1343 821,1343' }] },
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 10.0, shortLabel: '2',
+            hotspots: [{ points: '1992,876 635,876 635,995 1992,995' }] },
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 10.0, shortLabel: '3',
+            hotspots: [{ points: '1992,845 635,845 635,774 1992,774' }] },
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 10.0, shortLabel: '4',
+            hotspots: [{ points: '1992,741 635,741 635,681 1992,681' }] },
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 12.0, shortLabel: '5',
+            hotspots: [{ points: '1992,648 635,648 635,519 1992,519' }] },
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 5.0, centerTrim: true, shortLabel: '6',
+            hotspots: [{ points: '1806,481 821,481 821,400 1806,400' }] },
+          { id: 'p7', name: 'Counterweight 7', weight: 10.0, shortLabel: '7',
+            hotspots: [{ points: '1992,361 635,361 635,53 1992,53' }] },
+          { id: 'p8', name: '2x Hook Ballast 8', weight: 20.0, separate: true, shortLabel: '8',
             hotspots: [
-              { points: '120,517 121,690 142,704 386,720 388,587 410,586 417,541 399,530 358,534 339,520 340,488 323,476 284,482 270,471' },
-              { points: '1427,397 1433,441 1456,453 1456,553 1569,633 1722,588 1726,422 1700,402 1480,384' }
+              { points: '56,426 511,426 511,741 56,741' },
+              { points: '2570,741 2116,741 2116,426 2570,426' }
             ] }
         ],
         combos: [
