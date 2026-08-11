@@ -1745,3 +1745,19 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   {scale:1, tx:0, ty:0}.
 
 ================================================================================
+
+10.27 LTM 1650 diagram background inverted to match the other 5 cranes
+  Only LTM 1650 still used its raw OEM JPG extraction (Fig. 156378) as
+  diagramImage, and that extraction had a black background baked into
+  the pixels - every other crane's diagram (DXF-rendered PNGs, plus
+  1160's new reference-image JPG) has a white background, so 1650 stood
+  out. Confirmed the file was pure grayscale first (R=G=B for every
+  pixel, zero channel difference measured across the whole image) before
+  touching it, since a plain color invert on a genuinely-colored image
+  would produce nonsense - safe here because it isn't one. Inverted with
+  PIL's ImageOps.invert() and re-saved in place (same filename, same
+  dimensions) - white background, dark linework, matching the other
+  diagrams' convention exactly. No data/hotspot changes; this is pixels
+  only.
+
+================================================================================
