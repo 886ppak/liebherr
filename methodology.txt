@@ -1505,3 +1505,60 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   same 1831x1266 JPG).
 
 ================================================================================
+
+10.23 LTM 1300-6.2 (global/export variant) added under crane key '1300' -
+      PROVISIONAL combo list, first crane shipped without an OEM chart
+  Different from every prior crane addition: no OEM counterweight-
+  combination document exists yet for THIS variant. What exists is the
+  10.11 EU-model chart (held, never wired in) plus a person-supplied DXF
+  of this variant's actual physical counterweight stack (exploded 3D CAD,
+  10 boxes visible: box0 through box9) and the person's own direct
+  knowledge of each box's weight/position, worked out interactively box
+  by box rather than read off a document.
+  Component mapping (box -> app id):
+    box0 (bottom, 6t)            -> p1 "Receptacle Plate 1"
+    box1 (10t)                   -> p2 "Counterweight Plate 2"
+    box2, box3 (10t each)        -> p3a, p3b "Counterweight Plate 3"
+                                     (identical/interchangeable, not a
+                                     mounted pair - same modeling as
+                                     LTM 1160's repeated Plate 3, 10.9)
+    box4 (10t)                   -> p4 "Counterweight Plate 4"
+    box5 (10t, top of stack)     -> p5 "Counterweight Plate 5" - unique
+                                     to this variant, no EU equivalent
+    box6+box9, box7+box8 (side-  -> auxA "Pair A", auxB "Pair B" -
+    mounted, 10t each, always       both-or-neither toggle-together,
+    both-or-neither per pair)       same "separate" modeling as 1130's
+                                     p8 (10.8). Real names/numbers for
+                                     these two pairs are UNCONFIRMED.
+  Why box0 is 6t but the EU chart's equivalent base is 16t (13t
+  Receptacle + 3t Plate 7): this variant's receptacle is a single 6t
+  piece, not two separate parts - box5 (Plate 5, no EU equivalent) makes
+  up the remaining 10t. Confirmed directly by the person, not derived.
+  Combo list is PROVISIONAL: no OEM chart for this variant exists yet, so
+  the 10.11 EU chart's verified tier structure (16/26/36/46/56/66/76/86/
+  96t, each tier = previous + exactly one more item, confirmed by
+  subset-sum against the real EU PDF) was mirrored directly, substituting
+  this variant's p1+p5 for the EU chart's p1+p7 base pair at every tier.
+  The EU chart's 13t tier (Receptacle alone, no Plate 7) has no
+  equivalent here since box0 isn't a separate piece from... itself - the
+  lightest non-zero tier is p1+p5 together (16t, matching the EU chart's
+  own 16t tier's total). An empty (0t) combo was added despite the EU
+  chart never listing one, for consistency with every other crane in this
+  app - low-risk addition, easy to remove if the real chart confirms this
+  crane has no true zero-ballast state.
+  NOT modeled: the EU chart's 66t/86t spacer-pin mechanic (three spacer
+  pins physically replace the second Plate 3 copy at those two tiers,
+  10.11) - carries no weight and isn't confirmed to apply identically to
+  this variant's hardware, so left out rather than guessed.
+  sourceNote on this entry says PROVISIONAL and DO NOT use for real lift
+  planning in plain language, not just in this file - visible directly in
+  the app's Composition panel for this crane. Replace the combos array
+  (and re-verify components) the moment the person supplies this
+  variant's own OEM counterweight-combination document; do not silently
+  treat this data as equivalent to a verified chart in the meantime.
+  New file: counterweight/img/ltm1300-cwt-exploded.png (4643x1300),
+  rendered from the person's DXF - white background, matching 1130's own
+  DXF-exploded PNG convention (confirmed by inspecting pixel (0,0) on
+  both files before treating the white background as a bug).
+
+================================================================================

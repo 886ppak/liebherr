@@ -1035,6 +1035,84 @@
           { items: ['p1', 'p5x2', 'p10_14', 'w3'] },
           { items: ['p1', 'p5x2', 'p10_14', 'w2', 'w3'] }
         ]
+      },
+      // Global/export LTM 1300-6.2 - NOT the EU-market variant (different
+      // road-axle load limits; see methodology.txt 10.11 for the held EU
+      // extraction). Component identities/weights/positions came from a
+      // user-supplied DXF of this crane's actual counterweight stack,
+      // cross-checked box by box against the person's own knowledge of the
+      // physical plates. PROVISIONAL COMBO LIST - see sourceNote and
+      // methodology.txt 10.23 before trusting the "OEM-approved" flag here.
+      '1300': {
+        label: 'LTM 1300-6.2',
+        sourceNote: 'PROVISIONAL DATA - component identities/weights confirmed against a user-supplied DXF of the actual counterweight stack, but the combination list below is NOT yet sourced from an OEM document for this (global/export) variant. It is a structural mirror of the verified EU-model LTM 1300-6.2 combination chart (Liebherr doc LTM 1300-6-2-003, 0212837-02), re-expressed using this variant’s different component weights (this variant’s Receptacle Plate 1 is a single 6t piece, replacing the EU variant’s separate 13t Receptacle + 3t Plate 7; Counterweight Plate 5 is unique to this variant and has no EU equivalent). Do NOT use for real lift planning. Do not use on site until replaced with this variant’s own OEM combination chart.',
+        diagramImage: './counterweight/img/ltm1300-cwt-exploded.png',
+        diagramAlt: 'LTM 1300-6.2 (global/export variant) counterweight exploded CAD line diagram, plates 1-5 plus side-mounted auxiliary ballast pairs',
+        diagramWidth: 4643,
+        diagramHeight: 1300,
+        figRef: 'Re-drawn from a user-supplied exploded 3D CAD model (DXF) of this variant’s actual counterweight stack - not OEM artwork.',
+        components: [
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 6, shortLabel: '1',
+            hotspots: [{ points: '1618,818 3027,818 3027,1203 1618,1203' }] },
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 10, shortLabel: '2',
+            hotspots: [{ points: '1363,643 3282,643 3282,773 1363,773' }] },
+          // p3a/p3b: two physically identical/interchangeable 10t plates,
+          // not a mounted pair - same modeling as LTM 1160's repeated
+          // Plate 3 (methodology.txt 10.9). The held EU-model chart shows
+          // this crane family uses 0, 1, or 2 copies depending on tier,
+          // and at two of its tiers a set of spacer pins physically
+          // replaces the second copy rather than a plate actually being
+          // there - not modeled as a component here since it carries no
+          // weight and isn't confirmed to apply identically to this
+          // variant's hardware.
+          { id: 'p3a', name: 'Counterweight Plate 3', weight: 10, shortLabel: '3',
+            hotspots: [{ points: '1363,510 3282,510 3282,596 1363,596' }] },
+          { id: 'p3b', name: 'Counterweight Plate 3', weight: 10, shortLabel: '3',
+            hotspots: [{ points: '1363,378 3282,378 3282,463 1363,463' }] },
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 10, shortLabel: '4',
+            hotspots: [{ points: '1363,246 3282,246 3282,331 1363,331' }] },
+          // Unique to this (global/export) variant - makes up the 10t
+          // difference between this variant's lighter 6t single-piece
+          // Receptacle Plate 1 and the EU variant's 16t combined
+          // Receptacle+Plate7. Person's own account, not from any OEM doc.
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 10, shortLabel: '5',
+            hotspots: [{ points: '1363,104 3282,104 3282,194 1363,194' }] },
+          // Side-mounted pairs, always both-or-neither (same "separate"
+          // toggle-together modeling as LTM 1130's p8, methodology.txt
+          // 10.8). Names are PLACEHOLDERS - the held EU chart calls its
+          // two equivalent pairs "Auxiliary ballast 5" and "Auxiliary
+          // ballast 6", but this variant's own numbering for these two
+          // pairs is unconfirmed (and "5"/"6" would collide with this
+          // variant's own Plate 5 / Plate 4 numbering above), so generic
+          // Pair A / Pair B labels are used until confirmed.
+          { id: 'auxA', name: '2x Auxiliary Ballast (Pair A)', weight: 20, separate: true, shortLabel: 'A',
+            hotspots: [
+              { points: '3457,416 3916,416 3916,1196 3457,1196' },
+              { points: '3977,416 4540,416 4540,1196 3977,1196' }
+            ] },
+          { id: 'auxB', name: '2x Auxiliary Ballast (Pair B)', weight: 20, separate: true, shortLabel: 'B',
+            hotspots: [
+              { points: '106,416 668,416 668,1196 106,1196' },
+              { points: '730,416 1188,416 1188,1196 730,1196' }
+            ] }
+        ],
+        // PROVISIONAL - structural mirror of the verified EU-model tier
+        // table (16/26/36/46/56/66/76/86/96t there), re-expressed with
+        // this variant's p1+p5 replacing the EU p1+p7 base pair at every
+        // tier. Not yet confirmed against this variant's own OEM chart -
+        // see sourceNote and methodology.txt 10.23.
+        combos: [
+          { items: [] },
+          { items: ['p1', 'p5'] },
+          { items: ['p1', 'p5', 'p2'] },
+          { items: ['p1', 'p5', 'p2', 'p3a'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p4'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'auxA'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'auxA'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'auxA', 'auxB'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'auxA', 'auxB'] }
+        ]
       }
     };
 
