@@ -1562,3 +1562,79 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   both files before treating the white background as a bug).
 
 ================================================================================
+
+10.24 LTM 1650's quantity ladder replaced with free independent toggles;
+      LTM 1300's auxiliary-ballast pairing corrected and confirmed-named
+  Two related fixes from the same conversation, both about matching what
+  a crew member actually expects when tapping the diagram.
+  a) LTM 1650 10t-plate stack: 10.10 modeled this as a quantity LADDER
+     (selectCwtSlotLevel) - clicking any position jumped straight to that
+     level and force-filled every position below it, matching how the
+     stack is physically BUILT (bottom-up, no gaps possible). Correct
+     mechanically, but the person pushed back hard: they wanted to tap
+     specific boxes - in whatever order - and have the total build up,
+     using the visible boxes purely as "here's what you're selecting"
+     labels, not as an enforced build sequence. Confirmed the ladder
+     logic itself had no bug (verified 95t was reachable, p1+p5x2+the
+     correct single level-6 hotspot, in one click each) - this was a
+     product decision, not a defect.
+     Replaced the 7 quantityGroup/slotGroup components (p10_2..p10_14,
+     cumulative weights 20-140) with 7 fully independent components
+     (p10a..p10g, each a flat 20t = one L+R pair) using a NEW
+     `interchangeableGroup` flag instead of slotGroup/quantityGroup. Each
+     keeps its own hotspot pair (both sides of one position share one id,
+     same as before - a position is filled/removed as a unit, you can't
+     leave one side of a pair unbalanced) and now falls through
+     renderCwtTab's plain toggleCwtPlate path - no special-case rendering
+     needed once quantityGroup was removed, since "independent toggle" was
+     already the default behavior for anything without slotGroup.
+     The catch: 7 interchangeable positions means C(7,k) different ID
+     sets all represent "k pairs mounted," but the combos array can only
+     literally list ONE set per weight tier. Naively comparing exact ID
+     sets (the pre-existing cwtFindMatchingCombo behavior) would flag
+     every selection except the one exact canonical subset as "not
+     OEM-approved," even though the source document never distinguishes
+     WHICH position is filled, only how many. Fixed by adding
+     cwtMatchSignature(): before comparing, any component carrying
+     interchangeableGroup collapses to a `groupName:count` token instead
+     of its own id, on BOTH the live selection and every stored combo's
+     item list - so a match only requires the same COUNT from the group,
+     not the same specific members. cwtFindMatchingCombo now diffs
+     signatures instead of raw sorted-id-joins. cwtComboWeight needed no
+     change (already summed by iterating whatever ids are actually
+     selected). This wasn't needed for LTM 1160's own repeated-plate
+     components (p3a/p3b/p3c, 10.9) since that crane's combos only ever
+     reach 3 total copies and were already always listed as the same
+     front-loaded canonical subset - the mismatch risk exists there too
+     in principle, just never surfaced given only 3 members and shallow
+     combo depth. Not retrofitted onto 1160 in this pass - flagging here
+     in case it's worth doing if 1160 ever gets the same free-click
+     complaint.
+     selectCwtSlotLevel() and the quantityGroup branch in renderCwtTab
+     were deleted outright rather than left dead - nothing else in
+     COUNTERWEIGHT_DATA used quantityGroup once 1650 stopped.
+     Verified in-browser: clicking 3 non-contiguous positions in
+     arbitrary order (7th, 1st, 4th) correctly sums to 85t and is flagged
+     OEM-approved, same as clicking the "canonical" first 3.
+  b) LTM 1300 (global/export variant, 10.23) auxiliary ballast pairing
+     was wrong: the first pass paired box6+box9 together and box7+box8
+     together because those are the two boxes drawn adjacent to each
+     other on the SAME side of the exploded-view layout - but the person
+     confirmed the real physical pairing is LEFT+RIGHT symmetric (one
+     ballast box mounted on each side of the crane, like every other
+     component on this diagram), i.e. the INNER pair is box8 (left, near
+     the main stack) + box6 (right, near the main stack), and the OUTER
+     pair is box7 (left, far from the stack) + box9 (right, far from the
+     stack) - the opposite grouping from what the layout's spatial
+     adjacency suggested. ids renamed aux5/aux6 (from the placeholder
+     auxA/auxB, then Inner/Outer mid-fix) once the person separately
+     confirmed the numbering itself: "Auxiliary Ballast 5" and "Auxiliary
+     Ballast 6" carry over directly from the held EU chart (10.11)
+     regardless of variant, unlike the main plate numbering (which does
+     differ - this variant's 6t single-piece Receptacle Plate 1 vs the EU
+     chart's separate 13t Receptacle + 3t Plate 7). sourceNote updated to
+     call this specific piece of the data confirmed rather than
+     provisional, while the combo list as a whole stays provisional
+     pending this variant's own OEM chart.
+
+================================================================================

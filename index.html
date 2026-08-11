@@ -907,15 +907,14 @@
       // confirmed again here (see methodology.txt 10.10).
       // Quantity, not present/absent: "Counterweight plate 10t" is listed
       // 0/2/4/6/8/10/12/14 times per combo (always in symmetric left/
-      // right pairs) - too many repeats for 1160's "one lettered
-      // component per copy" approach, so this reuses the slotGroup/cycle
-      // mechanism instead (built for 1110's winch/ballast slot) as a
-      // quantity stepper: p10_2 owns the one hotspot and cycling steps
-      // through p10_2 -> p10_4 -> ... -> p10_14 -> none. "Counterweight
-      // plate 5t" only ever appears at a fixed quantity of 2 in this
-      // partial data (never a different nonzero count), so it's modeled
-      // as a plain single toggle, not a stepper - if a future page reveals
-      // other 5t quantities, promote it to the same slotGroup pattern.
+      // right pairs). Modeled as 7 independent, physically-identical
+      // 10t-pair components (p10a..p10g, one per visible stack position) -
+      // same "repeated identical plate" approach as 1160's Plate 3
+      // (methodology.txt 10.9), extended with interchangeableGroup so
+      // OEM-combo matching works by count regardless of which specific
+      // positions are clicked (10.24). "Counterweight plate 5t" only ever
+      // appears at a fixed quantity of 2 in this partial data (never a
+      // different nonzero count), so it stays a plain single toggle.
       '1650': {
         label: 'LTM 1650-8.1',
         sourceNote: 'Source: Liebherr doc LTM 1650-8-1-000 (0213131-03), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. PARTIAL DATA — confirmed combinations from 0-175t only; the source document (93 pages) continues beyond what has been transcribed so far. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
@@ -940,28 +939,35 @@
             hotspots: [{ points: '745,932 1087,932 1087,1249 745,1249' }] },
           { id: 'p5x2', name: 'Counterweight Plate 5t ×2', weight: 10, shortLabel: '',
             hotspots: [{ points: '382,174 649,174 649,212 382,212' }, { points: '1195,178 1460,178 1460,216 1195,216' }] },
-          // quantityGroup: unlike LTM 1110's Winch2*/Replacement Ballast
-          // slotGroup (mutually exclusive ALTERNATIVES, cycled via repeat
-          // clicks on one hidden hotspot), this is a quantity LADDER - the
-          // diagram draws all 7 physical plate positions per side, so
-          // every one of them gets its own hotspot and its own direct
-          // click target, matching what's actually visible. Clicking a
-          // level fills the stack up to and including that level;
-          // clicking the current top level removes it. See
-          // selectCwtSlotLevel() and methodology.txt 10.10.
-          { id: 'p10_2', name: 'Counterweight Plate 10t ×2', weight: 20, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          // interchangeableGroup: the diagram draws all 7 physical plate
+          // positions per side as their own visible, separately-outlined
+          // box, and each one is now an independent click target - click
+          // any box to add/remove exactly that pair, in any order, same
+          // as physically walking up to any position in the stack. This
+          // REPLACES the old quantityGroup "fill to level" ladder (see
+          // methodology.txt 10.10), which forced clicks to jump straight
+          // to a target level and always fill contiguously from the
+          // bottom - correct for how the stack is physically built, but
+          // it fought a crew member who just wants to tap specific plates
+          // and see the total build up, order be damned. All 7 positions
+          // are physically identical/interchangeable 10t-pair mounts (same
+          // modeling as LTM 1160's repeated Plate 3, 10.9), so weight and
+          // OEM-approved-combo matching work correctly regardless of which
+          // specific positions are selected - see cwtMatchSignature() and
+          // methodology.txt 10.24.
+          { id: 'p10a', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,243 649,243 649,316 382,316' }, { points: '1195,249 1460,249 1460,321 1195,321' }] },
-          { id: 'p10_4', name: 'Counterweight Plate 10t ×4', weight: 40, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          { id: 'p10b', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,347 649,347 649,421 382,421' }, { points: '1195,352 1460,352 1460,426 1195,426' }] },
-          { id: 'p10_6', name: 'Counterweight Plate 10t ×6', weight: 60, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          { id: 'p10c', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,453 649,453 649,525 382,525' }, { points: '1195,456 1460,456 1460,531 1195,531' }] },
-          { id: 'p10_8', name: 'Counterweight Plate 10t ×8', weight: 80, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          { id: 'p10d', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,556 649,556 649,630 382,630' }, { points: '1195,562 1460,562 1460,634 1195,634' }] },
-          { id: 'p10_10', name: 'Counterweight Plate 10t ×10', weight: 100, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          { id: 'p10e', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,661 649,661 649,734 382,734' }, { points: '1195,666 1460,666 1460,738 1195,738' }] },
-          { id: 'p10_12', name: 'Counterweight Plate 10t ×12', weight: 120, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          { id: 'p10f', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,764 649,764 649,840 382,840' }, { points: '1195,770 1460,770 1460,843 1195,843' }] },
-          { id: 'p10_14', name: 'Counterweight Plate 10t ×14', weight: 140, slotGroup: 'ten', quantityGroup: true, shortLabel: '',
+          { id: 'p10g', name: 'Counterweight Plate 10t ×2', weight: 20, interchangeableGroup: 'ten1650', shortLabel: '',
             hotspots: [{ points: '382,874 649,874 649,945 382,945' }, { points: '1195,874 1460,874 1460,945 1195,945' }] },
           { id: 'w2', name: 'Winch 2 (incl. rope)', weight: 4.7, countsToward: false, shortLabel: '',
             hotspots: [{ points: '826,691 999,691 999,859 826,859' }] },
@@ -978,62 +984,62 @@
           { items: ['p1', 'p5x2', 'w2'] },
           { items: ['p1', 'p5x2', 'w3'] },
           { items: ['p1', 'p5x2', 'w2', 'w3'] },
-          { items: ['p1', 'p10_2'] },
-          { items: ['p1', 'p10_2', 'w2'] },
-          { items: ['p1', 'p10_2', 'w3'] },
-          { items: ['p1', 'p10_2', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_2'] },
-          { items: ['p1', 'p5x2', 'p10_2', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_2', 'w2', 'w3'] },
-          { items: ['p1', 'p10_4'] },
-          { items: ['p1', 'p10_4', 'w2'] },
-          { items: ['p1', 'p10_4', 'w3'] },
-          { items: ['p1', 'p10_4', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_4'] },
-          { items: ['p1', 'p5x2', 'p10_4', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_4', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_4', 'w2', 'w3'] },
-          { items: ['p1', 'p10_6'] },
-          { items: ['p1', 'p10_6', 'w2'] },
-          { items: ['p1', 'p10_6', 'w3'] },
-          { items: ['p1', 'p10_6', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_6'] },
-          { items: ['p1', 'p5x2', 'p10_6', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_6', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_6', 'w2', 'w3'] },
-          { items: ['p1', 'p10_8'] },
-          { items: ['p1', 'p10_8', 'w2'] },
-          { items: ['p1', 'p10_8', 'w3'] },
-          { items: ['p1', 'p10_8', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_8'] },
-          { items: ['p1', 'p5x2', 'p10_8', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_8', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_8', 'w2', 'w3'] },
-          { items: ['p1', 'p10_10'] },
-          { items: ['p1', 'p10_10', 'w2'] },
-          { items: ['p1', 'p10_10', 'w3'] },
-          { items: ['p1', 'p10_10', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_10'] },
-          { items: ['p1', 'p5x2', 'p10_10', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_10', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_10', 'w2', 'w3'] },
-          { items: ['p1', 'p10_12'] },
-          { items: ['p1', 'p10_12', 'w2'] },
-          { items: ['p1', 'p10_12', 'w3'] },
-          { items: ['p1', 'p10_12', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_12'] },
-          { items: ['p1', 'p5x2', 'p10_12', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_12', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_12', 'w2', 'w3'] },
-          { items: ['p1', 'p10_14'] },
-          { items: ['p1', 'p10_14', 'w2'] },
-          { items: ['p1', 'p10_14', 'w3'] },
-          { items: ['p1', 'p10_14', 'w2', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_14'] },
-          { items: ['p1', 'p5x2', 'p10_14', 'w2'] },
-          { items: ['p1', 'p5x2', 'p10_14', 'w3'] },
-          { items: ['p1', 'p5x2', 'p10_14', 'w2', 'w3'] }
+          { items: ['p1', 'p10a'] },
+          { items: ['p1', 'p10a', 'w2'] },
+          { items: ['p1', 'p10a', 'w3'] },
+          { items: ['p1', 'p10a', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a'] },
+          { items: ['p1', 'p5x2', 'p10a', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'w2', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b'] },
+          { items: ['p1', 'p10a', 'p10b', 'w2'] },
+          { items: ['p1', 'p10a', 'p10b', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'w2', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'w2'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'w2', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'w2'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'w2', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'w2'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'w2', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'w2'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'w2', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g', 'w2'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g', 'w3'] },
+          { items: ['p1', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g', 'w2', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g', 'w2'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g', 'w3'] },
+          { items: ['p1', 'p5x2', 'p10a', 'p10b', 'p10c', 'p10d', 'p10e', 'p10f', 'p10g', 'w2', 'w3'] }
         ]
       },
       // Global/export LTM 1300-6.2 - NOT the EU-market variant (different
@@ -1045,7 +1051,7 @@
       // methodology.txt 10.23 before trusting the "OEM-approved" flag here.
       '1300': {
         label: 'LTM 1300-6.2',
-        sourceNote: 'PROVISIONAL DATA - component identities/weights confirmed against a user-supplied DXF of the actual counterweight stack, but the combination list below is NOT yet sourced from an OEM document for this (global/export) variant. It is a structural mirror of the verified EU-model LTM 1300-6.2 combination chart (Liebherr doc LTM 1300-6-2-003, 0212837-02), re-expressed using this variant’s different component weights (this variant’s Receptacle Plate 1 is a single 6t piece, replacing the EU variant’s separate 13t Receptacle + 3t Plate 7; Counterweight Plate 5 is unique to this variant and has no EU equivalent). Do NOT use for real lift planning. Do not use on site until replaced with this variant’s own OEM combination chart.',
+        sourceNote: 'PROVISIONAL DATA - component identities/weights confirmed against a user-supplied DXF of the actual counterweight stack, but the combination list below is NOT yet sourced from an OEM document for this (global/export) variant. It is a structural mirror of the verified EU-model LTM 1300-6.2 combination chart (Liebherr doc LTM 1300-6-2-003, 0212837-02), re-expressed using this variant’s different component weights (this variant’s Receptacle Plate 1 is a single 6t piece, replacing the EU variant’s separate 13t Receptacle + 3t Plate 7; Counterweight Plate 5 is unique to this variant and has no EU equivalent). Auxiliary Ballast 5/6 naming and pairing IS confirmed - carries over directly from the EU chart regardless of variant. Do NOT use for real lift planning. Do not use on site until replaced with this variant’s own OEM combination chart.',
         diagramImage: './counterweight/img/ltm1300-cwt-exploded.png',
         diagramAlt: 'LTM 1300-6.2 (global/export variant) counterweight exploded CAD line diagram, plates 1-5 plus side-mounted auxiliary ballast pairs',
         diagramWidth: 4643,
@@ -1079,21 +1085,27 @@
             hotspots: [{ points: '1363,104 3282,104 3282,194 1363,194' }] },
           // Side-mounted pairs, always both-or-neither (same "separate"
           // toggle-together modeling as LTM 1130's p8, methodology.txt
-          // 10.8). Names are PLACEHOLDERS - the held EU chart calls its
-          // two equivalent pairs "Auxiliary ballast 5" and "Auxiliary
-          // ballast 6", but this variant's own numbering for these two
-          // pairs is unconfirmed (and "5"/"6" would collide with this
-          // variant's own Plate 5 / Plate 4 numbering above), so generic
-          // Pair A / Pair B labels are used until confirmed.
-          { id: 'auxA', name: '2x Auxiliary Ballast (Pair A)', weight: 20, separate: true, shortLabel: 'A',
+          // 10.8). Pairing is LEFT+RIGHT symmetric (one box mounted on
+          // each side of the crane), NOT the two boxes drawn adjacent on
+          // the same side of the exploded-view layout - confirmed by the
+          // person after the first pass paired them wrong way round (see
+          // methodology.txt 10.24). Named "Auxiliary Ballast 5"/"6" per
+          // the person's confirmation that this numbering is shared across
+          // variants (global/export and EU alike) even though the main
+          // plate numbering differs - unlike the main stack's numbering,
+          // this one carries over directly from the held EU chart
+          // (methodology.txt 10.11), so it's treated as confirmed, not
+          // provisional, despite the rest of this crane's combo data
+          // still being provisional.
+          { id: 'aux5', name: '2x Auxiliary Ballast 5', weight: 20, separate: true, shortLabel: '5',
             hotspots: [
               { points: '3457,416 3916,416 3916,1196 3457,1196' },
-              { points: '3977,416 4540,416 4540,1196 3977,1196' }
+              { points: '730,416 1188,416 1188,1196 730,1196' }
             ] },
-          { id: 'auxB', name: '2x Auxiliary Ballast (Pair B)', weight: 20, separate: true, shortLabel: 'B',
+          { id: 'aux6', name: '2x Auxiliary Ballast 6', weight: 20, separate: true, shortLabel: '6',
             hotspots: [
               { points: '106,416 668,416 668,1196 106,1196' },
-              { points: '730,416 1188,416 1188,1196 730,1196' }
+              { points: '3977,416 4540,416 4540,1196 3977,1196' }
             ] }
         ],
         // PROVISIONAL - structural mirror of the verified EU-model tier
@@ -1108,10 +1120,10 @@
           { items: ['p1', 'p5', 'p2', 'p3a'] },
           { items: ['p1', 'p5', 'p2', 'p3a', 'p4'] },
           { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'auxA'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'auxA'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'auxA', 'auxB'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'auxA', 'auxB'] }
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'aux5'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'aux5', 'aux6'] },
+          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5', 'aux6'] }
         ]
       }
     };
@@ -1132,15 +1144,36 @@
       return items.reduce((sum, id) => sum + (map[id].countsToward === false ? 0 : map[id].weight), 0);
     }
 
-    function cwtFindMatchingCombo(modelKey, selectedIds) {
-      // Zero-weight components (e.g. LTM 1650's "Center Section," a purely
-      // visual echo of the receptacles via linkedId) are never listed in
-      // the OEM's own combos - they don't affect which weight-based
-      // combination this is, so exclude them before comparing.
+    // Collapses a set of ids to a comparable signature for OEM-combo
+    // matching. Zero-weight components (e.g. LTM 1650's "Center Section")
+    // are dropped, same as before. Anything carrying interchangeableGroup
+    // (e.g. LTM 1650's 7 physically identical 10t-pair positions, see
+    // methodology.txt 10.24) is collapsed to a `group:count` token instead
+    // of its own id - the OEM chart only ever specifies HOW MANY of these
+    // are mounted, never which specific one of the 7 physical positions,
+    // so two selections with the same count in a group must be treated as
+    // the same combination regardless of which positions were clicked.
+    function cwtMatchSignature(modelKey, ids) {
       const map = cwtComponentMap(modelKey);
-      const target = [...selectedIds].filter(id => map[id].weight !== 0).sort().join(',');
+      const groupCounts = {};
+      const plain = [];
+      ids.forEach(id => {
+        const c = map[id];
+        if (c.weight === 0) return;
+        if (c.interchangeableGroup) {
+          groupCounts[c.interchangeableGroup] = (groupCounts[c.interchangeableGroup] || 0) + 1;
+        } else {
+          plain.push(id);
+        }
+      });
+      Object.keys(groupCounts).forEach(g => plain.push(`${g}:${groupCounts[g]}`));
+      return plain.sort().join(',');
+    }
+
+    function cwtFindMatchingCombo(modelKey, selectedIds) {
+      const target = cwtMatchSignature(modelKey, selectedIds);
       const combos = COUNTERWEIGHT_DATA[modelKey].combos;
-      const idx = combos.findIndex(c => [...c.items].sort().join(',') === target);
+      const idx = combos.findIndex(c => cwtMatchSignature(modelKey, c.items) === target);
       // idx tags along so callers (e.g. the "Jump to Known Combination"
       // dropdown sync in renderCwtTab) can select the matching <option>
       // without re-searching combos themselves.
@@ -1219,26 +1252,6 @@
       renderCwtTab();
     }
 
-    // For a quantity ladder (e.g. LTM 1650's repeated 10t plate, up to 14
-    // of them) where every physical position has its own visible hotspot:
-    // clicking a level fills the stack up to and including that level;
-    // clicking the CURRENT top level removes it (one step back down).
-    // Unlike cycleCwtSlotGroup, this jumps straight to the clicked level
-    // rather than always advancing by one.
-    function selectCwtSlotLevel(groupName, memberId) {
-      const modelKey = document.getElementById('cwt-crane').value;
-      const members = COUNTERWEIGHT_DATA[modelKey].components.filter(c => c.slotGroup === groupName).map(c => c.id);
-      const clickedIdx = members.indexOf(memberId);
-      const activeIdx = members.findIndex(id => cwtSelected.has(id));
-      members.forEach(id => cwtSelected.delete(id));
-      if (clickedIdx === activeIdx) {
-        if (clickedIdx - 1 >= 0) cwtSelected.add(members[clickedIdx - 1]);
-      } else {
-        cwtSelected.add(members[clickedIdx]);
-      }
-      renderCwtTab();
-    }
-
     function populateCwtComboSelect() {
       const modelKey = document.getElementById('cwt-crane').value;
       const data = COUNTERWEIGHT_DATA[modelKey];
@@ -1267,18 +1280,7 @@
       data.components.forEach(c => {
         (c.hotspots || []).forEach(hs => {
           let displayComp, isSelected, activate;
-          if (c.quantityGroup) {
-            // Quantity ladder (see selectCwtSlotLevel): every level has its
-            // own hotspot and its own identity - highlight it whenever the
-            // selected quantity is at LEAST this level, so the whole stack
-            // up to the active level lights up, not just the exact match.
-            const groupMembers = data.components.filter(m => m.slotGroup === c.slotGroup);
-            const activeIdx = groupMembers.findIndex(m => cwtSelected.has(m.id));
-            const thisIdx = groupMembers.findIndex(m => m.id === c.id);
-            displayComp = c;
-            isSelected = activeIdx >= 0 && thisIdx <= activeIdx;
-            activate = () => selectCwtSlotLevel(c.slotGroup, c.id);
-          } else if (c.slotGroup) {
+          if (c.slotGroup) {
             // Mutually-exclusive alternatives sharing one clickable region
             // (e.g. Winch 2* / Replacement Ballast) - show/label whichever
             // member is currently active, cycle through on repeat clicks.
