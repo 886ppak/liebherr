@@ -520,7 +520,7 @@
         </div>
         <div id="cwt-status" style="margin-top:12px;"></div>
         <div id="cwt-notice" class="warn-box" style="display:none; margin-top:10px;"></div>
-        <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — actual OEM exploded-view artwork, extracted directly, not redrawn. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
+        <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. <span id="cwt-fig-ref"></span> — actual OEM exploded-view artwork, extracted directly, not redrawn. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
       </div>
 
       <div class="card">
@@ -574,6 +574,11 @@
       '1250': {
         label: 'LTM 1250-5.1',
         sourceNote: 'Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltm1250-cwt-exploded.png',
+        diagramAlt: 'Liebherr LTM 1250-5.1 counterweight exploded-view diagram, parts 1-8',
+        diagramWidth: 1831,
+        diagramHeight: 1620,
+        figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02)',
         // weight in t. centerTrim: flagged by the source doc as needing
         // plates 3 AND 4 both fitted to sit centered correctly on its own.
         // separate: mounts to the SIDES of the stack, not stacked at all
@@ -635,6 +640,103 @@
           { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p8'] },
           { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'] }
         ]
+      },
+      // Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07
+      // "Counterweight" (pages 12-20/49), (c) Liebherr-Werk Ehingen GmbH
+      // 2021. 38 combos below (incl. one repeated total, see combos[]
+      // comment) verified the same way as 1250's - every printed total
+      // checked against the subset-sum of its listed components, all 38
+      // reconcile exactly once the Winch 2* exclusion rule (see below) is
+      // applied. See methodology.txt 10.7 before adding another crane.
+      '1110': {
+        label: 'LTM 1110-5.1',
+        sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltm1110-cwt-exploded.png',
+        diagramAlt: 'Liebherr LTM 1110-5.1 counterweight exploded-view diagram, parts 1-8',
+        diagramWidth: 1831,
+        diagramHeight: 1335,
+        figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01)',
+        // p3/p4 are ALWAYS present together in every published combo (never
+        // one without the other) and their silhouettes overlap in the
+        // source diagram with no clean dividing line to trace - rather than
+        // guess a boundary, p4 owns the one clickable region for both and
+        // is linked to p3 (toggling p4 toggles p3 in sync); p3 itself has
+        // no hotspot of its own. See methodology.txt 10.7.
+        // p8w/p8b ("Winch 2*" / "Replacement ballast") occupy the same
+        // physical mounting slot (confirmed by the diagram - slot 8, above
+        // plate 7) and are mutually exclusive - at most one is ever
+        // selected. p8w owns the one clickable region (slotGroup: 'slot8');
+        // clicking it cycles none -> Winch 2* -> Replacement ballast ->
+        // none. countsToward:false on p8w means its 0.8t is displayed in
+        // the composition breakdown but NOT added to the total - confirmed
+        // by checking every combo that lists "Winch 2*": the printed total
+        // only reconciles if that 0.8t is excluded, while combos listing
+        // "Replacement ballast" (same 0.8t) always include it. This is a
+        // real, confirmed OEM rule, not a data-entry gap - do not "fix" it
+        // to count like every other item. See methodology.txt 10.7.
+        components: [
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 7.7,
+            hotspots: [{ points: '819,1160 768,1185 695,1178 590,1133 578,1032 538,1037 534,1137 315,1158 313,1073 262,1072 263,1165 100,1197 96,1262 226,1309 819,1309' }] },
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 2.1,
+            hotspots: [{ points: '779,917 724,942 624,910 132,973 122,1003 184,1019 779,1019' }] },
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 6.0, hotspots: [] },
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 6.0, linkedId: 'p3',
+            hotspots: [{ points: '50,645 820,645 820,895 50,895' }] },
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 3.6,
+            hotspots: [{ points: '829,649 829,560 777,576 777,546 601,491 564,493 555,520 181,569 122,552 90,561 94,608 217,649' }] },
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 0.3,
+            hotspots: [{ points: '588,422 584,414 574,411 544,415 434,412 396,417 364,437 330,443 329,463 333,469 352,471 540,450 580,441' }] },
+          { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5,
+            hotspots: [{ points: '799,244 689,276 552,230 149,279 121,286 120,309 266,359 799,359' }] },
+          { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8',
+            hotspots: [{ points: '440,11 409,7 279,25 274,50 267,53 274,76 276,180 319,192 326,159 416,147 422,162 464,173 468,143 456,146 448,122 455,32' }] },
+          { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', hotspots: [] }
+        ],
+        // 25.4t appears twice with genuinely different compositions (a
+        // real OEM chart quirk, not a duplicate/typo) - {2,3,4,5,8w} and
+        // {2,3,4,6,7,8b} both sum to 25.4t. Both are kept as separate
+        // entries; the dropdown label (which lists components, not just
+        // weight) disambiguates them.
+        combos: [
+          { items: [] },
+          { items: ['p8b'] },
+          { items: ['p6', 'p8b'] },
+          { items: ['p7', 'p8b'] },
+          { items: ['p6', 'p7', 'p8b'] },
+          { items: ['p5', 'p7', 'p8b'] },
+          { items: ['p5', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p8w'] },
+          { items: ['p1', 'p8b'] },
+          { items: ['p1', 'p6', 'p8b'] },
+          { items: ['p1', 'p2', 'p8w'] },
+          { items: ['p1', 'p2', 'p8b'] },
+          { items: ['p1', 'p2', 'p6', 'p8b'] },
+          { items: ['p1', 'p7', 'p8b'] },
+          { items: ['p1', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p5', 'p7', 'p8b'] },
+          { items: ['p1', 'p5', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p5', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p5', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p3', 'p4', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p8w'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p6', 'p8w'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p6', 'p8b'] },
+          { items: ['p1', 'p3', 'p4', 'p5', 'p8b'] },
+          { items: ['p1', 'p3', 'p4', 'p5', 'p6', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p8w'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p8w'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p8b'] },
+          { items: ['p1', 'p3', 'p4', 'p5', 'p7', 'p8b'] },
+          { items: ['p1', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8b'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p7'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8w'] }
+        ]
       }
     };
 
@@ -648,7 +750,10 @@
 
     function cwtComboWeight(modelKey, items) {
       const map = cwtComponentMap(modelKey);
-      return items.reduce((sum, id) => sum + map[id].weight, 0);
+      // countsToward:false (e.g. LTM 1110's "Winch 2*") is shown in the
+      // composition breakdown but excluded from the total - confirmed OEM
+      // rule, see the LTM 1110 data comment above before changing this.
+      return items.reduce((sum, id) => sum + (map[id].countsToward === false ? 0 : map[id].weight), 0);
     }
 
     function cwtFindMatchingCombo(modelKey, selectedIds) {
@@ -676,7 +781,31 @@
     }
 
     function toggleCwtPlate(id) {
-      if (cwtSelected.has(id)) cwtSelected.delete(id); else cwtSelected.add(id);
+      const modelKey = document.getElementById('cwt-crane').value;
+      const comp = cwtComponentMap(modelKey)[id];
+      const turningOn = !cwtSelected.has(id);
+      if (turningOn) cwtSelected.add(id); else cwtSelected.delete(id);
+      // linkedId: plates that are always installed together as a pair and
+      // whose silhouettes overlap with no clean dividing line in the
+      // source diagram (LTM 1110 plates 3/4 - see methodology.txt 10.7)
+      // share one clickable region and stay in sync.
+      if (comp && comp.linkedId) {
+        if (turningOn) cwtSelected.add(comp.linkedId); else cwtSelected.delete(comp.linkedId);
+      }
+      renderCwtTab();
+    }
+
+    // For a mutually-exclusive slot (e.g. LTM 1110's Winch 2* / Replacement
+    // Ballast, both mounted in the same physical position - see
+    // methodology.txt 10.7): clicking cycles none -> first member -> second
+    // member -> none, rather than a plain on/off toggle.
+    function cycleCwtSlotGroup(groupName) {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const members = COUNTERWEIGHT_DATA[modelKey].components.filter(c => c.slotGroup === groupName).map(c => c.id);
+      const activeIdx = members.findIndex(id => cwtSelected.has(id));
+      members.forEach(id => cwtSelected.delete(id));
+      const nextIdx = activeIdx + 1;
+      if (nextIdx < members.length) cwtSelected.add(members[nextIdx]);
       renderCwtTab();
     }
 
@@ -694,23 +823,41 @@
       const data = COUNTERWEIGHT_DATA[modelKey];
       if (!data) return;
 
+      const imgEl = document.querySelector('#cwt-image-wrap img');
+      const svgEl = document.getElementById('cwt-hotspots');
+      if (imgEl.getAttribute('src') !== data.diagramImage) {
+        imgEl.src = data.diagramImage;
+        imgEl.alt = data.diagramAlt || '';
+      }
+      svgEl.setAttribute('viewBox', `0 0 ${data.diagramWidth} ${data.diagramHeight}`);
+
       const SVG_NS = 'http://www.w3.org/2000/svg';
-      const hotspotsEl = document.getElementById('cwt-hotspots');
+      const hotspotsEl = svgEl;
       hotspotsEl.innerHTML = '';
       data.components.forEach(c => {
         (c.hotspots || []).forEach(hs => {
+          // For a slotGroup hotspot (e.g. Winch 2* / Replacement Ballast
+          // sharing one clickable region), show/label whichever member of
+          // the group is currently selected, not just this component's own.
+          const activeInGroup = c.slotGroup
+            ? data.components.find(m => m.slotGroup === c.slotGroup && cwtSelected.has(m.id))
+            : null;
+          const displayComp = activeInGroup || c;
+          const isSelected = c.slotGroup ? !!activeInGroup : cwtSelected.has(c.id);
+
           const poly = document.createElementNS(SVG_NS, 'polygon');
           poly.setAttribute('points', hs.points);
-          poly.setAttribute('class', 'cwt-hotspot' + (cwtSelected.has(c.id) ? ' selected' : ''));
+          poly.setAttribute('class', 'cwt-hotspot' + (isSelected ? ' selected' : ''));
           poly.setAttribute('tabindex', '0');
           poly.setAttribute('role', 'button');
-          poly.setAttribute('aria-label', `${c.name}, ${c.weight.toFixed(1)} tonnes${cwtSelected.has(c.id) ? ', selected' : ''}`);
+          poly.setAttribute('aria-label', `${displayComp.name}, ${displayComp.weight.toFixed(1)} tonnes${isSelected ? ', selected' : ''}`);
           const title = document.createElementNS(SVG_NS, 'title');
-          title.textContent = `${c.name} — ${c.weight.toFixed(1)} t`;
+          title.textContent = `${displayComp.name} — ${displayComp.weight.toFixed(1)} t`;
           poly.appendChild(title);
-          poly.addEventListener('click', () => toggleCwtPlate(c.id));
+          const activate = c.slotGroup ? () => cycleCwtSlotGroup(c.slotGroup) : () => toggleCwtPlate(c.id);
+          poly.addEventListener('click', activate);
           poly.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCwtPlate(c.id); }
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
           });
           hotspotsEl.appendChild(poly);
         });
@@ -732,9 +879,15 @@
       if (cwtSelected.size > 0 && !match) {
         notices.push("This exact set of plates isn't in the manufacturer's published combination chart. Cross-check against the current load chart before use on site.");
       }
-      if (cwtSelected.has('p6') && !(cwtSelected.has('p3') && cwtSelected.has('p4'))) {
-        notices.push('Counterweight plate 6 is only confirmed centered correctly when plates 3 and 4 are both also fitted. With this selection, plate 6 may not be centered correctly and can be damaged — verify physical centering before use.');
-      }
+      // centerTrim is currently only set on LTM 1250's plate 6 - this loop
+      // is written generically in case another crane's trim plate needs
+      // the same treatment, but the "plates 3 and 4" wording is specific
+      // to what that plate's own centering requirement actually says.
+      data.components.filter(c => c.centerTrim && cwtSelected.has(c.id)).forEach(c => {
+        if (!(cwtSelected.has('p3') && cwtSelected.has('p4'))) {
+          notices.push(`${c.name} is only confirmed centered correctly when plates 3 and 4 are both also fitted. With this selection, ${c.name.toLowerCase()} may not be centered correctly and can be damaged — verify physical centering before use.`);
+        }
+      });
       if (notices.length) {
         noticeEl.style.display = 'block';
         noticeEl.innerHTML = notices.map(n => `⚠ ${n}`).join('<br><br>');
@@ -748,11 +901,12 @@
       } else {
         const map = cwtComponentMap(modelKey);
         const rows = [...cwtSelected].map(id => map[id]).sort((a, b) => a.name.localeCompare(b.name))
-          .map(c => `<tr><td style="text-align:left;">${c.name}</td><td>${c.weight.toFixed(1)} t</td></tr>`).join('');
+          .map(c => `<tr><td style="text-align:left;">${c.name}${c.countsToward === false ? ' <span style="color:var(--text-muted);">(not counted in total)</span>' : ''}</td><td>${c.weight.toFixed(1)} t</td></tr>`).join('');
         compEl.innerHTML = `<table><thead><tr><th style="text-align:left;">Component</th><th>Weight</th></tr></thead><tbody>${rows}</tbody></table>`;
       }
 
       document.getElementById('cwt-source-note').textContent = data.sourceNote;
+      document.getElementById('cwt-fig-ref').textContent = data.figRef;
     }
 
     function initCwtTab() {
