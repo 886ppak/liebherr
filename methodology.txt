@@ -1920,3 +1920,50 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   DXFs, don't ask them to estimate pixel coordinates by hand.
 
 ================================================================================
+
+10.32 LTM 1160 hotspots upgraded from hand-picked rectangles to traced
+      outlines - person drew a box around each plate's real silhouette
+  10.25 shipped the new side-angle diagram with rectangle hotspots
+      ("still hand-picked rectangles, not traced outlines... irregular
+      die-cut plate edges"). Person sent back a DXF (same alignment-DXF
+      technique as 1650/1300) with an actual outline traced around each
+      of the 6 plates in AutoCAD, following each plate's real chamfered/
+      notched silhouette rather than a bounding box.
+  Complication: the three 10t plates (p3a/p3b/p3c) are drawn touching
+  each other in the diagram, and were traced as ONE connected outline
+  (86 LINE entities total, forming 4 separate connected components: p4
+  alone, the merged p3a+b+c stack, p2 alone, p1 alone) rather than 3
+  independent closed shapes - the person asked directly whether they
+  needed to redraw complete separate boxes instead. They didn't: since
+  the perspective in this diagram is a true isometric angle (each
+  plate's own top/bottom edges are NOT flat horizontal lines - they
+  slope), a naive "split by Y-coordinate range" approach would have cut
+  through the wrong points. Used proper planar-graph face-tracing
+  instead (treat the shared-edge graph as a planar subdivision, sort
+  each vertex's neighbors by angle, walk consistently-oriented half-
+  edges to recover each bounded face) - this is the general solution for
+  "person traced touching shapes as one connected outline, recover the
+  individual polygons," not a 1160-specific hack, and doesn't care about
+  the perspective distortion since it works purely from graph topology,
+  not coordinates. Confirmed the 3 extracted faces against the known
+  divider vertices (p3a contains the stack's topmost-left corner, p3c
+  contains the bottommost-left corner, p3b is the remainder) before
+  trusting the split.
+  The other 3 shapes (p4: 9 vertices, p2: 22, p1: 21) were already simple
+  closed loops (degree-2 everywhere) - ordered by direct cycle walk, no
+  face-tracing needed.
+  Scale/insert recovery used the exact same method as the 1650/1300
+  alignment DXFs (IMAGE entity's insert point + u_pixel/v_pixel + own
+  image_size, cross-checked against the shipped diagram's known
+  1569x1392 dimensions before trusting it - this reference image was the
+  full-resolution black-background inversion sent for annotation, so no
+  extra reference-to-shipped scale-up factor was needed this time, unlike
+  1300's downscaled screenshot in 10.31).
+  Verified all 6 polygons render without self-intersection, checked
+  visually against the diagram, then re-verified in-browser: all 6 tap
+  targets register correctly, sum to the right weight, gold highlight now
+  hugs each plate's actual outline instead of a rectangular
+  approximation. No component ids, weights, or combos changed - hotspot
+  geometry only.
+
+================================================================================

@@ -885,21 +885,29 @@
         // approximated hotspots, two overlapping faces at once - see
         // methodology.txt 10.9) with a cleaner side-angle exploded view
         // where every plate is its own separate, non-overlapping shape.
-        // Still hand-picked rectangles, not traced outlines (low-res
-        // source raster, irregular die-cut plate edges) - see 10.25.
+        // Hotspots are TRACED outlines (not rectangles) - person drew a
+        // box around each plate's actual silhouette in AutoCAD over the
+        // shipped diagram image and sent the DXF back. The three 10t
+        // plates (p3a/p3b/p3c) were traced as one connected outline
+        // since they share edges where the plates touch - split back
+        // into 3 individual polygons via planar-graph face-tracing
+        // (not a naive Y-band split - the isometric perspective means
+        // each plate's own top/bottom edges aren't flat horizontal
+        // lines, so faces had to be extracted from the actual graph
+        // topology). See methodology.txt 10.32.
         components: [
           { id: 'p1', name: 'Receptacle Plate 1', weight: 10, shortLabel: '',
-            hotspots: [{ points: '0,900 1500,900 1500,1266 0,1266' }] },
+            hotspots: [{ points: '1396,1134 1147,1089 1147,935 1034,935 1034,1090 884,1066 616,1051 616,888 495,888 495,1074 223,1133 212,1155 211,1224 235,1248 315,1258 489,1258 606,1265 739,1281 903,1306 1001,1319 1396,1223' }] },
           { id: 'p2', name: 'Counterweight Plate 2', weight: 10, shortLabel: '',
-            hotspots: [{ points: '0,672 1500,672 1500,876 0,876' }] },
+            hotspots: [{ points: '1072,696 878,679 535,660 338,656 12,729 12,802 108,813 128,809 229,819 300,802 454,807 640,818 786,836 933,862 1023,869 1024,895 1120,908 1237,913 1548,840 1548,772 1432,745 1216,711' }] },
           { id: 'p3a', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
-            hotspots: [{ points: '0,291 1500,291 1500,423 0,423' }] },
+            hotspots: [{ points: '297,467 21,443 21,385 297,411 610,427 706,441 935,474 1227,497 1549,427 1549,483 1227,552 935,526 706,496 610,481' }] },
           { id: 'p3b', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
-            hotspots: [{ points: '0,423 1500,423 1500,528 0,528' }] },
+            hotspots: [{ points: '297,467 610,481 706,496 935,526 1227,552 1549,483 1549,542 1227,616 935,588 706,556 610,543 297,527 21,502 21,443' }] },
           { id: 'p3c', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
-            hotspots: [{ points: '0,528 1500,528 1500,639 0,639' }] },
+            hotspots: [{ points: '706,556 935,588 1227,616 1549,542 1549,600 1227,670 935,646 706,612 610,601 297,585 21,564 21,502 297,527 610,543' }] },
           { id: 'p4', name: 'Counterweight Plate 4', weight: 4, shortLabel: '',
-            hotspots: [{ points: '645,81 1500,81 1500,270 645,270' }] }
+            hotspots: [{ points: '220,169 609,77 1378,148 1405,204 1012,311 926,306 781,281 559,259 220,235' }] }
         ],
         combos: [
           { items: [] },
