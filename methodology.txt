@@ -1083,4 +1083,30 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   fast job (far simpler data model than any crane so far - just 3 fixed
   states, no plate combinations) - don't over-build for it.
 
+10.13 Stray red outline on tapped hotspots - CSS focus-state gap, not a
+      data or logic bug
+  Person reported a red-tinted highlight on whichever plate was tapped
+  most recently on LTM 1650's diagram (screenshot showed one "10t" plate
+  glowing red instead of blending into the gold selected state like the
+  rest). Root cause: .cwt-hotspot's :hover/:focus-visible rule set
+  `outline: none`, but a touch tap on an SVG element with tabindex="0"
+  generally produces plain :focus, not :focus-visible, on mobile
+  browsers (:focus-visible is mostly reserved for keyboard-driven focus).
+  The base .cwt-hotspot rule never reset outline at all, so the browser's
+  own default focus ring - independent of this app's palette entirely -
+  showed through on tap, layered on top of the correct gold fill/stroke.
+  Global CSS already sets -webkit-tap-highlight-color: transparent on
+  every element, which handles the WebKit tap-flash overlay, but that's a
+  different mechanism from the focus outline - fixing one doesn't fix
+  the other.
+  Fix: moved `outline: none` onto the base .cwt-hotspot rule so it always
+  applies regardless of focus state, keeping the intentional gold stroke
+  on :hover/:focus-visible only. This is a general CSS gap, not specific
+  to LTM 1650 - it would affect any crane's hotspots on a touch device,
+  just hadn't been reported yet. Confirmed fixed via a touch-emulated
+  Playwright context (has_touch/is_mobile), not just a regular click -
+  a plain .click() doesn't reliably reproduce the same focus state a real
+  tap does, worth remembering when testing future touch-only interaction
+  bugs on this tab.
+
 ================================================================================
