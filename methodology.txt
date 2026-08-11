@@ -459,4 +459,198 @@ before jumping to this procedure:
   reeving/svg/, redeploy. No manifest.json changes needed if the
   filenames match what's already referenced there.
 
+--------------------------------------------------------------------------------
+10. TAB 5 - COUNTERWEIGHT COMBINATIONS  [CONVERSATION]
+--------------------------------------------------------------------------------
+Purpose: a new-operator-facing tool for the crane's main superstructure
+counterweight (rear ballast stack) - distinct from Tab 1/2's hook-block
+auxiliary ballast (aux[] in FLEET_BLOCK_SPEC), which is a different weight
+system entirely. Two entry points into the same state: tap plates directly
+in a visual stack, or jump straight to a known combination from a dropdown.
+
+10.1 Data source and extraction method
+  Person supplied Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07
+  "Counterweight" (c) Liebherr-Werk Ehingen GmbH 2021, as an "unlocked" PDF
+  (permissions removed, no longer encrypted - unlike the reeving PDFs in
+  section 9, poppler wasn't even needed here for that reason). Still hit an
+  obstacle: pdftotext/pdfinfo/poppler-utils were not installed in this
+  session's sandbox at all (unlike whatever session wrote section 9 - tool
+  availability isn't constant run to run, don't assume section 9's toolchain
+  is present). Installed PyMuPDF via pip instead and read the page text
+  directly.
+  The extracted text was garbled - e.g. "Counterweight" read back as
+  "&RXQWHUZHLJKW". This turned out to be a uniform per-character code-point
+  shift of -29 applied by the embedded Arial subset font (i.e. real_char =
+  encoded_char + 29), NOT a font-rendering bug - decoded correctly for
+  every letter, digit, and punctuation mark once identified. Two exceptions
+  confirmed by testing: literal ASCII space (0x20) is untouched, not
+  shifted; and a handful of already-correct high-value/non-ASCII glyphs
+  (e.g. the "+-" copyright-line character at 0xB1, and a bullet-point
+  character in a separate LucidaSansUnicode font) are also untouched -
+  shift was only applied for character codes <=100 excluding literal space.
+  If asked to extract another counterweight-combination PDF later, check
+  whether this same shift pattern applies before assuming it does - test
+  by decoding one word and confirming it reads correctly, the way this was
+  verified here.
+
+10.2 Data shape - it's a subset-sum catalog, not a literal single stack
+  Every one of the 21 combinations printed in the source chart was checked
+  against the subset-sum of a fixed set of 8 physical components' weights -
+  all 21 reconcile exactly, with no remainder. That means the real data
+  model is "which of 8 fixed components are present," not a monotonically-
+  growing single physical stack - e.g. going from 41t to 43t swaps plate 3
+  out for plate 5, it doesn't just add another plate on top. Only these 21
+  of the 8 components' 256 possible subsets are OEM-published/approved.
+  This directly parallels Tab 1's aux[] philosophy (real OEM combinations
+  only, not generic increments) - same reasoning, independently arrived at
+  for a different weight system.
+  One combination is an exception worth knowing about: the 5t combo is
+  plate 6 ALONE - it's the only non-zero combo that does NOT include the
+  base receptacle plate (plate 1). Confirmed directly from the source
+  chart, not a data-entry error.
+
+10.3 Interaction design - free click + validation, not free click alone
+  Considered restricting the click-to-build mode to only ever produce one
+  of the 21 known-valid subsets (matching Tab 1's readonly-ballast-dropdown
+  philosophy exactly). Person explicitly chose a looser design instead:
+  free-click any plate combination, but flag with an explicit warning
+  banner - not a silent block, not a silent accept - whenever the resulting
+  subset isn't one of the 21 published combos. This mirrors Tab 2's
+  precedent (explicit warning banner over silent fallback) rather than
+  Tab 1's precedent (hard-block invalid input via readonly field). Don't
+  "tighten" this into a hard block in a future pass without asking first -
+  it was a deliberate choice, not an oversight.
+  The dropdown ("Jump to Known Combination") and the clickable stack share
+  the same underlying selection state - selecting from the dropdown updates
+  the stack's highlighted plates and vice versa is effectively true too
+  (clicking to reconstruct a known combo shows the same "approved" status
+  the dropdown entry would have given it).
+
+10.4 Visual design - superseded once, now click-on-the-real-diagram
+  Went through two visual designs in the same session before landing.
+  v1 (abstract bars): plate weights only, no thickness/footprint/stacking
+  sequence in the combination chart (section 10.1's source), so the first
+  build used an abstract vertical bar stack - bar height proportional to
+  weight, stacking order INFERRED from how combos build up across the
+  chart (e.g. plate 1 appears in every non-zero combo except the 5t one,
+  suggesting it's the base plate), hook ballast 8 drawn detached since it
+  seemed unlikely to be a literal stacked plate.
+  The person then supplied a separate OEM exploded-view assembly diagram
+  (parts numbered 1-8, matching this tab's component numbering exactly),
+  which CONFIRMED the inferred order was right on both counts - plates 1-7
+  mount bottom-to-top in exactly that numeric sequence (plate 1, a small
+  twin-pin mounting piece, directly on the turntable; plate 7, the
+  tallest/boxiest piece, at the top), and component 8 mounts to the LEFT
+  and RIGHT sides of the stack rather than on top of it.
+  v2 (current - click directly on that diagram): once the order was
+  confirmed, the person asked for the click/select interaction to happen
+  ON the real diagram itself rather than in an abstract bar list ("easier
+  ... to visualize from what's in front of them, not a text box"). This is
+  the shipped design. Mechanics:
+    - The exploded-view image is embedded directly in the PDF as a RASTER
+      (PNG XObject, 1831x1620), not live vector paths - confirmed by
+      checking every vector drawing on that PDF page against the image's
+      bounding box; zero overlap. So unlike the reeving diagrams (real
+      extracted vector SVGs, section 5.3/9), this is a genuine raster
+      image, extracted via PyMuPDF's doc.extract_image() and stored as
+      counterweight/img/ltm1250-cwt-exploded.png (parallel directory to
+      reeving/svg/, same "actual OEM artwork, extracted directly, not
+      redrawn" framing, same in-app disclaimer convention).
+    - Each component has a hotspots[] array (COUNTERWEIGHT_DATA), rendered
+      as an SVG <polygon> overlay (viewBox="0 0 1831 1620", matching the
+      diagram's own natural pixel size exactly) positioned over the <img>.
+      First pass used generous hand-fit BOUNDING-BOX rectangles (eyeballed
+      off a pixel grid overlaid on the raw PNG). Person then asked for the
+      highlight to follow each plate's actual silhouette instead ("easier
+      ... not a text box" feedback extended to "not a box at all, either").
+      Re-derived algorithmically with OpenCV rather than hand-traced:
+        1. Crop a generous region around each part (from the same rough
+           boxes as the v1 rectangles).
+        2. Threshold to a binary ink/paper mask, morphological CLOSE to
+           bridge small 1-2px gaps in the linework.
+        3. Flood-fill the mask's true exterior from a crop corner; the
+           silhouette is everything the flood fill did NOT reach (ink
+           itself plus any fully-enclosed interior detail - holes, ridges).
+        4. Morphological OPEN (9x9 kernel) to strip thin spikes - this
+           specifically removes leader-line-to-callout-number artifacts
+           that the first attempt (without this step) picked up as part of
+           the plate's own silhouette (e.g. a thin tail running from plate
+           6 or plate 5's body up to their number label).
+        5. cv2.findContours (RETR_EXTERNAL) on what's left, take the
+           largest contour, cv2.approxPolyDP (epsilon = 0.6% of perimeter)
+           to reduce point count into a clean polygon.
+      Verified by re-drawing every resulting polygon on top of the source
+      image and visually confirming a clean fit (no leftover spikes, no
+      leakage into neighboring parts) before pasting the point lists into
+      COUNTERWEIGHT_DATA. This is closer to a real traced outline than the
+      v1 rectangles, but it's still an algorithmic approximation (ink
+      thickness inflates the boundary slightly outward; opening can round
+      off a genuinely sharp small corner) - not hand-verified point-by-
+      point against the CAD source, because there is no CAD source, only
+      this raster. If the diagram image is ever replaced (higher-res
+      rescan, different crane), this whole derivation needs re-running
+      against the new raster - the polygons are fit to this specific PNG's
+      pixels, not to anything in the PDF that would carry over automatically.
+      Two bugs caught after the first pass shipped, both worth knowing
+      about if re-deriving polygons for a future crane's diagram:
+        - Plate 1's OPEN kernel (9x9, same as every other part) was large
+          enough to sever the thin neck connecting its left mounting post
+          to the base plate, silently dropping that post from the
+          silhouette entirely. Fixed by using a smaller kernel (3x3) for
+          this part specifically - there's no single kernel size that's
+          safe for every part, thin real geometry (like this post) can
+          look identical to a leader-line artifact to a fixed-size opening.
+          Always visually check parts with thin connected sub-features, not
+          just the ones near a text label.
+        - Plate 1's crop box was also just too small on the right/bottom -
+          cut off before the plate's actual right edge and the small
+          connector-tab detail near the "11t" label, so that whole corner
+          was outside the crop and could never have been traced regardless
+          of kernel size. Caught by the person comparing a screenshot
+          against the live selection, not by the earlier "re-draw on the
+          source image" verification pass - that check confirms the traced
+          polygon fits cleanly within its crop, it does NOT confirm the
+          crop itself was generous enough to contain the whole part. Pad
+          crop boxes more generously than seems necessary, especially near
+          image edges or small printed labels/tabs, and specifically check
+          each part's true extent against a pixel grid (like section 9.3's
+          reeving-diagram approach) rather than eyeballing a bounding box
+          once and moving on.
+    - Component 8 ("2x Hook Ballast 8") gets TWO hotspots (left box, right
+      box in the diagram) that both toggle the SAME single component id -
+      it's one logical 20t item in the data model (matching the source
+      chart's single "2x Hook Ballast 8: 20.0t" line), just drawn/clickable
+      in two places since the physical pair really does mount on both
+      sides. Clicking either one selects/deselects both simultaneously.
+    - Selected hotspots get a gold outline + translucent fill directly on
+      top of the diagram; unselected ones are fully invisible (transparent
+      fill/stroke) so the diagram reads clean until something's picked.
+      Hover/focus gets a faint stroke for discoverability. Polygons carry
+      tabindex/role=button/aria-label and an Enter/Space keydown handler,
+      not just a click handler, for basic keyboard reachability - the app
+      doesn't do this everywhere (e.g. the CAD tab's canvas has no keyboard
+      equivalent), but it was cheap to add here and there's no reason not to.
+  The abstract bar-stack (v1's .cwt-stack/.cwt-plate CSS, PX_PER_T sizing)
+  and the bounding-box rectangle hotspots (v2) were both removed entirely,
+  not kept as fallbacks - don't resurrect either without asking, the
+  polygon-on-diagram overlay is the intended interaction now.
+
+10.5 Plate 6 centering notice
+  Several combos in the source chart printed a NOTICE: "Counterweight
+  plate 6 not centered correctly!" specifically when plate 6 is included
+  without BOTH plates 3 and 4 also present. Implemented as a second,
+  independent warning condition (separate from the approved/not-approved
+  check) - a selection can be simultaneously OEM-approved AND trigger this
+  centering notice (e.g. the 38t combo: plates 1+2+5+6 is an approved
+  total, but still lacks 3+4, so still shows the centering warning).
+
+10.6 Scope - one crane only, deliberately
+  Only LTM 1250-5.1 ('1250') has data as of this writing. Person explicitly
+  chose to scope the first version to just this crane rather than block on
+  sourcing combination charts for the rest of the fleet. COUNTERWEIGHT_DATA
+  is keyed by crane id specifically so adding another crane later is "add
+  another top-level key with components[]/combos[]," not a rebuild - follow
+  section 10.1's extraction method against that crane's own counterweight-
+  combination PDF chapter if/when the person supplies one.
+
 ================================================================================

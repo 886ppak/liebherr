@@ -138,6 +138,20 @@
     .notation-line { font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: 700; color: var(--text-main); background: var(--input-bg); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; letter-spacing: 0.5px; }
     .notation-line:first-child { border-left: 3px solid var(--accent-gold); }
 
+    /* Clicking/highlighting happens directly on the OEM diagram itself, via
+       an SVG overlay whose <polygon> shapes trace each plate's actual
+       silhouette (see COUNTERWEIGHT_DATA[...].components[].hotspots) —
+       easier for someone to match against the physical plate in front of
+       them than a labeled list, and now follows the real outline instead
+       of a generic bounding box (see methodology.txt 10.4). White
+       background on the wrap matches the diagram's own. */
+    .cwt-image-wrap { position: relative; width: 100%; border-radius: 6px; background: #fff; overflow: hidden; }
+    .cwt-image-wrap img { width: 100%; height: auto; display: block; }
+    .cwt-hotspots-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .cwt-hotspot { fill: transparent; stroke: transparent; stroke-width: 4; cursor: pointer; transition: fill 0.15s ease, stroke 0.15s ease; }
+    .cwt-hotspot:hover, .cwt-hotspot:focus-visible { stroke: rgba(229,169,0,0.55); outline: none; }
+    .cwt-hotspot.selected { fill: rgba(229,169,0,0.32); stroke: var(--accent-gold); }
+
     #update-banner {
       position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 200;
       background: var(--card-bg); border: 1px solid var(--accent-gold); border-radius: 8px;
@@ -179,6 +193,7 @@
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
     <button class="tab-btn" onclick="switchTab('reeve-tab', event)">Reeving Plan</button>
+    <button class="tab-btn" onclick="switchTab('cwt-tab', event)">Counterweight Combinations</button>
   </nav>
 
   <div class="container">
@@ -479,6 +494,42 @@
       </div>
     </div>
 
+    <!-- ================= TAB 5: COUNTERWEIGHT COMBINATIONS ================= -->
+    <div id="cwt-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Crane Selection</div>
+        <div class="form-group">
+          <label>Select Crane Model</label>
+          <select id="cwt-crane" onchange="onCwtCraneChange()"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Jump to Known Combination</div>
+        <div class="form-group">
+          <label>OEM-Approved Combination (by total weight)</label>
+          <select id="cwt-combo-select" onchange="onCwtComboSelect()"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Counterweight Stack</div>
+        <div id="cwt-image-wrap" class="cwt-image-wrap">
+          <img src="./counterweight/img/ltm1250-cwt-exploded.png" alt="Liebherr LTM 1250-5.1 counterweight exploded-view diagram, parts 1-8">
+          <svg id="cwt-hotspots" class="cwt-hotspots-svg" viewBox="0 0 1831 1620" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div id="cwt-status" style="margin-top:12px;"></div>
+        <div id="cwt-notice" class="warn-box" style="display:none; margin-top:10px;"></div>
+        <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — actual OEM exploded-view artwork, extracted directly, not redrawn. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Composition</div>
+        <div id="cwt-composition"></div>
+        <div class="disclaimer" id="cwt-source-note"></div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -509,6 +560,207 @@
 
     function toDegrees(radians) { return radians * 180 / Math.PI; }
     function dirFor(angleDeg) { return angleDeg >= 0 ? '<' : '>'; }
+
+    // --- TAB 5: COUNTERWEIGHT COMBINATIONS ---
+    // Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07
+    // "Counterweight" (pages 9-13/33), (c) Liebherr-Werk Ehingen GmbH 2021 -
+    // transcribed from the person's own PDF. The 21 combos below are an
+    // exact match: every printed total was checked against the subset-sum
+    // of the component weights it lists, and all 21 reconcile exactly. Only
+    // these 21 of the 8 components' 256 possible subsets are OEM-published -
+    // see methodology.txt before assuming any other subset is safe, and
+    // before adding another crane here.
+    const COUNTERWEIGHT_DATA = {
+      '1250': {
+        label: 'LTM 1250-5.1',
+        sourceNote: 'Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        // weight in t. centerTrim: flagged by the source doc as needing
+        // plates 3 AND 4 both fitted to sit centered correctly on its own.
+        // separate: mounts to the SIDES of the stack, not stacked at all
+        // (confirmed via OEM exploded-view diagram; see CSS note).
+        // Declaration order below = confirmed bottom-to-top mounting order
+        // for plates 1-7 (turntable up), per that same diagram.
+        // hotspots: SVG polygon point lists, in the diagram image's own
+        // natural pixel space (1831x1620 viewBox) - one per component,
+        // p8 gets two (see below). These trace the actual plate silhouette
+        // rather than a generic bounding box - derived algorithmically
+        // (OpenCV contour extraction on the raster diagram: threshold ->
+        // flood-fill the exterior -> take the complement as the plate's
+        // silhouette -> morphological opening to strip thin leader-line
+        // artifacts -> polygon-simplify), then visually verified against
+        // the source image before being pasted in here. Not hand-traced,
+        // not pixel-perfect - see methodology.txt 10.4 before re-deriving
+        // these for a different/rescanned diagram image.
+        components: [
+          { id: 'p1', name: 'Receptacle Plate 1', weight: 11.0,
+            hotspots: [{ points: '1295,1543 1281,1502 1193,1429 1144,1414 1134,1317 1110,1320 1107,1415 830,1432 829,1361 775,1342 767,1385 800,1395 806,1366 804,1470 759,1454 758,1437 641,1463 643,1489 759,1569' }] },
+          { id: 'p2', name: 'Counterweight Plate 2', weight: 10.0,
+            hotspots: [{ points: '1414,1100 1041,1100 742,1123 567,1162 564,1212 662,1284 1414,1284' }] },
+          { id: 'p3', name: 'Counterweight Plate 3', weight: 10.0,
+            hotspots: [{ points: '1414,1044 1414,935 1363,953 1279,894 744,915 567,949 567,981 657,1044' }] },
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 10.0,
+            hotspots: [{ points: '1419,834 1419,738 1379,752 1279,683 762,703 569,737 569,765 668,834' }] },
+          { id: 'p5', name: 'Counterweight Plate 5', weight: 12.0,
+            hotspots: [{ points: '1405,589 1401,565 1301,506 1300,471 987,466 974,495 835,505 809,479 572,522 570,579 648,634 1401,613' }] },
+          { id: 'p6', name: 'Counterweight Plate 6', weight: 5.0, centerTrim: true,
+            hotspots: [{ points: '1311,370 1294,334 1221,317 1203,298 897,308 693,345 694,358 796,429 1038,389 1065,398 1302,392' }] },
+          { id: 'p7', name: 'Counterweight 7', weight: 10.0,
+            hotspots: [{ points: '1305,47 1087,32 576,89 574,220 658,232 676,254 685,225 818,205 843,228 966,225 1011,190 1197,187 1214,215 1221,187 1304,177' }] },
+          { id: 'p8', name: '2x Hook Ballast 8', weight: 20.0, separate: true,
+            hotspots: [
+              { points: '120,517 121,690 142,704 386,720 388,587 410,586 417,541 399,530 358,534 339,520 340,488 323,476 284,482 270,471' },
+              { points: '1427,397 1433,441 1456,453 1456,553 1569,633 1722,588 1726,422 1700,402 1480,384' }
+            ] }
+        ],
+        combos: [
+          { items: [] },
+          { items: ['p6'] },
+          { items: ['p1'] },
+          { items: ['p1', 'p6'] },
+          { items: ['p1', 'p2'] },
+          { items: ['p1', 'p2', 'p6'] },
+          { items: ['p1', 'p2', 'p3'] },
+          { items: ['p1', 'p2', 'p5'] },
+          { items: ['p1', 'p2', 'p3', 'p6'] },
+          { items: ['p1', 'p2', 'p5', 'p6'] },
+          { items: ['p1', 'p2', 'p3', 'p4'] },
+          { items: ['p1', 'p2', 'p4', 'p5'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p6'] },
+          { items: ['p1', 'p2', 'p4', 'p5', 'p6'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p7'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p8'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p8'] },
+          { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'] }
+        ]
+      }
+    };
+
+    let cwtSelected = new Set();
+
+    function cwtComponentMap(modelKey) {
+      const map = {};
+      COUNTERWEIGHT_DATA[modelKey].components.forEach(c => { map[c.id] = c; });
+      return map;
+    }
+
+    function cwtComboWeight(modelKey, items) {
+      const map = cwtComponentMap(modelKey);
+      return items.reduce((sum, id) => sum + map[id].weight, 0);
+    }
+
+    function cwtFindMatchingCombo(modelKey, selectedIds) {
+      const target = [...selectedIds].sort().join(',');
+      return COUNTERWEIGHT_DATA[modelKey].combos.find(c => [...c.items].sort().join(',') === target);
+    }
+
+    function cwtDescribeCombo(items) {
+      if (items.length === 0) return 'No counterweight';
+      return 'Plate(s) ' + items.map(id => id.replace('p', '')).join('+');
+    }
+
+    function onCwtCraneChange() {
+      cwtSelected = new Set();
+      populateCwtComboSelect();
+      renderCwtTab();
+    }
+
+    function onCwtComboSelect() {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const idx = document.getElementById('cwt-combo-select').value;
+      const combo = COUNTERWEIGHT_DATA[modelKey].combos[idx];
+      cwtSelected = new Set(combo.items);
+      renderCwtTab();
+    }
+
+    function toggleCwtPlate(id) {
+      if (cwtSelected.has(id)) cwtSelected.delete(id); else cwtSelected.add(id);
+      renderCwtTab();
+    }
+
+    function populateCwtComboSelect() {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const data = COUNTERWEIGHT_DATA[modelKey];
+      const comboSelect = document.getElementById('cwt-combo-select');
+      buildSelect(comboSelect, data.combos.map((c, i) => ({ ...c, idx: i })),
+        (c) => `${cwtComboWeight(modelKey, c.items).toFixed(1)} t — ${cwtDescribeCombo(c.items)}`,
+        (c) => c.idx);
+    }
+
+    function renderCwtTab() {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const data = COUNTERWEIGHT_DATA[modelKey];
+      if (!data) return;
+
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const hotspotsEl = document.getElementById('cwt-hotspots');
+      hotspotsEl.innerHTML = '';
+      data.components.forEach(c => {
+        (c.hotspots || []).forEach(hs => {
+          const poly = document.createElementNS(SVG_NS, 'polygon');
+          poly.setAttribute('points', hs.points);
+          poly.setAttribute('class', 'cwt-hotspot' + (cwtSelected.has(c.id) ? ' selected' : ''));
+          poly.setAttribute('tabindex', '0');
+          poly.setAttribute('role', 'button');
+          poly.setAttribute('aria-label', `${c.name}, ${c.weight.toFixed(1)} tonnes${cwtSelected.has(c.id) ? ', selected' : ''}`);
+          const title = document.createElementNS(SVG_NS, 'title');
+          title.textContent = `${c.name} — ${c.weight.toFixed(1)} t`;
+          poly.appendChild(title);
+          poly.addEventListener('click', () => toggleCwtPlate(c.id));
+          poly.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCwtPlate(c.id); }
+          });
+          hotspotsEl.appendChild(poly);
+        });
+      });
+
+      const total = cwtComboWeight(modelKey, [...cwtSelected]);
+      const match = cwtFindMatchingCombo(modelKey, cwtSelected);
+      const statusEl = document.getElementById('cwt-status');
+      if (cwtSelected.size === 0) {
+        statusEl.innerHTML = `<div class="metric-card"><div class="metric-label">Total Counterweight</div><div class="metric-value">0.0 t</div><div class="metric-sub">No counterweight selected</div></div>`;
+      } else if (match) {
+        statusEl.innerHTML = `<div class="metric-card highlight"><div class="metric-label">Total Counterweight</div><div class="metric-value">${total.toFixed(1)} t</div><div class="metric-sub">✓ OEM-approved combination</div></div>`;
+      } else {
+        statusEl.innerHTML = `<div class="metric-card"><div class="metric-label">Total Counterweight</div><div class="metric-value">${total.toFixed(1)} t</div><div class="metric-sub">⚠ Not an OEM-approved combination</div></div>`;
+      }
+
+      const noticeEl = document.getElementById('cwt-notice');
+      const notices = [];
+      if (cwtSelected.size > 0 && !match) {
+        notices.push("This exact set of plates isn't in the manufacturer's published combination chart. Cross-check against the current load chart before use on site.");
+      }
+      if (cwtSelected.has('p6') && !(cwtSelected.has('p3') && cwtSelected.has('p4'))) {
+        notices.push('Counterweight plate 6 is only confirmed centered correctly when plates 3 and 4 are both also fitted. With this selection, plate 6 may not be centered correctly and can be damaged — verify physical centering before use.');
+      }
+      if (notices.length) {
+        noticeEl.style.display = 'block';
+        noticeEl.innerHTML = notices.map(n => `⚠ ${n}`).join('<br><br>');
+      } else {
+        noticeEl.style.display = 'none';
+      }
+
+      const compEl = document.getElementById('cwt-composition');
+      if (cwtSelected.size === 0) {
+        compEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">No counterweight selected.</div>`;
+      } else {
+        const map = cwtComponentMap(modelKey);
+        const rows = [...cwtSelected].map(id => map[id]).sort((a, b) => a.name.localeCompare(b.name))
+          .map(c => `<tr><td style="text-align:left;">${c.name}</td><td>${c.weight.toFixed(1)} t</td></tr>`).join('');
+        compEl.innerHTML = `<table><thead><tr><th style="text-align:left;">Component</th><th>Weight</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      document.getElementById('cwt-source-note').textContent = data.sourceNote;
+    }
+
+    function initCwtTab() {
+      const craneSelect = document.getElementById('cwt-crane');
+      buildSelect(craneSelect, Object.keys(COUNTERWEIGHT_DATA), (k) => COUNTERWEIGHT_DATA[k].label, (k) => k);
+      populateCwtComboSelect();
+      renderCwtTab();
+    }
 
     // --- OEM HOOK BLOCK DATA BASED ON SPECIFICATION SHEETS ---
     const FLEET_BLOCK_SPEC = {
@@ -1951,6 +2203,7 @@
     loadRopeModel();
     calcHook();
     calcCAD();
+    initCwtTab();
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
