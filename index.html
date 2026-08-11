@@ -145,9 +145,30 @@
        them than a labeled list, and now follows the real outline instead
        of a generic bounding box (see methodology.txt 10.4). White
        background on the wrap matches the diagram's own. */
-    .cwt-image-wrap { position: relative; width: 100%; border-radius: 6px; background: #fff; overflow: hidden; }
-    .cwt-image-wrap img { width: 100%; height: auto; display: block; }
+    /* Fixed display height (not each diagram's native aspect ratio) so
+       every crane's diagram occupies roughly the same footprint on the
+       page - native aspect ratios here range from 0.80 (LTM 1110,
+       portrait) to 3.57 (LTM 1300, very wide letterbox), and letting
+       width:100%/height:auto follow that natively made LTM 1110 render
+       over twice as tall as the others. object-fit:contain on the img
+       letterboxes it to fit; the min(...,60vw) keeps it from being taller
+       than it is wide on very narrow viewports. The hotspot SVG needs no
+       special handling to match - it already uses
+       preserveAspectRatio="xMidYMid meet" (see below), which letterboxes
+       identically to object-fit:contain given the same box and the same
+       source aspect ratio, so the two stay pixel-aligned automatically.
+       See methodology.txt 10.26. */
+    .cwt-image-wrap { position: relative; width: 100%; height: min(460px, 60vw); border-radius: 6px; background: #fff; overflow: hidden; touch-action: pan-y; }
+    .cwt-image-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .cwt-hotspots-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    /* Transform target for pinch-zoom/pan (see cwtInitZoom()) - kept as a
+       separate element from cwt-image-wrap itself so the wrapper's own
+       size/overflow:hidden clipping stays fixed while this scales/pans
+       inside it. position:relative so the absolutely-positioned SVG
+       overlay still anchors to this box (and thus scales/pans with the
+       image) rather than escaping to the outer wrapper. */
+    .cwt-zoom-inner { position: relative; width: 100%; height: 100%; transform-origin: 0 0; }
+    .cwt-zoom-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; text-align: center; }
     /* outline:none on the base rule, not just :hover/:focus-visible -
        a touch tap gives an SVG polygon plain :focus (not :focus-visible)
        on most mobile browsers, and without this the browser's own default
@@ -521,9 +542,12 @@
       <div class="card">
         <div class="card-title">Counterweight Stack</div>
         <div id="cwt-image-wrap" class="cwt-image-wrap">
-          <img src="./counterweight/img/ltm1250-cwt-exploded-v2.png" alt="Liebherr LTM 1250-5.1 counterweight exploded CAD line diagram, parts 1-8">
-          <svg id="cwt-hotspots" class="cwt-hotspots-svg" viewBox="0 0 2625 1400" preserveAspectRatio="xMidYMid meet"></svg>
+          <div id="cwt-zoom-inner" class="cwt-zoom-inner">
+            <img src="./counterweight/img/ltm1250-cwt-exploded-v2.png" alt="Liebherr LTM 1250-5.1 counterweight exploded CAD line diagram, parts 1-8">
+            <svg id="cwt-hotspots" class="cwt-hotspots-svg" viewBox="0 0 2625 1400" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
         </div>
+        <div class="cwt-zoom-hint">Pinch to zoom, drag to pan when zoomed in.</div>
         <div id="cwt-status" style="margin-top:12px;"></div>
         <div id="cwt-notice" class="warn-box" style="display:none; margin-top:10px;"></div>
         <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. <span id="cwt-fig-ref"></span>. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
@@ -851,32 +875,31 @@
       // with no new mechanism needed. See methodology.txt 10.9.
       '1160': {
         label: 'LTM 1160-5.2',
-        sourceNote: 'Source: Liebherr doc LTM 1160-5-2-003 (0212601-04), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
-        diagramImage: './counterweight/img/ltm1160-cwt-exploded.jpg',
-        diagramAlt: 'Liebherr LTM 1160-5.2 counterweight exploded-view diagram, parts 1-4',
-        diagramWidth: 2126,
-        diagramHeight: 1200,
-        figRef: 'Fig. 124343, Liebherr doc LTM 1160-5-2-003 (0212601-04) — actual OEM exploded-view artwork, extracted directly, not redrawn',
-        // Hotspots here are hand-approximated rectangles, NOT OpenCV-
-        // traced outlines like other cranes - this diagram shows the same
-        // 5 plates from two overlapping visible faces at once (isometric
-        // corner view), too intertwined for the flood-fill contour method
-        // to cleanly separate. Lower positional precision than other
-        // cranes' hotspots; see methodology.txt 10.9 before assuming this
-        // approach generalizes.
+        sourceNote: 'Source: Liebherr doc LTM 1160-5-2-003 (0212601-04), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021, for combination data. Diagram is a separate person-supplied reference image (dimensioned exploded view, weights and 2750/4270mm dimensions baked in) - not confirmed to be from the same source document, see methodology.txt 10.25. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltm1160-cwt-newangle.jpg',
+        diagramAlt: 'LTM 1160-5.2 counterweight exploded-view diagram (side angle), plates 1-4 with dimensions',
+        diagramWidth: 1569,
+        diagramHeight: 1392,
+        figRef: 'Re-drawn from a user-supplied reference image, not the chapter 4.07 OEM artwork used for the combination data above',
+        // Replaces the old isometric-corner-view diagram (imprecise hand-
+        // approximated hotspots, two overlapping faces at once - see
+        // methodology.txt 10.9) with a cleaner side-angle exploded view
+        // where every plate is its own separate, non-overlapping shape.
+        // Still hand-picked rectangles, not traced outlines (low-res
+        // source raster, irregular die-cut plate edges) - see 10.25.
         components: [
           { id: 'p1', name: 'Receptacle Plate 1', weight: 10, shortLabel: '',
-            hotspots: [{ points: '300,700 2020,700 2020,800 300,800' }, { points: '0,650 800,650 800,1100 0,1100' }] },
+            hotspots: [{ points: '0,900 1500,900 1500,1266 0,1266' }] },
           { id: 'p2', name: 'Counterweight Plate 2', weight: 10, shortLabel: '',
-            hotspots: [{ points: '450,640 2020,640 2020,710 450,710' }] },
+            hotspots: [{ points: '0,672 1500,672 1500,876 0,876' }] },
           { id: 'p3a', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
-            hotspots: [{ points: '600,570 2020,570 2020,640 600,640' }] },
+            hotspots: [{ points: '0,291 1500,291 1500,423 0,423' }] },
           { id: 'p3b', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
-            hotspots: [{ points: '750,500 2020,500 2020,570 750,570' }] },
+            hotspots: [{ points: '0,423 1500,423 1500,528 0,528' }] },
           { id: 'p3c', name: 'Counterweight Plate 3', weight: 10, shortLabel: '',
-            hotspots: [{ points: '900,435 2020,435 2020,500 900,500' }] },
+            hotspots: [{ points: '0,528 1500,528 1500,639 0,639' }] },
           { id: 'p4', name: 'Counterweight Plate 4', weight: 4, shortLabel: '',
-            hotspots: [{ points: '870,230 1650,230 1650,460 870,460' }] }
+            hotspots: [{ points: '645,81 1500,81 1500,270 645,270' }] }
         ],
         combos: [
           { items: [] },
@@ -1199,8 +1222,149 @@
       return items.map(id => map[id].name.replace(/^Counterweight /, '')).join(' + ');
     }
 
+    // --- Pinch-to-zoom for the counterweight diagram ---
+    // Two-finger pinch only, deliberately - a single-finger drag is left
+    // alone (native page scroll, touch-action:pan-y on the wrapper) rather
+    // than repurposed for panning while zoomed in, so swiping the page
+    // never gets eaten by a diagram the user's finger happens to land on.
+    // To pan while zoomed, pinch off-center; double-tap or double-click
+    // resets to 1x. Transform is applied to #cwt-zoom-inner, a child of
+    // the fixed-size #cwt-image-wrap (see methodology.txt 10.26) - the
+    // wrapper's own overflow:hidden clips it, so zooming/panning never
+    // grows the page layout.
+    let cwtZoomState = { scale: 1, tx: 0, ty: 0 };
+    // type: 'pinch' (2-finger) or 'pan' (1-finger, only ever started while
+    // already zoomed in - see touchstart below). Single-finger touches at
+    // scale 1 are left completely alone (gesture stays null, no
+    // preventDefault happens) so normal page scroll works everywhere on
+    // the diagram until the user has actually zoomed in.
+    let cwtGesture = null;
+
+    function cwtApplyZoomTransform() {
+      const el = document.getElementById('cwt-zoom-inner');
+      if (el) el.style.transform = `translate(${cwtZoomState.tx}px, ${cwtZoomState.ty}px) scale(${cwtZoomState.scale})`;
+    }
+
+    function cwtResetZoom() {
+      cwtZoomState = { scale: 1, tx: 0, ty: 0 };
+      cwtApplyZoomTransform();
+    }
+
+    // Keeps zoomed content from panning far enough to show empty space
+    // beyond its own edge.
+    function cwtClampZoomState(wrap) {
+      const w = wrap.clientWidth, h = wrap.clientHeight;
+      const minTx = Math.min(0, w - w * cwtZoomState.scale);
+      const minTy = Math.min(0, h - h * cwtZoomState.scale);
+      cwtZoomState.tx = Math.min(0, Math.max(minTx, cwtZoomState.tx));
+      cwtZoomState.ty = Math.min(0, Math.max(minTy, cwtZoomState.ty));
+    }
+
+    function cwtTouchDist(t0, t1) {
+      return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+    }
+
+    function cwtStartPinch(wrap, touches) {
+      const rect = wrap.getBoundingClientRect();
+      cwtGesture = {
+        type: 'pinch',
+        dist: cwtTouchDist(touches[0], touches[1]),
+        scale: cwtZoomState.scale,
+        tx: cwtZoomState.tx, ty: cwtZoomState.ty,
+        mid: {
+          x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+          y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top
+        }
+      };
+    }
+
+    function cwtStartPan(touch) {
+      cwtGesture = {
+        type: 'pan',
+        x: touch.clientX, y: touch.clientY,
+        tx: cwtZoomState.tx, ty: cwtZoomState.ty
+      };
+    }
+
+    function cwtInitZoom() {
+      const wrap = document.getElementById('cwt-image-wrap');
+      // Bound once - renderCwtTab() rebuilds the SVG/img inside this
+      // wrapper on every crane/selection change, but never replaces the
+      // wrapper element itself, so these listeners survive.
+      if (!wrap || wrap.dataset.zoomBound) return;
+      wrap.dataset.zoomBound = '1';
+
+      wrap.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          cwtStartPinch(wrap, e.touches);
+        } else if (e.touches.length === 1 && cwtZoomState.scale > 1) {
+          // Only claim single-finger touches once already zoomed in -
+          // at scale 1 this stays null so pan-y native scroll applies.
+          cwtStartPan(e.touches[0]);
+        } else {
+          cwtGesture = null;
+        }
+      }, { passive: true });
+
+      wrap.addEventListener('touchmove', (e) => {
+        if (!cwtGesture) return;
+        if (cwtGesture.type === 'pinch' && e.touches.length === 2) {
+          e.preventDefault();
+          const ratio = cwtTouchDist(e.touches[0], e.touches[1]) / cwtGesture.dist;
+          const newScale = Math.min(4, Math.max(1, cwtGesture.scale * ratio));
+          // Anchor the point under the fingers so it doesn't drift as
+          // scale changes - solve for translate holding that content
+          // point fixed in screen space.
+          const { mid, scale: startScale, tx: startTx, ty: startTy } = cwtGesture;
+          const contentX = (mid.x - startTx) / startScale;
+          const contentY = (mid.y - startTy) / startScale;
+          cwtZoomState.scale = newScale;
+          cwtZoomState.tx = mid.x - contentX * newScale;
+          cwtZoomState.ty = mid.y - contentY * newScale;
+          cwtClampZoomState(wrap);
+          cwtApplyZoomTransform();
+        } else if (cwtGesture.type === 'pan' && e.touches.length === 1) {
+          e.preventDefault();
+          cwtZoomState.tx = cwtGesture.tx + (e.touches[0].clientX - cwtGesture.x);
+          cwtZoomState.ty = cwtGesture.ty + (e.touches[0].clientY - cwtGesture.y);
+          cwtClampZoomState(wrap);
+          cwtApplyZoomTransform();
+        }
+      }, { passive: false });
+
+      wrap.addEventListener('touchend', (e) => {
+        if (e.touches.length === 2) {
+          // Dropped from 3+ to 2 (rare) - just restart the pinch baseline.
+          cwtStartPinch(wrap, e.touches);
+        } else if (e.touches.length === 1 && cwtZoomState.scale > 1) {
+          // Dropped from a pinch to one finger mid-gesture - hand off to
+          // pan rather than stopping dead.
+          cwtStartPan(e.touches[0]);
+        } else {
+          cwtGesture = null;
+        }
+        if (e.touches.length === 0 && cwtZoomState.scale < 1.05) cwtResetZoom();
+      }, { passive: true });
+
+      // Double-tap/double-click to reset - the only way back to 1x
+      // without a dedicated UI button, matching common zoom-viewer UX.
+      // Only counts a genuine tap (gesture never engaged) so releasing a
+      // pinch or pan doesn't also trigger a reset.
+      let lastTapAt = 0, hadGesture = false;
+      wrap.addEventListener('touchstart', () => { hadGesture = false; }, { passive: true });
+      wrap.addEventListener('touchmove', () => { hadGesture = true; }, { passive: true });
+      wrap.addEventListener('touchend', (e) => {
+        if (e.touches.length > 0 || hadGesture) return;
+        const now = Date.now();
+        if (now - lastTapAt < 300) cwtResetZoom();
+        lastTapAt = now;
+      }, { passive: true });
+      wrap.addEventListener('dblclick', cwtResetZoom);
+    }
+
     function onCwtCraneChange() {
       cwtSelected = new Set();
+      cwtResetZoom();
       populateCwtComboSelect();
       renderCwtTab();
     }
@@ -1397,6 +1561,7 @@
       buildSelect(craneSelect, Object.keys(COUNTERWEIGHT_DATA), (k) => COUNTERWEIGHT_DATA[k].label, (k) => k);
       populateCwtComboSelect();
       renderCwtTab();
+      cwtInitZoom();
     }
 
     // --- OEM HOOK BLOCK DATA BASED ON SPECIFICATION SHEETS ---

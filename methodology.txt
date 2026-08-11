@@ -1638,3 +1638,110 @@ in a visual stack, or jump straight to a known combination from a dropdown.
      pending this variant's own OEM chart.
 
 ================================================================================
+
+10.25 LTM 1160 diagram replaced with a person-supplied side-angle
+      reference image
+  10.9's isometric-corner-view diagram (imprecise hand-approximated
+  hotspots, two overlapping faces at once, too intertwined for contour
+  tracing) is replaced with a cleaner side-angle exploded view the person
+  supplied directly - every plate drawn as its own separate,
+  non-overlapping shape, with weights (4t/10t) and two dimensions
+  (2750mm, 4270mm) baked into the image itself. Source is NOT confirmed
+  to be the same chapter 4.07 document used for the combination data -
+  the image crops off partial multi-language caption text on its left
+  edge (French "...nt simplifié", Cyrillic "для"), suggesting a separate
+  spec-sheet/brochure source rather than the German assembly manual.
+  sourceNote and figRef both now say so explicitly rather than implying a
+  single unified source, matching how the DXF-sourced diagrams (10.15/
+  10.18/10.21) already caption themselves as person-supplied rather than
+  claiming OEM artwork.
+  Component ids/weights/combos are UNCHANGED from 10.9 - only
+  diagramImage/diagramWidth/diagramHeight and each component's hotspots
+  moved. Low-res source (523x464), upscaled 3x with Lanczos resampling
+  before saving (matches the resolution other diagrams render at) -
+  saved as JPEG not PNG, since this is a photographic/rendered raster
+  with gradients, not clean CAD line art; PNG came out to ~970KB for the
+  upscaled version vs ~210KB as JPEG at quality 90, for no visible
+  difference on this source.
+  Still hand-picked rectangles, not traced outlines - irregular die-cut
+  plate edges on a low-res raster, same call as 10.9 and every other
+  raster-photo-sourced diagram in this app.
+  Caught one real bug before shipping: the first-pass rectangle for
+  Plate 4 (the top 4t plate) extended down to y=178 (in the original
+  523x464 coordinate space) to cover its full visible edge profile, which
+  overlapped Plate 3's top box (starting at y=97) across roughly two
+  thirds of the width - any click landing in that overlap zone hit
+  Plate 4's hotspot instead of Plate 3's, since it's the topmost element
+  in SVG paint order for overlapping regions. Found by clicking through
+  all 6 components in a Playwright test and hitting a real timeout ("Plate
+  4 intercepts pointer events") rather than by eyeballing the overlay
+  image, where the overlap wasn't obviously visible. Fixed by shrinking
+  Plate 4's box to y=27-90, sacrificing coverage of its lower edge
+  profile (visible only on the left portion of the plate) in exchange for
+  zero overlap with the stack below. Worth remembering for any future
+  hand-picked-rectangle diagram: a visual overlay check alone doesn't
+  reliably catch overlapping click targets - a scripted click-every-
+  component pass does.
+
+10.26 Diagram sizing normalized across all cranes; pinch-to-zoom added
+  Two related UI requests. Before this, .cwt-image-wrap used width:100%
+  + height:auto on the <img>, so each diagram rendered at ITS OWN native
+  aspect ratio - fine while every diagram happened to be roughly
+  landscape, but LTM 1110's diagram is portrait (0.80, width < height)
+  while every other crane's is landscape (1.13 to 3.57), so 1110 rendered
+  more than twice as tall as the others at the same container width,
+  dominating the page and requiring much more scrolling to get past it.
+  Fixed by giving .cwt-image-wrap a fixed height (min(460px, 60vw), the
+  vw term only matters on very narrow viewports) and switching the <img>
+  to width:100%/height:100%/object-fit:contain, which letterboxes any
+  aspect ratio to fit the same box instead of dictating the box's own
+  height. The hotspot SVG needed NO matching logic added - it already
+  used preserveAspectRatio="xMidYMid meet" (same letterbox-to-fit
+  behavior as object-fit:contain) with position:absolute/inset:0 filling
+  the same box as the img, so once both share one fixed-size parent, they
+  stay pixel-aligned automatically at any aspect ratio, zoomed or not.
+  Verified all 6 cranes now report identical #cwt-image-wrap bounding
+  boxes at a given viewport, and that hotspot clicks still land correctly
+  on both extreme aspect ratios (1110 portrait, 1300 at 3.57).
+  Pinch-to-zoom: added as a self-contained feature (cwtZoomState /
+  cwtInitZoom() etc.) applying a CSS transform to a new #cwt-zoom-inner
+  element wrapping the img+svg pair, itself a child of the now
+  fixed-size, overflow:hidden #cwt-image-wrap - so zooming/panning can
+  never grow the page layout, only pan/scale within the fixed box.
+  Listeners are bound once (wrap.dataset.zoomBound guard) directly to
+  #cwt-image-wrap, which renderCwtTab() never replaces - only the img src
+  and the SVG's own children get swapped on re-render, so the zoom
+  listeners and current zoom state both survive a crane switch or combo
+  selection (zoom state is explicitly reset on crane switch in
+  onCwtCraneChange() though, so switching crane doesn't carry over a
+  zoom/pan position sized for a differently-shaped diagram).
+  Deliberately did NOT set touch-action:none on the wrapper - that would
+  block the browser's native single-finger vertical scroll for ANY touch
+  starting on the diagram, even when not zoomed in, trapping a user's
+  attempt to scroll past the diagram. Used touch-action:pan-y instead
+  (blocks native pinch-zoom/horizontal-pan, allows native vertical
+  scroll), and only claim a single-finger touch as a pan gesture in JS
+  when cwtZoomState.scale > 1 at touchstart - at scale 1, single-finger
+  touchmove is never preventDefault'd, so normal page scroll passes
+  through untouched. Verified both cases directly: a vertical swipe over
+  the diagram at scale 1 scrolls the page (confirmed via window.scrollY
+  changing), and the same swipe after zooming in pans the image instead.
+  Pinch math: track the two touch points' distance and midpoint at
+  gesture start, scale relative to that start distance, and solve
+  translate each frame so the content point that was under the midpoint
+  at gesture start stays there as scale changes (standard "anchor the
+  pinch center" approach) - without this the image would zoom from its
+  top-left corner instead of from wherever the fingers actually are.
+  Clamped so panned/zoomed content can never show empty space past its
+  own edge (cwtClampZoomState). Double-tap and double-click both reset to
+  1x - the only way back without a dedicated UI button - gated on the
+  gesture never having moved (hadGesture flag) so releasing a real pinch
+  or pan doesn't also fire a false reset.
+  Verified end-to-end via Chromium's CDP Input.dispatchTouchEvent (not
+  just Playwright's synthetic .tap(), which can't simulate true
+  multi-touch): two-finger pinch reaches scale 4 and clamps there,
+  single-finger drag after zooming in pans and updates translate to match
+  the finger's exact delta, and double-tap correctly resets state to
+  {scale:1, tx:0, ty:0}.
+
+================================================================================
