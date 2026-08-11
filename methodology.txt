@@ -1854,3 +1854,35 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   shipping - unaffected, as expected from a pixel-darkening-only change.
 
 ================================================================================
+
+10.30 LTM 1300 Receptacle Plate 1 - genuine gap in the source DXF export,
+      one support post's inner line stopped short of the base line
+  Person spotted this visually from a cropped screenshot (no coordinates
+  given), not from a report against a specific known plate - took several
+  wrong guesses across LTM 1130/1250/1110/1650 before landing on the
+  right crane (confirmed by the person after being shown candidates) and
+  then the right shape within it (the "5"-like notch cutout at the top of
+  one of Receptacle Plate 1's two support posts, an actual physical
+  detail on the part, not a text label). Once located: the post's LEFT
+  edge (x=2682-2685) ran continuously from the notch at y=867 down to
+  y=1081, then just stopped - a ~95px gap before the black base line at
+  y=1176-1180. The MATCHING right edge of the same post, and the mirror-
+  image post on the other side of the same receptacle, both ran
+  continuously to the base with no gap - confirming this was a one-off
+  export artifact, not a systematic issue.
+  Fixed by measuring the existing segment's exact color (129,129,129,
+  matching its anti-aliased 132,132,132 edge) and width (4px) directly
+  from the image, then drawing a matching line segment closing the exact
+  gap (y=1081 to y=1177) with PIL - not a re-render, not a redrawn
+  outline, just closing the one missing stroke to match its neighbors
+  pixel-for-pixel. Same image dimensions, no hotspot coordinates
+  affected. Re-verified click-through in-browser before shipping.
+  Worth remembering: when a person reports "missing line" or similar
+  without pixel coordinates, checking every candidate crane's full
+  diagram at thumbnail scale isn't enough - this defect was invisible at
+  thumbnail/overview zoom and only became findable by cropping into the
+  specific shape at high magnification with a coordinate grid overlaid,
+  the same technique used for hotspot alignment work throughout this
+  session.
+
+================================================================================
