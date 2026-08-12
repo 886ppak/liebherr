@@ -2466,3 +2466,51 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   live regardless.
 
 ================================================================================
+
+10.43 LTM 1110's Rear table was badly truncated - fixed with a fuller PDF,
+      and hit a genuinely new extraction bug along the way
+  Person: "i missed a few pages from the list so look over it again more
+  on the to the rear side of things," with a re-supplied version of the
+  same document (same doc code 0213844-00/ver_2197110102) - this one 5
+  pages instead of the original 2. Page 0 is Front, unchanged from what
+  was already shipped. Pages 1-4 are ALL "Boom direction to the rear"
+  (same vtab_..._02001_00_000 code repeated across all four) - one long
+  table continuing across page breaks, not four separate charts. The
+  original 2-page PDF only had page 1 of that continuation, so 10.41's
+  Rear data stopped at 24.4t - the real table goes all the way to 0.0t.
+  This version of the document also turned out to have the -29
+  character-shift cipher active (10.41's original 2-page PDF did not -
+  confirms per-document/per-export encoding is not something to assume
+  either way, per the earlier note to build a training reference for
+  this).
+  Hit a new, nastier variant of the digit-decoding bug first found on
+  LTR 1220 (10.39): calling .strip() on a span's RAW, still-encoded text
+  - either to trim it or just to test truthiness before deciding whether
+  to keep it - silently corrupts or drops content, because several of
+  the cipher's control-character byte values for digits (found here:
+  raw \x1c, representing digit '9') fall inside Python's Unicode
+  whitespace definition. Two distinct symptoms from the same root cause:
+  calling .strip() and keeping the result truncated "10.9" down to
+  "10." (lost the trailing digit); calling raw.strip() only as an
+  emptiness check before appending the (unstripped) text dropped entire
+  rows outright, whenever a span's encoded bytes happened to ALL fall in
+  that whitespace-like range. Fix: never call .strip() on cipher text
+  before decoding - decode first with the +29 shift, THEN strip/test the
+  decoded (now normal-ASCII) result if needed. Also had to special-case
+  the degree sign here: its raw byte (0x83) doesn't survive the
+  no-wraparound +29 shift into the correct Unicode code point for '°'
+  (U+00B0/176) the way ASCII letters/digits do, so it's mapped
+  explicitly rather than trusting the arithmetic.
+  Re-extracted all 5 pages with the fixed decoder: page 0 (Front) came
+  back byte-identical to what's already shipped, confirming no other
+  damage; pages 1-4 (Rear) combined to 78 rows across 39 distinct
+  counterweight values (previously only 12 were shown), every one with
+  exactly 2 boom-angle-range options, continuity checked at every page
+  break (e.g. 24.4t's second option starts page 2 right after its first
+  option ends page 1, no gap or duplicate). Replaced the Rear rows array
+  wholesale rather than appending, since the old 12-weight set was a
+  strict prefix of the new 39. Verified in-browser: Rear now lists 39
+  weights, 0.0t shows both options correctly, Front (14 weights) and
+  LTM 1300 unaffected.
+
+================================================================================
