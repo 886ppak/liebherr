@@ -2326,3 +2326,77 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   figRef text correctly in-browser.
 
 ================================================================================
+
+10.41 New tab: Driving with Equipment in Place - test build, LTM 1110 only
+  Built as an explicit test per the person's request ("lets do a test to
+  see how you go and send a preview before anything goes live") before
+  committing to the full design. Preceded by a training exchange (not
+  logged here in detail, see chat) that established the vocabulary:
+  VEHICLE (carrier/chassis) vs SUPER STRUCTURE (rotating turret/cab/
+  boom), FRONT/REAR as fixed ends of the vehicle (not the boom's current
+  direction), and that "boom direction to front/rear" means the
+  superstructure has been slewed 180° so the boom points over one end
+  of the vehicle or the other - confirmed directly by the person: "you
+  are right it was rotated 180 degrees if the booms facing the rear
+  thats the rear charts and if the facing the front front chart."
+  Source PDF (LTM 1110-5-1-000, doc 0213844-00, chapter 15.05) has NO
+  character-shift cipher, unlike every Counterweight Combinations PDF
+  processed so far this session - page.get_text() came back plain and
+  immediately readable. Worth remembering per-document-category, not
+  assumed universal: the cipher is a Counterweight-chart-specific export
+  quirk, not a property of every Liebherr PDF in this app.
+  Data model, per the person's own field breakdown from the training
+  exchange:
+    - Inputs: crane model, boom direction (front/rear, forced choice -
+      no default), counterweight location (superstructure/vehicle,
+      forced choice, only rendered for cranes with
+      hasVehicleOption:true - not exercised yet, no crane in the test
+      data has this set), counterweight weight (populates every output
+      field below it).
+    - Outputs per matched row: hook block max weight, boom angle range,
+      support width, max axle load for axle group A, max axle load for
+      axle group B. Axle group labels (e.g. "1 ... 2" / "3 ... 5") are
+      stored per-crane-per-direction rather than hardcoded, since axle
+      count/grouping varies by chassis.
+    - Forced-choice reasoning matches the Counterweight tab's existing
+      philosophy (10.something on Counterweight location) - a silent
+      default risks someone reading pre-populated axle-load numbers as
+      correct for their actual setup without ever confirming which
+      configuration they're really in. Both toggles start with neither
+      button active; the weight dropdown stays disabled with a
+      placeholder until a valid direction (+location where applicable)
+      is chosen.
+    - Duplicate-weight rows (same counterweight, two valid chart entries
+      differing in boom angle/support width/axle loads) are never
+      merged - both render stacked under one "Option A" / "Option B"
+      label with a divider between them, per explicit instruction:
+      "id like them both displace one below each other with clean
+      deliniation please."
+  Data extraction: per-span dict-mode text extraction (ArialMT for data,
+  Arial-BoldMT for headers), rows auto-grouped by pattern-matching 6
+  consecutive fields against expected shapes (weight: \d+\.\d, hook
+  block: "N ... N", boom angle: contains °, support width: \d.\d\d,
+  two integer axle loads) rather than fixed positional slicing, since
+  row count varies per crane/direction and this needed to self-
+  terminate at the trailer/footer text. Verified against the source: 23
+  rows on each of front/rear, correctly split into 14 distinct
+  counterweight values front (9 duplicated) and 12 distinct rear (11
+  duplicated) - reconciled by hand against the row count before trusting
+  the parse.
+  One field intentionally NOT built yet: support width as a percentage
+  of full outrigger spread (100/75/50/0%) - person asked for this, but
+  the only outrigger dimension data in the app (cadFleetData, used by
+  the Outrigger Support Positioning tab) is pad radius+angle from the
+  slew center at full deployment only, a different measurement to the
+  "min. B" beam-spread figure in this chart, and the two front pads'
+  angles aren't symmetric (135°/143° for the 1110) so deriving a width
+  from that data risked reading it wrong. Declined to guess at a
+  safety-relevant dimension - person will locate the actual
+  percentage-to-metres reference document instead.
+  Sent three screenshots as the requested preview (empty forced-choice
+  state, Front 0.0t, Rear 29.0t - both showing the stacked Option A/B
+  layout) before anything was committed. Person approved pushing to
+  live afterward: "lets just leave as default for now till i have find
+  the info push to live and lemme see it in actions."
+
+================================================================================
