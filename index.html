@@ -234,13 +234,14 @@
     <p>Contact the person who sent you this link for the current version.</p>
   </div>
   <script>
-    // Hard-coded beta trial expiry - set for a 5-day trial. Checked on every
+    // Hard-coded beta trial expiry - set for a 7-day trial. Checked on every
     // load (works offline too, since it's a plain Date comparison, not
     // anything server-verified). Placed early and synchronous so it applies
-    // before the rest of the page paints.
+    // before the rest of the page paints. Exposed on window so the welcome
+    // tab can also display this same date without duplicating the literal.
+    window.TRIAL_EXPIRES = '2026-08-19T00:00:00';
     (function () {
-      var TRIAL_EXPIRES = '2026-08-17T00:00:00';
-      if (Date.now() >= new Date(TRIAL_EXPIRES).getTime()) {
+      if (Date.now() >= new Date(window.TRIAL_EXPIRES).getTime()) {
         document.documentElement.classList.add('trial-expired');
       }
     })();
@@ -254,7 +255,8 @@
   </header>
 
   <nav class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
+    <button class="tab-btn active" onclick="switchTab('welcome-tab', event)">Welcome</button>
+    <button class="tab-btn" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
     <button class="tab-btn" onclick="switchTab('cwt-tab', event)">CWT Combinations</button>
     <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
@@ -263,6 +265,66 @@
   </nav>
 
   <div class="container">
+
+    <!-- ================= BETA-ONLY: WELCOME / TOOL GUIDE =================
+         This tab only exists on the beta-trial branch/repo - it's not part
+         of mainline. Explains what each tool does for colleagues seeing the
+         app for the first time, and states the trial window plainly so
+         nobody's surprised when the lockout hits. -->
+    <div id="welcome-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-title">Myslewer — Beta Trial</div>
+        <p style="line-height:1.6; margin-bottom:10px;">
+          This is a beta build of Myslewer, a reference tool for the fleet's
+          LRT/LTM/LTR mobile cranes — rope retensioning, hook block selection,
+          outrigger support positioning, counterweight combinations, and
+          driving-with-equipment-in-place figures, all in one offline-capable
+          app.
+        </p>
+        <p style="line-height:1.6; margin-bottom:10px;">
+          This trial build is time-limited and will lock itself out on
+          <strong id="trial-end-display">—</strong>. That's expected — it's
+          not a bug. This build is separate from the production tool, so
+          nothing here affects anyone else's copy.
+        </p>
+        <p style="line-height:1.6;">
+          Every figure in this app is a reference only — always cross-check
+          against the current OEM documentation before acting on it. If you
+          spot something wrong, missing, or confusing in any tab, that's
+          exactly the kind of feedback this trial is for.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">What Each Tab Does</div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <div style="font-weight:700; color:var(--accent-cyan); margin-bottom:2px;">Reeving Plans</div>
+            <div style="color:var(--text-muted); line-height:1.5;">Pick a crane, boom/head configuration, and number of parts of line to pull up the matching reeving diagram — how the rope threads through the sheaves for that lift.</div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:var(--accent-cyan); margin-bottom:2px;">CWT Combinations</div>
+            <div style="color:var(--text-muted); line-height:1.5;">Look up valid counterweight stack combinations for a crane, including how each slab/segment builds up to a known total.</div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:var(--accent-cyan); margin-bottom:2px;">Driving with Equipment in Place</div>
+            <div style="color:var(--text-muted); line-height:1.5;">For travelling with the boom and counterweight still rigged: hook block allowance, boom angle range, support width, and max axle loads for the selected configuration.</div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:var(--accent-cyan); margin-bottom:2px;">Minimum Hook Block Weights</div>
+            <div style="color:var(--text-muted); line-height:1.5;">Works out the minimum hook block weight needed to keep the rope under tension for a given crane and rigging setup.</div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:var(--accent-cyan); margin-bottom:2px;">Outrigger Support Positioning</div>
+            <div style="color:var(--text-muted); line-height:1.5;">Visual site plan for outrigger/support leg placement, with reference frames for all four legs.</div>
+          </div>
+          <div>
+            <div style="font-weight:700; color:var(--accent-cyan); margin-bottom:2px;">Rope Retentioning</div>
+            <div style="color:var(--text-muted); line-height:1.5;">Winch and rigging setup calculator for re-tensioning rope on the drum.</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ================= TAB 1: ROPE RETENTIONING ================= -->
     <div id="rope-tab" class="tab-content">
@@ -514,7 +576,7 @@
     </div>
 
     <!-- ================= TAB 4: REEVING PLAN ================= -->
-    <div id="reeve-tab" class="tab-content active">
+    <div id="reeve-tab" class="tab-content">
       <div class="card">
         <div class="card-title">Crane &amp; Boom Configuration</div>
         <div class="form-group">
@@ -4464,10 +4526,19 @@
     calcCAD();
     initCwtTab();
     initDriveEqTab();
-    initReeveTab(); // Reeving Plans is the default active tab on load
+    initReeveTab(); // pre-populated even though it's not the default active tab in this beta build
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
+
+    // Beta-only: fill in the trial end date on the Welcome tab from the
+    // same TRIAL_EXPIRES the lockout check uses, so the two can't drift.
+    (function () {
+      var el = document.getElementById('trial-end-display');
+      if (!el || !window.TRIAL_EXPIRES) return;
+      var d = new Date(window.TRIAL_EXPIRES);
+      el.textContent = d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    })();
   </script>
 </body>
 </html>
