@@ -1916,6 +1916,279 @@
             }
           }
         ]
+      },
+      // LTM 1650 - "Boom Configuration" here carries two independent axes
+      // at once (T-16.7/T-29.0 boom length AND without-winch/with-winch-2
+      // rigging) folded into a single flat list of 4 entries, per the
+      // established principle that this mechanism just needs distinct
+      // labelled row-sets - it doesn't care what varies between them. All
+      // 4 share the same outer radius (8.4m) and the same 3-band hook
+      // block structure (0 / 700-3500 / 3500-4600 kg), confirmed uniform
+      // across every section of this document. hookBlock '0' rows render
+      // as "No hook block" per the existing per-row display logic. Fleet
+      // block cross-reference aliases '1650' to the '1650-t3' spec (see
+      // driveEqMaxCompliantHookBlock) since both boom variants share the
+      // same base block weights. Not covered: no other outer radius, no
+      // "with winch 2 and winch 3" section - this document only supplies
+      // these 8 sections. See methodology.txt 10.47.
+      '1650': {
+        label: 'LTM 1650-8.1',
+        sourceNote: 'Source: Liebherr doc LTM 1650-8-1-000 (0214259-02), chapter 15.05 Charts for 445/95 R25 and 525/80 R25 tires, outer radius of the counterweight 8.4m, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM documentation before road travel.',
+        boomConfigs: [
+          {
+            label: 'T-16.7, without winch 2 and winch 3',
+            directions: {
+              front: {
+                boomNotation: 'Telescopic boom T-16.7 (0/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 0.0, hookBlock: '0', boomAngle: '6° ... 62°', supportWidth: 6.10, axleA: 12, axleB: 21 },
+                  { weight: 0.0, hookBlock: '0', boomAngle: '6° ... 27°', supportWidth: 2.64, axleA: 12, axleB: 17 },
+                  { weight: 0.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 63°', supportWidth: 6.10, axleA: 13, axleB: 22 },
+                  { weight: 0.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 7°', supportWidth: 2.64, axleA: 13, axleB: 16 },
+                  { weight: 25.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 14°', supportWidth: 2.64, axleA: 10, axleB: 27 },
+                  { weight: 0.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 64°', supportWidth: 6.10, axleA: 14, axleB: 22 },
+                  { weight: 0.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 19°', supportWidth: 2.64, axleA: 14, axleB: 16 }
+                ]
+              },
+              rear: {
+                boomNotation: 'Telescopic boom T-16.7 (0/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 135.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 31, axleB: 34 },
+                  { weight: 125.0, hookBlock: '0', boomAngle: '76° ... 84°', supportWidth: 6.10, axleA: 29, axleB: 34 },
+                  { weight: 125.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 29, axleB: 33 },
+                  { weight: 115.0, hookBlock: '0', boomAngle: '69° ... 84°', supportWidth: 6.10, axleA: 27, axleB: 35 },
+                  { weight: 115.0, hookBlock: '0', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 27, axleB: 33 },
+                  { weight: 105.0, hookBlock: '0', boomAngle: '62° ... 84°', supportWidth: 6.10, axleA: 25, axleB: 35 },
+                  { weight: 105.0, hookBlock: '0', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 25, axleB: 32 },
+                  { weight: 95.0, hookBlock: '0', boomAngle: '53° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 35 },
+                  { weight: 95.0, hookBlock: '0', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 31 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '43° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 35 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 30 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '25° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 36 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 30 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '44° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 34 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 29 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '56° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 32 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 28 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '67° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 30 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '77° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 28 },
+                  { weight: 115.0, hookBlock: '700 ... 3500', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 27, axleB: 34 },
+                  { weight: 105.0, hookBlock: '700 ... 3500', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 25, axleB: 34 },
+                  { weight: 105.0, hookBlock: '700 ... 3500', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 25, axleB: 33 },
+                  { weight: 95.0, hookBlock: '700 ... 3500', boomAngle: '73° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 34 },
+                  { weight: 95.0, hookBlock: '700 ... 3500', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 33 },
+                  { weight: 85.0, hookBlock: '700 ... 3500', boomAngle: '67° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 35 },
+                  { weight: 85.0, hookBlock: '700 ... 3500', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 32 },
+                  { weight: 75.0, hookBlock: '700 ... 3500', boomAngle: '61° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 35 },
+                  { weight: 75.0, hookBlock: '700 ... 3500', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 31 },
+                  { weight: 65.0, hookBlock: '700 ... 3500', boomAngle: '58° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 35 },
+                  { weight: 65.0, hookBlock: '700 ... 3500', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 30 },
+                  { weight: 55.0, hookBlock: '700 ... 3500', boomAngle: '67° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 32 },
+                  { weight: 55.0, hookBlock: '700 ... 3500', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 30 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '74° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 29 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 29 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 28 },
+                  { weight: 105.0, hookBlock: '3500 ... 4600', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 25, axleB: 34 },
+                  { weight: 95.0, hookBlock: '3500 ... 4600', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 34 },
+                  { weight: 95.0, hookBlock: '3500 ... 4600', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 33 },
+                  { weight: 85.0, hookBlock: '3500 ... 4600', boomAngle: '73° ... 84°', supportWidth: 6.10, axleA: 21, axleB: 34 },
+                  { weight: 85.0, hookBlock: '3500 ... 4600', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 21, axleB: 33 },
+                  { weight: 65.0, hookBlock: '3500 ... 4600', boomAngle: '62° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 35 },
+                  { weight: 65.0, hookBlock: '3500 ... 4600', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 31 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '70° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 33 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 30 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '77° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 30 },
+                  { weight: 35.0, hookBlock: '3500 ... 4600', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 29 }
+                ]
+              }
+            }
+          },
+          {
+            label: 'T-29.0, without winch 2 and winch 3',
+            directions: {
+              front: {
+                boomNotation: 'Telescopic boom T-29.0 (100/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 45.0, hookBlock: '0', boomAngle: '6° ... 24°', supportWidth: 2.64, axleA: 12, axleB: 30 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '6° ... 18°', supportWidth: 2.64, axleA: 12, axleB: 29 },
+                  { weight: 35.0, hookBlock: '0', boomAngle: '6° ... 40°', supportWidth: 6.10, axleA: 14, axleB: 28 },
+                  { weight: 35.0, hookBlock: '0', boomAngle: '6° ... 15°', supportWidth: 2.64, axleA: 14, axleB: 24 },
+                  { weight: 25.0, hookBlock: '0', boomAngle: '6° ... 52°', supportWidth: 6.10, axleA: 16, axleB: 26 },
+                  { weight: 25.0, hookBlock: '0', boomAngle: '6° ... 11°', supportWidth: 2.64, axleA: 16, axleB: 19 },
+                  { weight: 0.0, hookBlock: '0', boomAngle: '48° ... 60°', supportWidth: 6.10, axleA: 16, axleB: 17 },
+                  { weight: 0.0, hookBlock: '0', boomAngle: '50° ... 52°', supportWidth: 6.10, axleA: 15, axleB: 15 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 27°', supportWidth: 6.10, axleA: 15, axleB: 30 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 11°', supportWidth: 2.64, axleA: 15, axleB: 28 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 41°', supportWidth: 6.10, axleA: 17, axleB: 28 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '6°', supportWidth: 2.64, axleA: 17, axleB: 23 },
+                  { weight: 25.0, hookBlock: '700 ... 3500', boomAngle: '17° ... 53°', supportWidth: 6.10, axleA: 19, axleB: 26 },
+                  { weight: 25.0, hookBlock: '700 ... 3500', boomAngle: '17° ... 24°', supportWidth: 6.10, axleA: 19, axleB: 20 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 21°', supportWidth: 2.64, axleA: 14, axleB: 33 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 7°', supportWidth: 2.64, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 36°', supportWidth: 6.10, axleA: 16, axleB: 31 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 16°', supportWidth: 2.64, axleA: 16, axleB: 27 },
+                  { weight: 35.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 47°', supportWidth: 6.10, axleA: 18, axleB: 29 },
+                  { weight: 35.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 13°', supportWidth: 2.64, axleA: 18, axleB: 22 },
+                  { weight: 25.0, hookBlock: '3500 ... 4600', boomAngle: '26° ... 56°', supportWidth: 6.10, axleA: 19, axleB: 26 },
+                  { weight: 25.0, hookBlock: '3500 ... 4600', boomAngle: '26°', supportWidth: 6.10, axleA: 19, axleB: 19 }
+                ]
+              },
+              rear: {
+                boomNotation: 'Telescopic boom T-29.0 (100/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 95.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 23, axleB: 33 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 21, axleB: 34 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 21, axleB: 32 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '75° ... 84°', supportWidth: 6.10, axleA: 19, axleB: 34 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 19, axleB: 32 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '73° ... 84°', supportWidth: 6.10, axleA: 17, axleB: 34 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 17, axleB: 31 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '77° ... 84°', supportWidth: 6.10, axleA: 15, axleB: 32 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 15, axleB: 30 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 30 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 29 },
+                  { weight: 65.0, hookBlock: '700 ... 3500', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 17, axleB: 33 },
+                  { weight: 55.0, hookBlock: '700 ... 3500', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 15, axleB: 32 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 15, axleB: 33 }
+                ]
+              }
+            }
+          },
+          {
+            label: 'T-16.7, with winch 2, without winch 3',
+            directions: {
+              front: {
+                boomNotation: 'Telescopic boom T-16.7 (0/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 0.0, hookBlock: '0', boomAngle: '6° ... 55°', supportWidth: 6.10, axleA: 11, axleB: 22 },
+                  { weight: 0.0, hookBlock: '0', boomAngle: '6° ... 8°', supportWidth: 2.64, axleA: 11, axleB: 18 },
+                  { weight: 0.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 56°', supportWidth: 6.10, axleA: 13, axleB: 22 },
+                  { weight: 0.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 12°', supportWidth: 2.64, axleA: 13, axleB: 18 },
+                  { weight: 0.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 59°', supportWidth: 6.10, axleA: 13, axleB: 23 },
+                  { weight: 0.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 21°', supportWidth: 2.64, axleA: 13, axleB: 18 }
+                ]
+              },
+              rear: {
+                boomNotation: 'Telescopic boom T-16.7 (0/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 125.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 30, axleB: 34 },
+                  { weight: 115.0, hookBlock: '0', boomAngle: '75° ... 84°', supportWidth: 6.10, axleA: 28, axleB: 35 },
+                  { weight: 115.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 28, axleB: 33 },
+                  { weight: 105.0, hookBlock: '0', boomAngle: '68° ... 84°', supportWidth: 6.10, axleA: 26, axleB: 35 },
+                  { weight: 105.0, hookBlock: '0', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 26, axleB: 33 },
+                  { weight: 95.0, hookBlock: '0', boomAngle: '60° ... 84°', supportWidth: 6.10, axleA: 24, axleB: 35 },
+                  { weight: 95.0, hookBlock: '0', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 24, axleB: 32 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '52° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 35 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 31 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '41° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 36 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 30 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '41° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 35 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 30 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '54° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 33 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 29 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '65° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 28 },
+                  { weight: 35.0, hookBlock: '0', boomAngle: '74° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 29 },
+                  { weight: 35.0, hookBlock: '0', boomAngle: '77° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 28 },
+                  { weight: 95.0, hookBlock: '700 ... 3500', boomAngle: '77° ... 84°', supportWidth: 6.10, axleA: 24, axleB: 34 },
+                  { weight: 95.0, hookBlock: '700 ... 3500', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 24, axleB: 33 },
+                  { weight: 85.0, hookBlock: '700 ... 3500', boomAngle: '72° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 35 },
+                  { weight: 85.0, hookBlock: '700 ... 3500', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 33 },
+                  { weight: 75.0, hookBlock: '700 ... 3500', boomAngle: '66° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 35 },
+                  { weight: 75.0, hookBlock: '700 ... 3500', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 32 },
+                  { weight: 65.0, hookBlock: '700 ... 3500', boomAngle: '60° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 35 },
+                  { weight: 65.0, hookBlock: '700 ... 3500', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 31 },
+                  { weight: 55.0, hookBlock: '700 ... 3500', boomAngle: '65° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 33 },
+                  { weight: 55.0, hookBlock: '700 ... 3500', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 30 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '73° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 30 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 30 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 29 },
+                  { weight: 95.0, hookBlock: '3500 ... 4600', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 24, axleB: 34 },
+                  { weight: 85.0, hookBlock: '3500 ... 4600', boomAngle: '77° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 34 },
+                  { weight: 85.0, hookBlock: '3500 ... 4600', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 33 },
+                  { weight: 75.0, hookBlock: '3500 ... 4600', boomAngle: '72° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 35 },
+                  { weight: 75.0, hookBlock: '3500 ... 4600', boomAngle: '79° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 33 },
+                  { weight: 65.0, hookBlock: '3500 ... 4600', boomAngle: '67° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 35 },
+                  { weight: 65.0, hookBlock: '3500 ... 4600', boomAngle: '80° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 32 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '68° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 34 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '75° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 32 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 30 },
+                  { weight: 35.0, hookBlock: '3500 ... 4600', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 12, axleB: 30 }
+                ]
+              }
+            }
+          },
+          {
+            label: 'T-29.0, with winch 2, without winch 3',
+            directions: {
+              front: {
+                boomNotation: 'Telescopic boom T-29.0 (100/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 45.0, hookBlock: '0', boomAngle: '6° ... 16°', supportWidth: 2.64, axleA: 11, axleB: 31 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '6° ... 8°', supportWidth: 2.64, axleA: 11, axleB: 30 },
+                  { weight: 35.0, hookBlock: '0', boomAngle: '6° ... 35°', supportWidth: 6.10, axleA: 13, axleB: 29 },
+                  { weight: 35.0, hookBlock: '0', boomAngle: '6° ... 17°', supportWidth: 2.64, axleA: 13, axleB: 26 },
+                  { weight: 25.0, hookBlock: '0', boomAngle: '6° ... 48°', supportWidth: 6.10, axleA: 15, axleB: 27 },
+                  { weight: 25.0, hookBlock: '0', boomAngle: '6° ... 13°', supportWidth: 2.64, axleA: 15, axleB: 21 },
+                  { weight: 0.0, hookBlock: '0', boomAngle: '42° ... 65°', supportWidth: 6.10, axleA: 16, axleB: 21 },
+                  { weight: 0.0, hookBlock: '0', boomAngle: '42° ... 48°', supportWidth: 6.10, axleA: 16, axleB: 16 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 21°', supportWidth: 2.64, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 13°', supportWidth: 2.64, axleA: 14, axleB: 30 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 37°', supportWidth: 6.10, axleA: 16, axleB: 29 },
+                  { weight: 35.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 9°', supportWidth: 2.64, axleA: 16, axleB: 25 },
+                  { weight: 25.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 49°', supportWidth: 6.10, axleA: 18, axleB: 27 },
+                  { weight: 25.0, hookBlock: '700 ... 3500', boomAngle: '6° ... 17°', supportWidth: 2.64, axleA: 18, axleB: 21 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 14°', supportWidth: 2.64, axleA: 13, axleB: 34 },
+                  { weight: 55.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 10°', supportWidth: 2.64, axleA: 13, axleB: 33 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 32°', supportWidth: 6.10, axleA: 15, axleB: 32 },
+                  { weight: 45.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 17°', supportWidth: 2.64, axleA: 15, axleB: 29 },
+                  { weight: 35.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 43°', supportWidth: 6.10, axleA: 17, axleB: 29 },
+                  { weight: 35.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 14°', supportWidth: 2.64, axleA: 17, axleB: 24 },
+                  { weight: 25.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 53°', supportWidth: 6.10, axleA: 19, axleB: 27 },
+                  { weight: 25.0, hookBlock: '3500 ... 4600', boomAngle: '6° ... 11°', supportWidth: 2.64, axleA: 19, axleB: 19 }
+                ]
+              },
+              rear: {
+                boomNotation: 'Telescopic boom T-29.0 (100/0/0)',
+                axleGroupA: '1 ... 4',
+                axleGroupB: '5 ... 8',
+                rows: [
+                  { weight: 95.0, hookBlock: '0', boomAngle: '84°', supportWidth: 6.10, axleA: 24, axleB: 33 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 34 },
+                  { weight: 85.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 22, axleB: 33 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '78° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 34 },
+                  { weight: 75.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 20, axleB: 32 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '75° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 34 },
+                  { weight: 65.0, hookBlock: '0', boomAngle: '83° ... 84°', supportWidth: 6.10, axleA: 18, axleB: 31 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '76° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 33 },
+                  { weight: 55.0, hookBlock: '0', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 31 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '81° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 31 },
+                  { weight: 45.0, hookBlock: '0', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 14, axleB: 30 },
+                  { weight: 65.0, hookBlock: '700 ... 3500', boomAngle: '84°', supportWidth: 6.10, axleA: 18, axleB: 33 },
+                  { weight: 55.0, hookBlock: '700 ... 3500', boomAngle: '82° ... 84°', supportWidth: 6.10, axleA: 16, axleB: 33 },
+                  { weight: 45.0, hookBlock: '700 ... 3500', boomAngle: '84°', supportWidth: 6.10, axleA: 14, axleB: 32 }
+                ]
+              }
+            }
+          }
+        ]
       }
     };
 
@@ -2097,7 +2370,12 @@
     // shown) if this crane has no fleet spec yet, the range doesn't
     // parse, or nothing in the fleet actually fits.
     function driveEqMaxCompliantHookBlock(craneKey, hookBlockRange) {
-      const spec = FLEET_BLOCK_SPEC[craneKey];
+      // 1650's fleet spec is split by boom variant (1650-t3/1650-t5) but
+      // its Driving w/ Eq data isn't - both variants share the same base
+      // block weights, and t3's list is the superset, so alias to it here
+      // rather than splitting DRIVING_EQ_DATA's boomConfigs by fleet spec too.
+      const specKey = craneKey === '1650' ? '1650-t3' : craneKey;
+      const spec = FLEET_BLOCK_SPEC[specKey];
       if (!spec || !hookBlockRange) return null;
       const m = hookBlockRange.match(/(\d+)\s*\.\.\.\s*(\d+)/);
       if (!m) return null;

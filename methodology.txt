@@ -2634,3 +2634,53 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   the 8-page/477-page excerpt already reviewed.
 
 ================================================================================
+
+10.47 Driving with Equipment in Place - added LTM 1650, closing out this
+      tab's initial crane-by-crane rollout
+  Person re-checked and supplied a fuller 14-page PDF (same doc version,
+  different upload) covering all 8 sections this crane's charts are split
+  into: sections 1.1-1.4 (T3, without winch 2 and winch 3) and 2.1-2.4
+  (T3, with winch 2, without winch 3), each split further into T-16.7 vs
+  T-29.0 boom length and front vs rear boom direction - all at the single
+  8.4m outer radius this document provides. This document turned out to
+  use the same character-shift cipher as LTM 1110/1300 (raw+29, literal
+  space passed through, degree symbol special-cased) rather than the
+  plain text of the original 8-page excerpt - confirms the earlier
+  finding that this varies per export, not per crane or per document
+  family, so every new PDF still needs its own check rather than
+  assuming.
+  Modelled the two independent axes (boom length, winch rigging) as a
+  single flat list of 4 boomConfigs entries rather than inventing a
+  second axis of UI - exactly the flexibility this mechanism was already
+  proven to have (1160/1250 used it for outer radius, 1300 for boom
+  length alone). All 4 share the same 3-band hook block structure (0 /
+  700-3500 / 3500-4600 kg) confirmed uniform across every section of this
+  document, so the bare-"0" "No hook block" display and the max-
+  compliant-fleet-block cross-reference built in 10.45/10.46 apply
+  unchanged with zero new code - only the data changed.
+  One wiring wrinkle: FLEET_BLOCK_SPEC keys this crane's hook block fleet
+  data by boom variant ('1650-t3'/'1650-t5', from the counterweight tab's
+  earlier build) rather than by plain '1650', but Driving w/ Equipment's
+  boomConfigs axis here is boom-length-and-winch, not t3/t5 - the two
+  don't line up. Rather than splitting DRIVING_EQ_DATA to match, aliased
+  the lookup ('1650' -> '1650-t3') inside driveEqMaxCompliantHookBlock,
+  since both fleet-spec variants share identical base block weights for
+  every block they have in common and t3's list is the superset.
+  Multi-page extraction reused the vtab_-code-splitting approach from
+  10.44 (sections 1.2/2.2 span 3 pages each, 1.3/2.3 span 2 pages each) -
+  no new extraction technique needed, just re-verified page-to-vtab
+  mapping against the section headers before trusting row order.
+  Verified in-browser (Playwright): all 4 boom configs selectable, front/
+  rear cross-availability, Option A-F stacking where multiple rows share
+  a weight across different hook block bands, "No hook block" display,
+  and the fleet-block ceiling recommendation surfacing correctly for both
+  the 700-3500 and 3500-4600 kg bands. Regression-checked all five prior
+  cranes (1110/1130/1160/1250/1300) with no console errors and no visible
+  change.
+  Known gaps, called out to the person rather than silently omitted: this
+  document only covers the single 8.4m outer radius and the two winch
+  states shown above - no other outer radius and no "with winch 2 and
+  winch 3" section are in this upload, so those remain unavailable until
+  supplied.
+
+================================================================================
