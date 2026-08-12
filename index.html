@@ -221,6 +221,7 @@
     <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
     <button class="tab-btn" onclick="switchTab('reeve-tab', event)">Reeving Plan</button>
     <button class="tab-btn" onclick="switchTab('cwt-tab', event)">Counterweight Combinations</button>
+    <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
   </nav>
 
   <div class="container">
@@ -571,6 +572,55 @@
         <div class="hook-badge" id="cwt-manual-page-badge"></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="cwt-manual-desc"></div>
         <a class="btn" id="cwt-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
+      </div>
+    </div>
+
+    <!-- ================= TAB 6: DRIVING WITH EQUIPMENT IN PLACE ================= -->
+    <div id="driveeq-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Crane &amp; Configuration</div>
+        <div class="form-group">
+          <label>Select Crane Model</label>
+          <select id="de-crane" onchange="onDriveEqCraneChange()"></select>
+        </div>
+
+        <div class="form-group" style="margin-top:14px;">
+          <label>Boom Direction</label>
+          <div class="mode-toggle" id="de-direction-toggle" style="margin-top:6px;">
+            <button class="mode-btn" id="de-dir-front" onclick="setDriveEqDirection('front')">To the Front</button>
+            <button class="mode-btn" id="de-dir-rear" onclick="setDriveEqDirection('rear')">To the Rear</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="de-location-group" style="margin-top:14px; display:none;">
+          <label>Counterweight Location</label>
+          <div class="mode-toggle" id="de-location-toggle" style="margin-top:6px;">
+            <button class="mode-btn" id="de-loc-superstructure" onclick="setDriveEqLocation('superstructure')">On Superstructure</button>
+            <button class="mode-btn" id="de-loc-vehicle" onclick="setDriveEqLocation('vehicle')">On Vehicle</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:14px;">
+          <label>Counterweight Currently Fitted</label>
+          <select id="de-weight" onchange="renderDriveEqOutput()" disabled>
+            <option>Select boom direction first…</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Driving Configuration</div>
+        <div id="de-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
+        <div id="de-output"></div>
+        <div class="disclaimer">Figures shown are for this fleet's standard 525/80 R 25 tyres — see the crane operating instructions, chapter 1.03, for other tyre options. Reference tool only — cross-check against the current OEM documentation before road travel.</div>
+        <div class="disclaimer" id="de-source-note"></div>
+      </div>
+
+      <div class="card" id="de-manual-card" style="display:none;">
+        <div class="card-title">Reference Documentation</div>
+        <div class="hook-badge" id="de-manual-page-badge"></div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="de-manual-desc"></div>
+        <a class="btn" id="de-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
       </div>
     </div>
 
@@ -1255,6 +1305,219 @@
         ]
       }
     };
+
+    // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
+    // tab goes live. Unlike the Counterweight Combinations PDFs, this
+    // document category has NO character-shift cipher - page.get_text()
+    // came back plain and readable straight away. Confirmed via per-span
+    // dict-mode extraction (font: ArialMT for data rows, Arial-BoldMT for
+    // headers), grouped into 6-field rows (weight, hook block range, boom
+    // angle range, support width, axle group A max, axle group B max) by
+    // pattern-matching each field's shape rather than fixed position, since
+    // row count varies per crane/direction. Some counterweight values have
+    // two valid chart rows (different boom angle range / support width /
+    // axle loads for the same weight) - both kept, rendered stacked with a
+    // divider, never merged or deduplicated. See methodology.txt 10.41.
+    const DRIVING_EQ_DATA = {
+      '1110': {
+        label: 'LTM 1110-5.1',
+        sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0213844-00), chapter 15.05 Charts for driving with the equipment in place, © Liebherr-Werk Ehingen GmbH 2020. Reference tool only — cross-check against the current OEM documentation before road travel.',
+        hasVehicleOption: false,
+        directions: {
+          front: {
+            boomNotation: 'Telescopic boom T-11.5 (0/0/0/0/0/0)',
+            maxWindSpeed: '15.6 m/s',
+            axleGroupA: '1 ... 2',
+            axleGroupB: '3 ... 5',
+            rows: [
+              { weight: 11.0, hookBlock: '0 ... 900', boomAngle: '6° ... 8°', supportWidth: 2.45, axleA: 8, axleB: 17 },
+              { weight: 10.9, hookBlock: '0 ... 900', boomAngle: '6° ... 10°', supportWidth: 2.45, axleA: 8, axleB: 17 },
+              { weight: 10.6, hookBlock: '0 ... 900', boomAngle: '6° ... 14°', supportWidth: 2.45, axleA: 9, axleB: 17 },
+              { weight: 9.8, hookBlock: '0 ... 900', boomAngle: '6° ... 22°', supportWidth: 2.45, axleA: 9, axleB: 17 },
+              { weight: 8.8, hookBlock: '0 ... 900', boomAngle: '6° ... 29°', supportWidth: 2.45, axleA: 9, axleB: 17 },
+              { weight: 8.8, hookBlock: '0 ... 900', boomAngle: '6° ... 27°', supportWidth: 2.45, axleA: 9, axleB: 16 },
+              { weight: 8.5, hookBlock: '0 ... 900', boomAngle: '6° ... 30°', supportWidth: 2.45, axleA: 9, axleB: 16 },
+              { weight: 7.7, hookBlock: '0 ... 900', boomAngle: '6° ... 35°', supportWidth: 2.45, axleA: 9, axleB: 16 },
+              { weight: 7.7, hookBlock: '0 ... 900', boomAngle: '6° ... 16°', supportWidth: 2.45, axleA: 9, axleB: 15 },
+              { weight: 7.2, hookBlock: '0 ... 900', boomAngle: '6° ... 37°', supportWidth: 2.45, axleA: 10, axleB: 16 },
+              { weight: 7.2, hookBlock: '0 ... 900', boomAngle: '6° ... 25°', supportWidth: 2.45, axleA: 10, axleB: 15 },
+              { weight: 6.9, hookBlock: '0 ... 900', boomAngle: '6° ... 39°', supportWidth: 2.45, axleA: 10, axleB: 16 },
+              { weight: 6.9, hookBlock: '0 ... 900', boomAngle: '6° ... 29°', supportWidth: 2.45, axleA: 10, axleB: 15 },
+              { weight: 3.6, hookBlock: '0 ... 900', boomAngle: '6° ... 52°', supportWidth: 5.00, axleA: 11, axleB: 15 },
+              { weight: 3.6, hookBlock: '0 ... 900', boomAngle: '6° ... 28°', supportWidth: 2.45, axleA: 11, axleB: 13 },
+              { weight: 3.3, hookBlock: '0 ... 900', boomAngle: '6° ... 54°', supportWidth: 5.00, axleA: 11, axleB: 15 },
+              { weight: 3.3, hookBlock: '0 ... 900', boomAngle: '6° ... 31°', supportWidth: 2.45, axleA: 11, axleB: 13 },
+              { weight: 1.1, hookBlock: '0 ... 900', boomAngle: '6° ... 62°', supportWidth: 5.00, axleA: 12, axleB: 14 },
+              { weight: 1.1, hookBlock: '0 ... 900', boomAngle: '6° ... 37°', supportWidth: 5.00, axleA: 12, axleB: 12 },
+              { weight: 0.8, hookBlock: '0 ... 900', boomAngle: '6° ... 63°', supportWidth: 5.00, axleA: 12, axleB: 14 },
+              { weight: 0.8, hookBlock: '0 ... 900', boomAngle: '6° ... 40°', supportWidth: 5.00, axleA: 12, axleB: 12 },
+              { weight: 0.0, hookBlock: '0 ... 900', boomAngle: '6° ... 65°', supportWidth: 5.00, axleA: 12, axleB: 14 },
+              { weight: 0.0, hookBlock: '0 ... 900', boomAngle: '27° ... 30°', supportWidth: 2.45, axleA: 11, axleB: 11 }
+            ]
+          },
+          rear: {
+            boomNotation: 'Telescopic boom T-11.5 (0/0/0/0/0/0)',
+            maxWindSpeed: '15.6 m/s',
+            axleGroupA: '1 ... 2',
+            axleGroupB: '3 ... 5',
+            rows: [
+              { weight: 29.0, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 19, axleB: 21 },
+              { weight: 29.0, hookBlock: '0 ... 900', boomAngle: '65° ... 79°', supportWidth: 5.00, axleA: 18, axleB: 18 },
+              { weight: 28.7, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 19, axleB: 21 },
+              { weight: 28.7, hookBlock: '0 ... 900', boomAngle: '65° ... 80°', supportWidth: 5.00, axleA: 18, axleB: 18 },
+              { weight: 28.2, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 19, axleB: 21 },
+              { weight: 28.2, hookBlock: '0 ... 900', boomAngle: '65° ... 81°', supportWidth: 5.00, axleA: 18, axleB: 18 },
+              { weight: 27.9, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 19, axleB: 21 },
+              { weight: 27.9, hookBlock: '0 ... 900', boomAngle: '74° ... 75°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 26.9, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 26.9, hookBlock: '0 ... 900', boomAngle: '73° ... 77°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 26.6, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 26.6, hookBlock: '0 ... 900', boomAngle: '72° ... 78°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 26.5, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 26.5, hookBlock: '0 ... 900', boomAngle: '72° ... 78°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 26.2, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 26.2, hookBlock: '0 ... 900', boomAngle: '72° ... 79°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 25.7, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 25.7, hookBlock: '0 ... 900', boomAngle: '72° ... 80°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 25.4, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 25.4, hookBlock: '0 ... 900', boomAngle: '72° ... 79°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 25.1, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 18, axleB: 21 },
+              { weight: 25.1, hookBlock: '0 ... 900', boomAngle: '71° ... 80°', supportWidth: 5.00, axleA: 17, axleB: 17 },
+              { weight: 24.4, hookBlock: '0 ... 900', boomAngle: '6° ... 83°', supportWidth: 5.00, axleA: 17, axleB: 21 }
+            ]
+          }
+        }
+      }
+    };
+
+    let deDirection = null;
+    let deLocation = null;
+
+    function initDriveEqTab() {
+      const sel = document.getElementById('de-crane');
+      buildSelect(sel, Object.keys(DRIVING_EQ_DATA), (k) => DRIVING_EQ_DATA[k].label, (k) => k);
+      onDriveEqCraneChange();
+    }
+
+    function onDriveEqCraneChange() {
+      deDirection = null;
+      deLocation = null;
+      document.getElementById('de-dir-front').classList.remove('active');
+      document.getElementById('de-dir-rear').classList.remove('active');
+
+      const modelKey = document.getElementById('de-crane').value;
+      const data = DRIVING_EQ_DATA[modelKey];
+      const locGroup = document.getElementById('de-location-group');
+      if (data && data.hasVehicleOption) {
+        locGroup.style.display = '';
+        document.getElementById('de-loc-superstructure').classList.remove('active');
+        document.getElementById('de-loc-vehicle').classList.remove('active');
+      } else {
+        locGroup.style.display = 'none';
+      }
+
+      resetDriveEqWeightSelect();
+      renderDriveEqOutput();
+      renderDriveEqManualLink();
+    }
+
+    // Both Boom Direction and Counterweight Location are forced choices -
+    // no default, nothing pre-selected. Silently defaulting to (say) "Front"
+    // risks someone reading pre-populated axle-load figures as correct for
+    // their setup without ever actively confirming which physical
+    // configuration the crane is actually in. Same reasoning as the
+    // Counterweight tab never assuming a starting selection.
+    function setDriveEqDirection(dir) {
+      deDirection = dir;
+      document.getElementById('de-dir-front').classList.toggle('active', dir === 'front');
+      document.getElementById('de-dir-rear').classList.toggle('active', dir === 'rear');
+      resetDriveEqWeightSelect();
+      renderDriveEqOutput();
+    }
+
+    function setDriveEqLocation(loc) {
+      deLocation = loc;
+      document.getElementById('de-loc-superstructure').classList.toggle('active', loc === 'superstructure');
+      document.getElementById('de-loc-vehicle').classList.toggle('active', loc === 'vehicle');
+      resetDriveEqWeightSelect();
+      renderDriveEqOutput();
+    }
+
+    function currentDriveEqDirectionData() {
+      const modelKey = document.getElementById('de-crane').value;
+      const data = DRIVING_EQ_DATA[modelKey];
+      if (!data || !deDirection) return null;
+      if (data.hasVehicleOption && !deLocation) return null;
+      return data.directions[deDirection] || null;
+    }
+
+    function resetDriveEqWeightSelect() {
+      const sel = document.getElementById('de-weight');
+      const dirData = currentDriveEqDirectionData();
+      if (!dirData) {
+        sel.disabled = true;
+        sel.innerHTML = '<option>Select boom direction first…</option>';
+        return;
+      }
+      const weights = [...new Set(dirData.rows.map(r => r.weight))];
+      sel.disabled = false;
+      buildSelect(sel, weights, (w) => `${w.toFixed(1)} t`, (w) => w);
+    }
+
+    function renderDriveEqOutput() {
+      const modelKey = document.getElementById('de-crane').value;
+      const data = DRIVING_EQ_DATA[modelKey];
+      const infoEl = document.getElementById('de-info');
+      const outEl = document.getElementById('de-output');
+      const dirData = currentDriveEqDirectionData();
+
+      if (!dirData) {
+        infoEl.textContent = '';
+        outEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Select a boom direction${data && data.hasVehicleOption ? ' and counterweight location' : ''} above to see driving figures.</div>`;
+        return;
+      }
+
+      infoEl.innerHTML = `${dirData.boomNotation} &nbsp;·&nbsp; Max wind speed: ${dirData.maxWindSpeed}`;
+
+      const weight = parseFloat(document.getElementById('de-weight').value);
+      const rows = dirData.rows.filter(r => r.weight === weight);
+      if (!rows.length) {
+        outEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">No counterweight selected.</div>`;
+        return;
+      }
+
+      outEl.innerHTML = rows.map((r, i) => `
+        <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
+          ${rows.length > 1 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${String.fromCharCode(65 + i)}</div>` : ''}
+          <table>
+            <tbody>
+              <tr><td style="text-align:left;">Hook block</td><td>${r.hookBlock} kg</td></tr>
+              <tr><td style="text-align:left;">Telescopic boom angle to the horizontal</td><td>${r.boomAngle}</td></tr>
+              <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m</td></tr>
+              <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupA}</td><td>${r.axleA} t</td></tr>
+              <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupB}</td><td>${r.axleB} t</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `).join('');
+    }
+
+    function renderDriveEqManualLink() {
+      const modelKey = document.getElementById('de-crane').value;
+      const data = DRIVING_EQ_DATA[modelKey];
+      const card = document.getElementById('de-manual-card');
+      const pending = PENDING_REFERENCE_LINKS.drivingWithEquipment[modelKey];
+      if (pending) {
+        card.style.display = '';
+        document.getElementById('de-manual-page-badge').textContent = pending.manualPage ? `Page ${pending.manualPage}` : '';
+        document.getElementById('de-manual-page-badge').style.display = pending.manualPage ? '' : 'none';
+        document.getElementById('de-manual-desc').textContent = cwtManualDescText(pending);
+        document.getElementById('de-manual-btn').href = cwtManualHref(pending);
+      } else {
+        card.style.display = 'none';
+      }
+      document.getElementById('de-source-note').textContent = data ? data.sourceNote : '';
+    }
 
     let cwtSelected = new Set();
 
@@ -3222,6 +3485,7 @@
     calcHook();
     calcCAD();
     initCwtTab();
+    initDriveEqTab();
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
