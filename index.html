@@ -717,7 +717,7 @@
         <div class="card-title">Driving Configuration</div>
         <div id="de-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
         <div id="de-output"></div>
-        <div class="disclaimer">Figures shown are for this fleet's standard 525/80 R 25 tyres — see the crane operating instructions, chapter 1.03, for other tyre options. "Maximum fleet block" is a ceiling, not a suggestion to swap blocks — whatever block is actually fitted, if it's this weight or lighter, it's compliant with the Hook block allowance above it. Reference tool only — cross-check against the current OEM documentation before road travel.</div>
+        <div class="disclaimer">Figures shown are for this fleet's standard 525/80 R 25 tyres — see the crane operating instructions, chapter 1.03, for other tyre options. "Maximum known size hook block" is the heaviest block from this crane's own fleet spec that fits the Hook block allowance above it — a ceiling, not a suggestion to swap blocks. Whatever block is actually fitted, if it's this weight or lighter, it's compliant. Reference tool only — cross-check against the current OEM documentation before road travel.</div>
         <div class="disclaimer" id="de-source-note"></div>
       </div>
 
@@ -2530,7 +2530,7 @@
             <tbody>
               ${usingVehicle ? `<tr><td style="text-align:left;">Counterweight on superstructure</td><td>${r.weight.toFixed(1)} t</td></tr>` : ''}
               ${noHookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>No hook block</td></tr>` : (r.hookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>${r.hookBlock} kg</td></tr>` : '')}
-              ${rec ? `<tr><td style="text-align:left;">Maximum fleet block (lighter is fine)</td><td>${rec.name}</td></tr>` : ''}
+              ${rec ? `<tr><td style="text-align:left;">Maximum known size hook block (lighter is fine)</td><td>${rec.name}</td></tr>` : ''}
               <tr><td style="text-align:left;">Telescopic boom angle to the horizontal</td><td>${r.boomAngle}</td></tr>
               <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m</td></tr>
               <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupA}</td><td>${r.axleA} t</td></tr>
