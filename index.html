@@ -205,9 +205,46 @@
       .tab-content.active { display: block; }
       canvas { filter: invert(1) hue-rotate(180deg); }
     }
+
+    /* Beta trial lock: a hard-coded expiry date (see the inline script right
+       after <body>) flips this class on <html> once the trial period is
+       over. Purely a client-side date check, evaluated fresh on every load
+       (including from the offline PWA cache) - no second deploy needed to
+       "activate" it on day 5. Not a security boundary (a colleague could
+       wind their system clock back), just a simple self-expiring beta gate. */
+    html.trial-expired header,
+    html.trial-expired nav,
+    html.trial-expired .container { display: none !important; }
+    #trial-expired-overlay { display: none; }
+    html.trial-expired #trial-expired-overlay { display: flex; }
+    #trial-expired-overlay {
+      position: fixed; inset: 0; z-index: 1000; background: var(--bg-dark);
+      flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 32px;
+    }
+    #trial-expired-overlay h1 { color: var(--accent-gold); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    #trial-expired-overlay p { color: var(--text-muted); max-width: 420px; line-height: 1.5; margin-bottom: 6px; }
   </style>
 </head>
 <body>
+
+  <div id="trial-expired-overlay">
+    <h1>Beta Trial Ended</h1>
+    <p>This trial build of Myslewer has expired.</p>
+    <p>Contact the person who sent you this link for the current version.</p>
+  </div>
+  <script>
+    // Hard-coded beta trial expiry - set for a 5-day trial. Checked on every
+    // load (works offline too, since it's a plain Date comparison, not
+    // anything server-verified). Placed early and synchronous so it applies
+    // before the rest of the page paints.
+    (function () {
+      var TRIAL_EXPIRES = '2026-08-17T00:00:00';
+      if (Date.now() >= new Date(TRIAL_EXPIRES).getTime()) {
+        document.documentElement.classList.add('trial-expired');
+      }
+    })();
+  </script>
 
   <header>
     <h1>MYSLEWER</h1>
