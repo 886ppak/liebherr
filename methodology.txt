@@ -2604,3 +2604,33 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   no figure at all. No change to the selection logic itself.
 
 ================================================================================
+
+10.46 Prepped for LTM 1650's 3-band hook block data - no new selector
+      needed after all
+  1650's chart has three separate hook block bands (0 / 700-3500 /
+  3500-4600 kg), each with its own weight-vs-angle sub-table - flagged
+  in 10.-something as needing design input before building. Walked
+  through options with the person; landed on something much simpler
+  than a new forced-choice selector: "i just want to know what the
+  maxium size block ... can be used with that counterweight -boom
+  direction etc ... if it says zero allowed then just say No hookblock."
+  Once band tables are extracted, each band's rows just become more
+  entries in the SAME flat rows array for that weight - no different
+  from how boom-angle variants already stack as Option A/B/C. The only
+  code change needed: when a row's hookBlock is the bare string "0" (no
+  range), the "Hook block" line now reads "No hook block" instead of
+  "0 kg", and driveEqMaxCompliantHookBlock is skipped for it explicitly
+  (its own regex wouldn't have matched "0" anyway, but this makes the
+  intent explicit rather than relying on that as an accident). Confirmed
+  with the person directly this also satisfies "only offer the hook
+  block recommendation if it is permissible" - since the fleet-block
+  lookup already only ever runs against each row's own range, a
+  narrower/heavier band's row can never inherit a recommendation from a
+  lighter band's row it's stacked next to.
+  Regression-checked all five live cranes (1110/1130/1160/1250/1300) -
+  no visible change, since none of them currently have a bare "0"
+  hookBlock value; this is purely prep for 1650's actual data, which is
+  still on hold while the person checks whether more pages exist beyond
+  the 8-page/477-page excerpt already reviewed.
+
+================================================================================
