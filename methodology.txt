@@ -2681,6 +2681,22 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   document only covers the single 8.4m outer radius and the two winch
   states shown above - no other outer radius and no "with winch 2 and
   winch 3" section are in this upload, so those remain unavailable until
-  supplied.
+  supplied. Person confirmed 8.4m is near enough the fleet standard for
+  this crane either way.
+
+================================================================================
+
+10.48 Reordered and renamed the tab bar
+  Person specified the desired order right-to-left: Reeving Plans, CWT
+  Combinations, Driving with Equipment in Place, Minimum Hook Block
+  Weights, Outrigger Support Positioning, Rope Retentioning - i.e.
+  left-to-right: Rope Retentioning, Outrigger Support Positioning,
+  Minimum Hook Block Weights, Driving with Equipment in Place, CWT
+  Combinations, Reeving Plans. Reordered the <nav> button markup only -
+  switchTab() keys off the clicked button's tabId, not DOM position, so
+  the tab-content divs didn't need reordering to match. Two renames
+  alongside the reorder: "Reeving Plan" -> "Reeving Plans", "Counterweight
+  Combinations" -> "CWT Combinations". Verified in-browser: all six tabs
+  click through to the correct panel in the new order, no console errors.
 
 ================================================================================
