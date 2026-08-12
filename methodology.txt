@@ -2722,3 +2722,18 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   reeving diagram already populated, no console errors.
 
 ================================================================================
+
+10.50 Relabelled "Maximum fleet block" to "Maximum known size hook block"
+  Person asked for wording that makes it obvious the figure belongs to
+  the exact crane selected, then settled on "maximum known size hook
+  block" as the label. Updated the table row label and the tab
+  disclaimer paragraph in Driving with Equipment in Place to match; no
+  change to driveEqMaxCompliantHookBlock() or the underlying selection
+  logic, wording only. Checked: this tab (and its FLEET_BLOCK_SPEC data
+  with per-block aux ballast options) only exists on the beta-trial
+  branch - main/live has no Driving with Equipment tab at all yet, so
+  there is nothing to change there today. Live's own FLEET_BLOCK_SPEC
+  constant is an unrelated, older schema used by a different tab
+  (Minimum Hook Block Weights) and wasn't touched.
+
+================================================================================
