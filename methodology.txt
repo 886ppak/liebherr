@@ -2030,7 +2030,7 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   Implementation is deliberately tiny: two new optional fields per crane
   in COUNTERWEIGHT_DATA, manualUrl and manualPage. When present, a plain
   link ("open document") plus a "go to page N for the counterweight
-  chart" line renders under the Composition card's existing sourceNote
+  combinations" line renders under the Composition card's existing sourceNote
   disclaimer; when absent (every crane except 1110 so far) the element
   stays hidden, so this doesn't force placeholder text onto cranes
   without a manual link yet. Person has the manuals for the other cranes
@@ -2038,7 +2038,7 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   this field just gets filled in per crane as those arrive, no further
   code changes needed per crane after this.
   First link: LTM 1110's Google Drive copy, page 861 for the
-  counterweight chart (originally mislabelled "LTM1100" by the person in
+  counterweight combinations (originally mislabelled "LTM1100" by the person in
   the same message that shared the link - initially read as the
   separate, still-pending LRT 1100-2.1 tab per 10.12's page-mismatch
   issue; person corrected this directly: "what i shared was for the ltm
