@@ -2514,3 +2514,76 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   LTM 1300 unaffected.
 
 ================================================================================
+
+10.44 Driving with Equipment in Place - added LTM 1130, LTM 1160, LTM
+      1250; recommended fleet hook block cross-reference
+  Person sent four more PDFs in one batch (1650, 1130, 1160, 1250),
+  explicitly asking to hold the 1650 one till last "as you might have
+  questions." Processed the other three, none needed a question, all
+  pushed live per the standing instruction ("if no problems push to
+  live").
+  None of these three PDFs use the character-shift cipher - plain text
+  throughout, same as 1110's original 2-page upload. Confirms again this
+  is a Counterweight-chart-specific quirk, not universal.
+  Three genuinely new data-shape variations, each requiring a small
+  schema/extraction change rather than just new numbers:
+    - LTM 1130 (doc 028799-00, 2016): only "boom direction towards the
+      rear" is present for the plain telescopic boom - no Front table in
+      this upload, and the document's own next-section header
+      ("2 Telescopic boom T-12.7 (0/0/0/0/0) with folding jib K-2.9")
+      confirms there's at least one more config with no table for it
+      either. Built with only directions.rear present - the existing
+      per-boom-config Front/Rear disable logic (built for 1300's T-19.6)
+      handled this with no changes needed. This document's table also
+      has NO "Hook block" column at all (older/simpler chart format) -
+      added conditional rendering so that row only appears when
+      r.hookBlock is actually present on the row object, instead of
+      assuming every crane has one.
+    - LTM 1160 and LTM 1250: introduce a different config axis to 1300's
+      boom length - "Outer radius of counterweight" (5.3m/4.8m for 1160,
+      5.6m/4.8m for 1250), each with its own Front AND Rear table (no
+      front/rear gaps here, unlike 1130/1300). Reused the boomConfigs
+      array mechanism as-is since it's the same shape (a labelled config
+      axis with its own directions) - the label text just describes a
+      radius instead of a boom length, no code changes needed beyond
+      that. Front's lightest rows are numerically IDENTICAL between the
+      two radii on both cranes - confirmed directly against the source
+      text before trusting it, not a copy-paste artifact; a genuine OEM
+      coincidence at the light end where the counterweight's mounting
+      radius apparently doesn't move the numbers.
+    - Extraction itself needed a real fix for 1160/1250: a single PDF
+      page can contain the TAIL of one table and the START of the next
+      back to back (1160 page 3, 1250 page 4 both do this) - page-per-
+      table can't be assumed. Rebuilt extraction to concatenate every
+      page's spans into one continuous stream and split on the
+      document's own vtab_ codes (a unique marker per table,
+      independent of where page breaks fall) instead of splitting per
+      page. Also, LTM 1250's counterweight column prints whole numbers
+      without a decimal point ("5" / "0" instead of "5.0" / "0.0"),
+      unlike every other crane so far - widened the weight-shape regex
+      from \d+\.\d to \d+(\.\d)? to catch both, stored as a decimal
+      internally either way for consistency.
+  Separately, person's own idea: "since we know that each crane models
+  hook block weight are from the minium block weight tab can we put a
+  the recommend one." Added driveEqRecommendedHookBlock(craneKey,
+  hookBlockRange) - cross-references the chart's hook block ALLOWANCE
+  (e.g. "0 ... 900" kg) against FLEET_BLOCK_SPEC (the same data already
+  driving the Minimum Hook Block Weights tab) and shows the heaviest
+  fleet block whose own net weight fits inside that range, as a new
+  "Recommended fleet block" row directly under Hook block. Picks
+  heaviest-that-fits on the basis that a crew defaults to the biggest/
+  most capable block still legal for the drive, not the lightest
+  available; only compares each block's base net weight, not any
+  auxiliary-weight variant, since aux weights are a lifting-capacity
+  choice, unrelated to what's legal for road travel. Silently shows
+  nothing when a crane has no FLEET_BLOCK_SPEC entry yet, the range
+  doesn't parse, or nothing in the fleet fits - never a broken or
+  misleading row. Verified: LTM 1110 front recommends the 100t 5-Sheave
+  DM Block (900kg, sits right at the 0...900 boundary); LTM 1300 rear
+  recommends the 125t 5-Sheave DM Block (1600kg, right at the
+  500...1600 boundary); LTM 1130 (no Hook block column at all) shows no
+  recommendation row, as expected.
+  Regression-checked LTM 1110 and LTM 1300 after all changes - both
+  still render identically to before.
+
+================================================================================
