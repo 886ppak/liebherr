@@ -2214,3 +2214,83 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   uc?export=download one.
 
 ================================================================================
+
+10.39 Built the LTR 1220 Counterweight tab - new crane, box-traced DXF +
+      OEM combo PDF, both supplied by the person
+  Two-part delivery: first a DXF with the diagram's actual OEM artwork
+  imported via AutoCAD PDFIMPORT plus 8 hand-drawn boxes around each
+  distinct plate silhouette (same box-tracing workflow as 1160's 10.32),
+  sent for review before any data was attached; then, once boxes were
+  confirmed good, a combo PDF with the actual weights/composition table.
+  Box review: no IMAGE entity this time - the entire diagram was
+  PDFIMPORT'd as vector LWPOLYLINE geometry (216 entities on
+  PDF_Visible) with 8 more on a Boxes layer. Rendered the DXF to a PNG,
+  zoomed into every shared box boundary, both lifting lugs, the notched
+  base plate, and the stepped hitch/pin detail at the top of the
+  pedestal - every box hugged the actual linework exactly, no clipping,
+  no gaps at shared edges. Sent back a numbered reference render (not
+  live) for the person to identify each box against.
+  PDF decode: same -29 character-shift substitution cipher as every
+  other Liebherr combo PDF this session (10.1/10.4/10.34's caveat that
+  it needed re-confirming per document) - confirmed it still applies,
+  but this time the plain page.get_text() concatenation lost the
+  numeric weight values entirely because digits are encoded as control
+  characters (0x13-0x1A) sitting below the printable-ASCII floor my
+  original decode function handled. Switched to per-span dict-mode
+  extraction and a decode that shifts every character except literal
+  space by +29 with no wraparound (rather than the mod-94 rotation used
+  before) - recovered the full combo table: 0.0t (empty), 10.0t
+  (receptacle plate 1 alone), 30/50/70t (receptacle + 1/2/3 pairs of
+  "counterweight plate 2" + "counterweight plate 3").
+  Person's plain-language box assignment, verbatim: "0 and 1 are the
+  same thing" (the base plate and pedestal outlines are two disjoint
+  shapes but one physical/OEM-listed part), "3/2 are a pair, 5/4 are a
+  pair, 7/6 are a pair" (three stacked tiers, each a left+right pair),
+  "the pairs get selected together as you cant just put on one"
+  (corrected mid-sentence from "can just put one on" - both-or-neither,
+  not independently selectable), and "like the other cwt combos with
+  multi of the same slab type i want them to be able to built and
+  selected any any order" (the 3 tiers are interchangeable with each
+  other, not fixed positions).
+  Modelled as: p1 (Receptacle plate 1, 10.0t) with separate:true and
+  TWO hotspots (boxes 0+1) for one id - same pattern as 1300's
+  aux5/aux6, just reused for "one part, two disjoint outline pieces"
+  instead of "one part, two mirrored mounting positions". Each tier is
+  two ids - p2x (right, "Counterweight plate 2") and p3x (left,
+  "Counterweight plate 3") - linked to each other via linkedId (1110's
+  p3/p4 pattern, gives the both-or-neither click behaviour) AND each
+  tagged with an interchangeableGroup shared across all 3 tiers'
+  same-named id (plate2_1220 for all three p2x, plate3_1220 for all
+  three p3x - two groups, not one, since the OEM chart names them as
+  two distinct parts even though they're always equal in count). This
+  is the first crane to combine linkedId and interchangeableGroup on
+  the same components - confirmed in the engine they're orthogonal
+  (linkedId governs toggle-time selection, interchangeableGroup only
+  affects combo-signature matching) with no special-casing needed.
+  Diagram rendering picked up a real refinement over the dpi-cranking
+  workaround from 10.somewhere (ezdxf's Frontend.draw_layout(finalize=
+  True) silently overriding whatever figsize/xlim/ylim was set
+  beforehand, discovered again here): rather than fighting it, let
+  finalize=True auto-fit as it always does, then READ BACK ax.get_xlim()
+  /get_ylim() afterward and use those (now-authoritative, content-driven)
+  values plus the actual saved-canvas pixel size to build an exact
+  linear world-to-pixel transform - spot-checked against multiple known
+  box corners/edges before trusting it for the real hotspot coordinates,
+  all within 1-4px (line-width tolerance). Also used
+  Configuration(background_policy=BackgroundPolicy.WHITE, color_policy=
+  ColorPolicy.BLACK) to get a clean white-bg/black-line render directly
+  instead of the invert-after-the-fact approach used for 1650 (10.28) -
+  cleaner since this DXF's dark-bg render didn't have a uniform
+  near-zero-channel-difference background the way 1650's did, so a
+  blind invert produced an off-white/beige cast rather than true white.
+  Wired up as a normal new crane entry - manualUrl/manualPage moved out
+  of PENDING_REFERENCE_LINKS.cwtCombosPendingTab now that the tab it was
+  waiting on exists (LRT 1100-2.1 remains held, still no tab). Verified
+  in-browser: p1 alone reads 10.0t/OEM-approved; clicking only the
+  right-side hotspot of any tier auto-selects its left-side partner
+  (and vice versa) via linkedId; deselecting one side drops both;
+  selecting tier-2 + tier-3 (skipping tier-1) still correctly reads
+  50.0t/OEM-approved, proving the interchangeableGroup matching doesn't
+  care which physical tiers were picked, only how many.
+
+================================================================================

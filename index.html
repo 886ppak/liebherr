@@ -1196,6 +1196,63 @@
           { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'aux5', 'aux6'] },
           { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5', 'aux6'] }
         ]
+      },
+      // LTR 1220 - diagram vector-traced directly from the OEM combo PDF's
+      // own artwork page (AutoCAD PDFIMPORT of the actual drawing, not a
+      // freehand redraw), combo data decoded from the same PDF's text
+      // layer (same -29 character-shift substitution cipher documented in
+      // 10.1/10.4, confirmed still applies here). See methodology.txt
+      // 10.39.
+      // Receptacle plate 1 (p1) is drawn as two disjoint outline pieces in
+      // the source artwork - the wide base plate and the narrower raised
+      // pedestal/hitch sitting on top of it - but the OEM combo chart
+      // lists it as one single 10.0t part, so both outlines are one
+      // component (separate:true, two hotspots) rather than two ids.
+      // Counterweight plates 2 and 3 are a left/right pair mounted at each
+      // of 3 stacked tiers above the receptacle - person confirmed the
+      // pair is always fitted/removed together (linkedId, same pattern as
+      // 1110's p3/p4) and that the 3 physical tiers are otherwise
+      // interchangeable - any 1, 2, or 3 of them match the chart
+      // regardless of which physical tier was picked (interchangeableGroup,
+      // same pattern as 1160/1300/1650's repeated plates - two groups here,
+      // one per side, since "plate 2" and "plate 3" are separately named
+      // OEM parts even though they're always selected as a pair).
+      '1220': {
+        label: 'LTR 1220',
+        sourceNote: 'Source: Liebherr doc LTR 1220-003 (0213893-00), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        diagramImage: './counterweight/img/ltr1220-cwt-exploded.png',
+        diagramAlt: 'Liebherr LTR 1220 counterweight exploded line diagram, receptacle plate and 3 tiers of counterweight plates 2/3',
+        diagramWidth: 3446,
+        diagramHeight: 1920,
+        figRef: 'Diagram vector-traced directly from the OEM combination chart PDF (AutoCAD PDFIMPORT), not a freehand redraw or the original artwork file.',
+        manualUrl: 'https://drive.google.com/file/d/14UaQ6QYTUQC5q4I2OilH1sWB42K_Lgie/view?usp=drive_link',
+        manualPage: 819,
+        components: [
+          { id: 'p1', name: 'Receptacle plate 1', weight: 10.0, separate: true, shortLabel: '1',
+            hotspots: [
+              { points: '2392.4,1715.7 3289.4,1715.7 3289.4,1832.7 156.6,1832.7 156.6,1715.7 1053.6,1715.7' },
+              { points: '2392.4,1715.7 2392.4,1026.6 1053.6,1026.6 1053.6,1715.7' }
+            ] },
+          { id: 'p2a', name: 'Counterweight plate 2', weight: 10.0, linkedId: 'p3a', interchangeableGroup: 'plate2_1220', shortLabel: '2',
+            hotspots: [ { points: '3289.4,955.1 1729.5,955.1 1729.5,711.3 3289.4,711.3' } ] },
+          { id: 'p3a', name: 'Counterweight plate 3', weight: 10.0, linkedId: 'p2a', interchangeableGroup: 'plate3_1220', shortLabel: '3',
+            hotspots: [ { points: '1716.5,955.1 156.6,955.1 156.6,711.3 1716.5,711.3' } ] },
+          { id: 'p2b', name: 'Counterweight plate 2', weight: 10.0, linkedId: 'p3b', interchangeableGroup: 'plate2_1220', shortLabel: '2',
+            hotspots: [ { points: '3289.4,646.3 1729.5,646.3 1729.5,402.6 3289.4,402.6' } ] },
+          { id: 'p3b', name: 'Counterweight plate 3', weight: 10.0, linkedId: 'p2b', interchangeableGroup: 'plate3_1220', shortLabel: '3',
+            hotspots: [ { points: '1716.5,646.3 156.6,646.3 156.6,402.6 1716.5,402.6' } ] },
+          { id: 'p2c', name: 'Counterweight plate 2', weight: 10.0, linkedId: 'p3c', interchangeableGroup: 'plate2_1220', shortLabel: '2',
+            hotspots: [ { points: '3289.4,331.1 1729.5,331.1 1729.5,87.3 3289.4,87.3' } ] },
+          { id: 'p3c', name: 'Counterweight plate 3', weight: 10.0, linkedId: 'p2c', interchangeableGroup: 'plate3_1220', shortLabel: '3',
+            hotspots: [ { points: '1716.5,331.1 156.6,331.1 156.6,87.3 1716.5,87.3' } ] }
+        ],
+        combos: [
+          { items: [] },
+          { items: ['p1'] },
+          { items: ['p1', 'p2a', 'p3a'] },
+          { items: ['p1', 'p2a', 'p3a', 'p2b', 'p3b'] },
+          { items: ['p1', 'p2a', 'p3a', 'p2b', 'p3b', 'p2c', 'p3c'] }
+        ]
       }
     };
 
@@ -2757,14 +2814,14 @@
     // is confirmed. Keeping them here (rather than only in chat history) so
     // they aren't lost before that happens. See methodology.txt 10.36.
     const PENDING_REFERENCE_LINKS = {
-      // LRT 1100-2.1 and LTR 1220 don't have a Counterweight tab yet (LRT
-      // 1100's is pending - see task list / methodology.txt 10.12; LTR
-      // 1220's hasn't been started at all) - holding these combos links
-      // until those tabs are actually built, rather than adding a manual
-      // link with nothing behind it to click through to.
+      // LRT 1100-2.1 doesn't have a Counterweight tab yet (pending - see
+      // task list / methodology.txt 10.12) - holding its combos link
+      // until that tab is actually built, rather than adding a manual
+      // link with nothing behind it to click through to. LTR 1220's own
+      // entry here was removed once its Counterweight tab was built -
+      // see methodology.txt 10.39.
       cwtCombosPendingTab: {
-        '1100': { manualUrl: 'https://drive.google.com/file/d/1BKNYTQgwgFYnSWw8daY87dOz3vv2r0Om/view?usp=drive_link', manualPage: 587, label: 'LRT 1100-2.1' },
-        '1220': { manualUrl: 'https://drive.google.com/file/d/14UaQ6QYTUQC5q4I2OilH1sWB42K_Lgie/view?usp=drive_link', manualPage: 819, label: 'LTR 1220' }
+        '1100': { manualUrl: 'https://drive.google.com/file/d/1BKNYTQgwgFYnSWw8daY87dOz3vv2r0Om/view?usp=drive_link', manualPage: 587, label: 'LRT 1100-2.1' }
       },
       // "Driving with the Equipment in Place" - new tab, not yet designed.
       // Person's explicit instruction: hold these until that tab exists

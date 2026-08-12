@@ -4,7 +4,7 @@
 // reeving diagrams (see CONTENT_CACHE below) — those persist across updates
 // so a crew doesn't lose offline access to plans they've already viewed just
 // because an app update shipped.
-const CACHE_VERSION = 'myslewer-v39';
+const CACHE_VERSION = 'myslewer-v40';
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 
 // Fetched-on-demand content (reeving diagrams, etc). Fixed name, never
@@ -35,7 +35,8 @@ const APP_SHELL = [
   './counterweight/img/ltm1130-cwt-exploded-v2.png',
   './counterweight/img/ltm1160-cwt-newangle.jpg',
   './counterweight/img/ltm1650-cwt-exploded.jpg',
-  './counterweight/img/ltm1300-cwt-exploded.png'
+  './counterweight/img/ltm1300-cwt-exploded.png',
+  './counterweight/img/ltr1220-cwt-exploded.png'
 ];
 
 self.addEventListener('install', (event) => {
