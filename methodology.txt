@@ -2294,3 +2294,35 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   care which physical tiers were picked, only how many.
 
 ================================================================================
+
+10.40 Third dev-jargon sweep pass - this time figRef, not sourceNote
+  Person flagged LTM 1300's figRef directly: "Re-drawn from a
+  user-supplied exploded 3D CAD model (DXF) of this variant's actual
+  counterweight stack - not OEM artwork." Same class of issue as
+  10.36/10.37's sourceNote sweeps, just a different field this time -
+  10.36 only checked sourceNote and left figRef alone on the (wrong)
+  assumption that "not OEM artwork" needed the production-process detail
+  attached to be credible. Checked every crane's figRef and found the
+  same pattern in five of seven: 1250/1110/1130 all said "diagram
+  re-drawn from an exploded 3D CAD model, not the original OEM artwork"
+  verbatim; 1160 said "Re-drawn from a user-supplied reference image,
+  not the chapter 4.07 OEM artwork..."; 1300 had the DXF mention flagged
+  above; 1220 (built this session, 10.39) said "...AutoCAD PDFIMPORT..."
+  - same mistake made fresh, not even old debt.
+  Stripped the process description from all six, keeping only the
+  user-relevant fact (is this the actual OEM artwork or not, and for
+  1160/1300, whether it's confirmed to be the same source as the combo
+  data): 1250/1110/1130 -> "diagram re-drawn as clean line art, not the
+  original OEM artwork"; 1160 -> "Not the chapter 4.07 OEM artwork used
+  for the combination data above."; 1300 -> "Diagram re-drawn as clean
+  line art from this variant's actual counterweight stack — not OEM
+  artwork."; 1220 -> "Diagram traced directly from the OEM combination
+  chart's own artwork, not a freehand redraw." 1650 was already clean
+  ("actual OEM exploded-view artwork, extracted directly, not
+  redrawn.") - no DXF/CAD/PDFIMPORT/user-supplied mention, left as-is.
+  Grepped both sourceNote and figRef together afterward for
+  DXF/3D CAD/user-supplied/PDFIMPORT/AutoCAD/pixel-exact across all
+  seven cranes - zero matches. Verified all seven render their new
+  figRef text correctly in-browser.
+
+================================================================================
