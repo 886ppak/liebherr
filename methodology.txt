@@ -2400,3 +2400,69 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   the info push to live and lemme see it in actions."
 
 ================================================================================
+
+10.42 Driving with Equipment in Place - added LTM 1300, which forced a
+      real schema change (boom length is now a variable, not fixed)
+  10.41's LTM 1110 test only had one boom notation (T-11.5) across both
+  its front/rear pages, so DRIVING_EQ_DATA had no concept of boom
+  length at all - direction was the only axis. LTM 1300's chapter
+  (029931-00, 15 pages) broke that assumption immediately: TWO boom
+  configurations - T-14.7 (0/0/0/0/0/0), fully retracted, with front,
+  rear, AND vehicle-mount tables; and T-19.6 (0/0/46/0/0/0), section 3
+  extended to 46%, front only, no rear, no vehicle option at all.
+  Person's instruction before building: "only list the options for
+  cranes that has chart that differ from full retracted." Restructured
+  DRIVING_EQ_DATA so every crane has a boomConfigs array - LTM 1110
+  keeps its single T-11.5 entry, LTM 1300 gets two. The new Boom
+  Configuration picker (mode-toggle, same forced-choice pattern as
+  direction/location) only renders when boomConfigs.length > 1, so
+  every single-config crane (1110, and every crane added after this
+  without a partially-extended chart) never shows it at all - confirmed
+  1110 unaffected, boom-config-group stays display:none exactly as
+  before.
+  Cross-availability had to be wired properly rather than just hidden:
+  Rear and Vehicle-location are only valid for boom configs that
+  actually have that data. Added .mode-btn:disabled CSS (opacity 0.35,
+  cursor not-allowed) and disable Front/Rear per the selected boom
+  config's own directions object (T-19.6 disables Rear entirely, since
+  cfg.directions.rear doesn't exist for it) - Location group itself
+  hides completely when the boom config has no vehicleWeights, same
+  pattern as before just re-evaluated on boom config change now, not
+  only crane change. Additionally, choosing Vehicle location forces
+  Direction to Front and disables Rear regardless of boom config, since
+  every vehicle-mount page in the source PDF is boom-to-front only -
+  there's no rear vehicle-mount table to ever show.
+  Vehicle-mount data itself is stored differently to the
+  front/rear tables - keyed by the discrete package weight (96, 86, 76,
+  66, 56, 46, 36, 26, 16, 13, 6t) rather than living inside a
+  direction's row list, since these are 11 separate OEM pages, not one
+  table with a varying weight column. Confirmed on every single page:
+  "Counterweight on superstructure" reads 0.0t, matching the design
+  decided before any of this data existed - added a
+  "Counterweight on superstructure: 0.0t" row to the output specifically
+  for the vehicle-location case, since it's genuinely present in the
+  source table and worth surfacing, not implied.
+  Nailed down an ambiguity from the original design conversation: the
+  person's own worked example ("96.0 500...1600 55°...82° 2.68 33 34 /
+  96.0 ... 69°...79° ... 32 32") is NOT from a vehicle-mount page at
+  all - it's the T-14.7 REAR superstructure table's own 96.0t row,
+  confirmed by exact match against the extracted data. The "96t" in the
+  vehicle-mount page titles ("96t counterweight, placed on the vehicle")
+  is an unrelated, separately-numbered package - worth flagging since
+  skimming the source PDF could easily conflate the two.
+  Extraction used the same per-span dict-mode + pattern-matched 6-field
+  grouping as 10.41, run per-page across all 15 pages; boom notation,
+  direction, and (where present) the vehicle package weight were parsed
+  from each page's own header spans rather than assumed from page order.
+  Verified in-browser end to end: T-14.7 Rear 96.0t reproduces the
+  person's example exactly; Vehicle location correctly lists all 11
+  packages, forces Front, disables Rear, and shows 0.0t superstructure
+  per row; switching to T-19.6 disables Rear and hides Location
+  entirely, front-only 16.0t/13.0t data renders correctly; no console
+  errors on any path.
+  Per the person's own note: they may drop T-19.6 (and any other
+  not-fully-retracted chart) from this tab later on. Kept for now since
+  it's real OEM data and they explicitly said to try it and push to
+  live regardless.
+
+================================================================================
