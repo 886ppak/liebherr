@@ -2050,3 +2050,57 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   have manualUrl set yet).
 
 ================================================================================
+
+10.35 Reference Documentation card redesign - matched the Reeving tab's
+      "Offline Availability" block, added best-effort auto-page-jump,
+      and set aside a placeholder for a future "Driving with the
+      Equipment in Place" tab
+  Person wanted the manual link to look more substantial, pointing
+  directly at the Reeving tab's "Offline Availability" card (title +
+  muted description line + full-width gold .btn) as the visual target,
+  rather than a plain disclaimer line buried under the Composition
+  table. Rebuilt cwt-manual-link as its own card, cwt-manual-card: card
+  title, a .hook-badge showing "Page N" (reused from the Hook Block tab
+  - green pill, already used elsewhere for this exact "here's the
+  number that matters" purpose), a short muted explanation, and a
+  full-width .btn styled/sized identically to reeve-cache-all-btn that
+  opens the document in a new tab. Hidden entirely (display:none) for
+  any crane without manualUrl set, same as before.
+  Person also asked to convert the stored links into whatever form
+  gives the auto-page-jump function its best shot, accepting it may
+  only work on some devices: "if no too bad they can manually do it
+  them selfs." Google Drive's own /view and /preview viewers don't
+  honour #page=N (confirmed dead in 10.34), but a raw PDF response
+  opened directly in a browser's native PDF viewer does support #page=N
+  per the PDF Open Parameters spec - Drive's direct-download endpoint
+  (drive.google.com/uc?export=download&id=<id>) serves exactly that.
+  Implemented as a generic helper, cwtManualHref(data), rather than
+  hand-converting each stored link: it regex-matches the standard
+  /file/d/<id>/ pattern out of whatever share-link URL is stored in
+  manualUrl, rebuilds it as the uc?export=download form, and appends
+  #page=N from manualPage. This means every future crane's link just
+  gets pasted in as the normal Drive "view" share link (whatever format
+  the person copies from Drive's share dialog) with no manual
+  reformatting - the conversion happens once, generically, at render
+  time. Falls back to using manualUrl as-is (plus the #page= fragment)
+  if a link doesn't match the expected Drive pattern, so a non-Drive
+  link still works as a plain link. Explicitly best-effort per the
+  person's own framing - large files can still hit Drive's "can't scan
+  for viruses, download anyway" interstitial, and there's no way to
+  detect either outcome in advance, so the Page N badge is always shown
+  regardless of whether the jump itself works.
+  Separately, person flagged a new tab coming later - "Driving with the
+  Equipment in Place" (Driving_with_the_equipment_in_place) - and said
+  documents/links for it should just be held per crane until that tab
+  is actually built, not forced into the counterweight tab's Reference
+  Documentation card. Noted here for the record; no data field or UI
+  added yet since no tab exists to render it in and no links have been
+  shared for it yet - next thing to do when the first one arrives is
+  hold it in a plain per-crane object (not yet designed) until the tab
+  itself is scoped.
+  Verified in-browser (Playwright): LTM 1110 shows the card with badge
+  text "Page 861" and button href
+  "https://drive.google.com/uc?export=download&id=1MFDP-Uu-HRINNT5bitsJU3TrK79YTVuf#page=861";
+  switching to LTM 1250 hides the card entirely (display:none).
+
+================================================================================

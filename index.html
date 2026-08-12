@@ -557,7 +557,13 @@
         <div class="card-title">Composition</div>
         <div id="cwt-composition"></div>
         <div class="disclaimer" id="cwt-source-note"></div>
-        <div class="disclaimer" id="cwt-manual-link" style="display:none;"></div>
+      </div>
+
+      <div class="card" id="cwt-manual-card" style="display:none;">
+        <div class="card-title">Reference Documentation</div>
+        <div class="hook-badge" id="cwt-manual-page-badge"></div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;">Full OEM manual, kept intact — not a cropped excerpt. Some devices will open the page above automatically; if yours doesn't, use the page number to get there yourself.</div>
+        <a class="btn" id="cwt-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
       </div>
     </div>
 
@@ -1450,6 +1456,24 @@
         (c) => c.idx);
     }
 
+    // Converts a Google Drive "view" share link (drive.google.com/file/d/<id>/view...)
+    // into a direct-download link with a #page=N fragment. A browser's native
+    // PDF viewer honours #page=N on a raw PDF response (per the PDF Open
+    // Parameters spec) - Drive's own /view and /preview viewers do not, both
+    // confirmed by live testing (see methodology.txt 10.34). This is
+    // best-effort only: it works when the browser opens the PDF inline, and
+    // does nothing but land on page 1 when it doesn't (large files can also
+    // hit Drive's "can't scan for viruses" download-anyway interstitial). No
+    // way to detect either case in advance, so the page number is always
+    // shown too - manual fallback, not an error state.
+    function cwtManualHref(data) {
+      if (!data.manualUrl) return null;
+      const page = data.manualPage ? `#page=${data.manualPage}` : '';
+      const m = data.manualUrl.match(/\/file\/d\/([^/]+)/);
+      if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}${page}`;
+      return `${data.manualUrl}${page}`;
+    }
+
     function renderCwtTab() {
       const modelKey = document.getElementById('cwt-crane').value;
       const data = COUNTERWEIGHT_DATA[modelKey];
@@ -1587,19 +1611,19 @@
       document.getElementById('cwt-source-note').textContent = data.sourceNote;
       document.getElementById('cwt-fig-ref').textContent = data.figRef;
 
-      // Full OEM manual reference link. This is deliberately just a link +
-      // a page number, not an embedded/extracted excerpt - the person
-      // wants the complete original document kept intact as their source
-      // of truth, and Google Drive's viewer doesn't reliably honour a
-      // #page= URL fragment (tested live, twice), so there's no reliable
-      // way to auto-jump to the page. See methodology.txt 10.34.
-      const manualLinkEl = document.getElementById('cwt-manual-link');
+      // Full OEM manual reference link - own card, styled like the Reeving
+      // tab's "Offline Availability" block. Deliberately just a link + a
+      // page number, not an embedded/extracted excerpt - the person wants
+      // the complete original document kept intact as their source of
+      // truth. See methodology.txt 10.34/10.35.
+      const manualCard = document.getElementById('cwt-manual-card');
       if (data.manualUrl) {
-        manualLinkEl.style.display = '';
-        manualLinkEl.innerHTML = `Full OEM manual: <a href="${data.manualUrl}" target="_blank" rel="noopener noreferrer">open document</a>${data.manualPage ? ` — go to page ${data.manualPage} for the counterweight combinations` : ''}.`;
+        manualCard.style.display = '';
+        document.getElementById('cwt-manual-page-badge').textContent = data.manualPage ? `Page ${data.manualPage}` : '';
+        document.getElementById('cwt-manual-page-badge').style.display = data.manualPage ? '' : 'none';
+        document.getElementById('cwt-manual-btn').href = cwtManualHref(data);
       } else {
-        manualLinkEl.style.display = 'none';
-        manualLinkEl.innerHTML = '';
+        manualCard.style.display = 'none';
       }
     }
 
