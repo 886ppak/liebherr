@@ -557,6 +557,7 @@
         <div class="card-title">Composition</div>
         <div id="cwt-composition"></div>
         <div class="disclaimer" id="cwt-source-note"></div>
+        <div class="disclaimer" id="cwt-manual-link" style="display:none;"></div>
       </div>
     </div>
 
@@ -692,6 +693,8 @@
         diagramWidth: 1122,
         diagramHeight: 1400,
         figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
+        manualUrl: 'https://drive.google.com/file/d/1MFDP-Uu-HRINNT5bitsJU3TrK79YTVuf/view?usp=drive_link',
+        manualPage: 861,
         // p3/p4 are ALWAYS present together in every published combo (never
         // one without the other) - unlike the old extracted-photo diagram
         // (see methodology.txt 10.7), this CAD tracing has a clean split
@@ -1583,6 +1586,21 @@
 
       document.getElementById('cwt-source-note').textContent = data.sourceNote;
       document.getElementById('cwt-fig-ref').textContent = data.figRef;
+
+      // Full OEM manual reference link. This is deliberately just a link +
+      // a page number, not an embedded/extracted excerpt - the person
+      // wants the complete original document kept intact as their source
+      // of truth, and Google Drive's viewer doesn't reliably honour a
+      // #page= URL fragment (tested live, twice), so there's no reliable
+      // way to auto-jump to the page. See methodology.txt 10.34.
+      const manualLinkEl = document.getElementById('cwt-manual-link');
+      if (data.manualUrl) {
+        manualLinkEl.style.display = '';
+        manualLinkEl.innerHTML = `Full OEM manual: <a href="${data.manualUrl}" target="_blank" rel="noopener noreferrer">open document</a>${data.manualPage ? ` — go to page ${data.manualPage} for the counterweight chart` : ''}.`;
+      } else {
+        manualLinkEl.style.display = 'none';
+        manualLinkEl.innerHTML = '';
+      }
     }
 
     function initCwtTab() {

@@ -2008,3 +2008,45 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   didn't work) now correctly reads 36.0t/OEM-approved.
 
 ================================================================================
+
+10.34 Added a "Full OEM manual" reference link to the Counterweight tab,
+      starting with LTM 1110
+  Person wants a way to point at the actual complete OEM manual for each
+  crane, not just the extracted/re-drawn diagram and the short sourceNote
+  citation already shown. Explicit design constraint from the person:
+  "id rather not chop up the offical document as this is my way of
+  showing a source of truth maybe we just put the hyperlink in there and
+  tell them what page number to go to them selfs." Two attempts at
+  auto-jumping to the right page were tried and both failed on live
+  testing before that decision was made: Google Drive's viewer does not
+  honour a #page=N URL fragment on either /view or /preview - person
+  confirmed both open to page 1 regardless of the fragment. A
+  direct-download link would let the browser's native PDF viewer handle
+  #page=N (which does support it), but large files can trip Drive's
+  "can't scan for viruses" interstitial, which would break the link for
+  no real gain over just asking the person to flip to a page number
+  themselves - not worth it against the stated preference to keep the
+  source document whole and unmodified anyway.
+  Implementation is deliberately tiny: two new optional fields per crane
+  in COUNTERWEIGHT_DATA, manualUrl and manualPage. When present, a plain
+  link ("open document") plus a "go to page N for the counterweight
+  chart" line renders under the Composition card's existing sourceNote
+  disclaimer; when absent (every crane except 1110 so far) the element
+  stays hidden, so this doesn't force placeholder text onto cranes
+  without a manual link yet. Person has the manuals for the other cranes
+  and confirmed they'll supply a link + page number for each in turn -
+  this field just gets filled in per crane as those arrive, no further
+  code changes needed per crane after this.
+  First link: LTM 1110's Google Drive copy, page 861 for the
+  counterweight chart (originally mislabelled "LTM1100" by the person in
+  the same message that shared the link - initially read as the
+  separate, still-pending LRT 1100-2.1 tab per 10.12's page-mismatch
+  issue; person corrected this directly: "what i shared was for the ltm
+  1110t" - so it maps to the already-shipped LTM 1110, not LRT 1100).
+  Verified in-browser: selecting LTM 1110 shows the link with the
+  correct href and "page 861" text; every other crane's tab shows no
+  link element at all (checked LTM 1250 directly via Playwright, and by
+  code inspection the same applies to 1130/1160/1650/1300 since none
+  have manualUrl set yet).
+
+================================================================================
