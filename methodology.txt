@@ -2737,3 +2737,34 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   (Minimum Hook Block Weights) and wasn't touched.
 
 ================================================================================
+
+10.51 Added an "Advanced" disclosure to the Boom Configuration picker
+  Person's ask: any boom config that isn't the plain/baseline chart for a
+  crane (extended section, extra winch fitted, whatever the crane's own
+  sections are) should be tucked away from the main toggle instead of
+  sitting alongside it as an equal choice. Person flagged they'll be
+  adding more of these to most other cranes going forward, so the split
+  needed to be data-driven rather than inferred from label text - LTM
+  1300's T-19.6 signals "not baseline" via a 0/0/46/0/0/0 percentage
+  pattern, but LTM 1650's "with winch 2" configs have no percentage
+  notation at all, so a regex on the label wouldn't generalize.
+  Introduced a plain `advanced: true` flag on the boomConfig object
+  itself (schema comment updated above DRIVING_EQ_DATA) - renamed from
+  the unused `fullyRetracted: false` that was already sitting on LTM
+  1300's T-19.6 entry (added in 10.42, never wired to anything). Flagged
+  LTM 1300's T-19.6 and both of LTM 1650's "with winch 2" configs.
+  onDriveEqCraneChange() now splits a crane's boomConfigs into the
+  existing #de-boom-config-toggle (unflagged) and a new collapsed
+  <details> disclosure, #de-boom-config-advanced, holding a second
+  mode-toggle row for flagged configs - only shown at all when a crane
+  actually has an advanced entry. Both toggles tag each button with its
+  original array index (data-idx) so setDriveEqBoomConfig() can drive the
+  active state across both containers without assuming position. Verified
+  in-browser (Playwright): LTM 1300 shows only T-14.7 in the main toggle
+  with T-19.6 under Advanced; LTM 1650 shows both no-winch configs main
+  and both with-winch configs under Advanced; selecting an Advanced entry
+  flows through direction/weight/output exactly like a main entry; single-
+  config cranes (e.g. LTM 1110) still hide the whole Boom Configuration
+  group as before; no console errors.
+
+================================================================================
