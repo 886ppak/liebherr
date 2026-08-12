@@ -618,7 +618,7 @@
         <div class="card-title">Driving Configuration</div>
         <div id="de-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
         <div id="de-output"></div>
-        <div class="disclaimer">Figures shown are for this fleet's standard 525/80 R 25 tyres — see the crane operating instructions, chapter 1.03, for other tyre options. Reference tool only — cross-check against the current OEM documentation before road travel.</div>
+        <div class="disclaimer">Figures shown are for this fleet's standard 525/80 R 25 tyres — see the crane operating instructions, chapter 1.03, for other tyre options. "Maximum fleet block" is a ceiling, not a suggestion to swap blocks — whatever block is actually fitted, if it's this weight or lighter, it's compliant with the Hook block allowance above it. Reference tool only — cross-check against the current OEM documentation before road travel.</div>
         <div class="disclaimer" id="de-source-note"></div>
       </div>
 
@@ -2086,15 +2086,17 @@
     // Cross-references a Driving-with-Equipment hook block allowance
     // (e.g. "0 ... 900" kg) against this crane's actual fleet blocks from
     // the Minimum Hook Block Weights tab (FLEET_BLOCK_SPEC), rather than
-    // leaving the allowance as an abstract range - picks the heaviest
-    // fleet block whose own net weight fits inside it, on the basis that
-    // a crew would default to the biggest/most capable block that's still
-    // legal for the drive, not the lightest one that happens to fit. Only
-    // compares each block's BASE net weight (no auxiliary weights added) -
-    // aux weights are a lifting-capacity choice, not a driving one. Returns
-    // null (nothing shown) if this crane has no fleet spec yet, the range
-    // doesn't parse, or nothing in the fleet actually fits.
-    function driveEqRecommendedHookBlock(craneKey, hookBlockRange) {
+    // leaving the allowance as an abstract range - finds the HEAVIEST
+    // fleet block whose own net weight still fits inside it. This is a
+    // ceiling, not a suggestion to go fetch that block: whatever block is
+    // actually fitted, if it's this weight or lighter, the crew is
+    // compliant ("in the green") - only a block heavier than this one
+    // would breach the chart's allowance. Only compares each block's BASE
+    // net weight (no auxiliary weights added) - aux weights are a
+    // lifting-capacity choice, not a driving one. Returns null (nothing
+    // shown) if this crane has no fleet spec yet, the range doesn't
+    // parse, or nothing in the fleet actually fits.
+    function driveEqMaxCompliantHookBlock(craneKey, hookBlockRange) {
       const spec = FLEET_BLOCK_SPEC[craneKey];
       if (!spec || !hookBlockRange) return null;
       const m = hookBlockRange.match(/(\d+)\s*\.\.\.\s*(\d+)/);
@@ -2132,7 +2134,7 @@
       }
 
       outEl.innerHTML = rows.map((r, i) => {
-        const rec = r.hookBlock ? driveEqRecommendedHookBlock(modelKey, r.hookBlock) : null;
+        const rec = r.hookBlock ? driveEqMaxCompliantHookBlock(modelKey, r.hookBlock) : null;
         return `
         <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
           ${rows.length > 1 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${String.fromCharCode(65 + i)}</div>` : ''}
@@ -2140,7 +2142,7 @@
             <tbody>
               ${usingVehicle ? `<tr><td style="text-align:left;">Counterweight on superstructure</td><td>${r.weight.toFixed(1)} t</td></tr>` : ''}
               ${r.hookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>${r.hookBlock} kg</td></tr>` : ''}
-              ${rec ? `<tr><td style="text-align:left;">Recommended fleet block</td><td>${rec.name}</td></tr>` : ''}
+              ${rec ? `<tr><td style="text-align:left;">Maximum fleet block (lighter is fine)</td><td>${rec.name}</td></tr>` : ''}
               <tr><td style="text-align:left;">Telescopic boom angle to the horizontal</td><td>${r.boomAngle}</td></tr>
               <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m</td></tr>
               <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupA}</td><td>${r.axleA} t</td></tr>

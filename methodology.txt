@@ -2587,3 +2587,20 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   still render identically to before.
 
 ================================================================================
+
+10.45 Relabelled "Recommended fleet block" to "Maximum fleet block" -
+      same computation, clearer meaning
+  Person: "can you find which one would be the maximum based on weight
+  so operators know if they have the smaller one on they weill be in
+  the green." The underlying pick was already exactly this - heaviest
+  fleet block that still fits inside the chart's hook block allowance -
+  but "Recommended" reads as "go get this one," when the actually useful
+  fact for a crew is a ceiling: whatever block is actually fitted, if
+  it's this weight or lighter, they're compliant. Renamed the function
+  (driveEqRecommendedHookBlock -> driveEqMaxCompliantHookBlock) and the
+  displayed row label ("Maximum fleet block (lighter is fine)"), and
+  added a line to the tab's disclaimer spelling out the ceiling framing
+  explicitly, since a mislabelled safety-relevant figure is worse than
+  no figure at all. No change to the selection logic itself.
+
+================================================================================
