@@ -2173,3 +2173,19 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   and never re-checked.
 
 ================================================================================
+
+10.37 Corrected the one "unplaced" link from 10.36 - it's Driving with
+      Equipment, mislabelled
+  The single link flagged as unplaced in 10.36 ("boom to front pg101 |
+  boo to rear pg102" under the LTM1100 heading, no tab named) - person
+  confirmed directly: "ah its driving with eq i labled it wrong." Moved
+  it from PENDING_REFERENCE_LINKS.unplaced into .drivingWithEquipment
+  under '1110', alongside the other five cranes already held there.
+  Kept as two separate page refs rather than a range, unlike every other
+  crane's single page/range in that bucket - "101 (boom to front) / 102
+  (boom to rear)" - since front and rear boom position are two distinct
+  pages, not a span. The now-empty unplaced bucket was removed. Nothing
+  rendered anywhere yet, same as the rest of drivingWithEquipment - still
+  waiting on that tab being designed.
+
+================================================================================
