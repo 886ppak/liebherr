@@ -687,6 +687,10 @@
         <div class="form-group" id="de-boom-config-group" style="margin-top:14px; display:none;">
           <label>Boom Configuration</label>
           <div class="mode-toggle" id="de-boom-config-toggle" style="margin-top:6px;"></div>
+          <details id="de-boom-config-advanced" style="margin-top:10px; display:none;">
+            <summary style="cursor:pointer; font-size:0.8rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Advanced</summary>
+            <div class="mode-toggle" id="de-boom-config-advanced-toggle" style="margin-top:8px;"></div>
+          </details>
         </div>
 
         <div class="form-group" style="margin-top:14px;">
@@ -1435,6 +1439,13 @@
     // and optionally vehicleWeights (only present where the OEM chart
     // supports the vehicle-mount option for THAT boom config - LTM 1300's
     // vehicle pages are all T-14.7/front only, never T-19.6 or rear).
+    // Any boomConfig can also carry `advanced: true` - set it on anything
+    // that isn't the crane's plain/baseline chart (extended boom section,
+    // extra winch fitted, etc.), regardless of what notation the OEM used
+    // for it. Configs without the flag render in the main Boom
+    // Configuration toggle; flagged ones are folded into a collapsed
+    // "Advanced" disclosure underneath, so cranes stay simple by default
+    // as more of these get added. See methodology.txt 10.50.
     const DRIVING_EQ_DATA = {
       '1110': {
         label: 'LTM 1110-5.1',
@@ -1672,12 +1683,11 @@
           },
           {
             // Section 3 extended to 46% - the one boom config in this
-            // document that ISN'T fully retracted. Person flagged they
-            // might drop non-fully-retracted charts from this tab
-            // entirely later on; kept for now since it's real OEM data
-            // and the person said to try it.
+            // document that ISN'T fully retracted. Surfaced under the
+            // Advanced disclosure rather than the main toggle - see
+            // methodology.txt 10.50.
             label: 'T-19.6 (0/0/46/0/0/0)',
-            fullyRetracted: false,
+            advanced: true,
             directions: {
               front: {
                 boomNotation: 'Telescopic boom T-19.6 (0/0/46/0/0/0)',
@@ -2165,6 +2175,7 @@
           },
           {
             label: 'T-16.7, with winch 2, without winch 3',
+            advanced: true,
             directions: {
               front: {
                 boomNotation: 'Telescopic boom T-16.7 (0/0/0)',
@@ -2234,6 +2245,7 @@
           },
           {
             label: 'T-29.0, with winch 2, without winch 3',
+            advanced: true,
             directions: {
               front: {
                 boomNotation: 'Telescopic boom T-29.0 (100/0/0)',
@@ -2325,16 +2337,28 @@
       const data = currentDriveEqCraneData();
       const boomGroup = document.getElementById('de-boom-config-group');
       const boomToggle = document.getElementById('de-boom-config-toggle');
+      const advancedDetails = document.getElementById('de-boom-config-advanced');
+      const advancedToggle = document.getElementById('de-boom-config-advanced-toggle');
       if (data && data.boomConfigs.length > 1) {
         boomGroup.style.display = '';
         boomToggle.innerHTML = '';
+        advancedToggle.innerHTML = '';
+        advancedDetails.open = false;
+        let hasAdvanced = false;
         data.boomConfigs.forEach((cfg, i) => {
           const btn = document.createElement('button');
           btn.className = 'mode-btn';
           btn.textContent = cfg.label;
+          btn.dataset.idx = i;
           btn.onclick = () => setDriveEqBoomConfig(i);
-          boomToggle.appendChild(btn);
+          if (cfg.advanced) {
+            hasAdvanced = true;
+            advancedToggle.appendChild(btn);
+          } else {
+            boomToggle.appendChild(btn);
+          }
         });
+        advancedDetails.style.display = hasAdvanced ? '' : 'none';
       } else {
         boomGroup.style.display = 'none';
       }
@@ -2352,7 +2376,8 @@
       deBoomConfigIdx = idx;
       deDirection = null;
       deLocation = null;
-      [...document.getElementById('de-boom-config-toggle').children].forEach((btn, i) => btn.classList.toggle('active', i === idx));
+      [...document.getElementById('de-boom-config-toggle').children, ...document.getElementById('de-boom-config-advanced-toggle').children]
+        .forEach(btn => btn.classList.toggle('active', Number(btn.dataset.idx) === idx));
       document.getElementById('de-dir-front').classList.remove('active');
       document.getElementById('de-dir-rear').classList.remove('active');
       refreshDriveEqDirectionButtons();
