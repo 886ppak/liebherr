@@ -2768,3 +2768,22 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   group as before; no console errors.
 
 ================================================================================
+
+10.52 Fixed LTM 1650's advanced flags - was splitting on winch, not boom
+      extension
+  10.51 flagged LTM 1650's two "with winch 2" configs as advanced and
+  left both "without winch" configs in the main toggle. Person caught
+  it: that's the wrong axis. T-16.7's boomNotation is (0/0/0) - fully
+  retracted - regardless of winch state, while T-29.0's is (100/0/0) -
+  section 1 extended to 100%. The actual rule (10.51, and the person's
+  original ask) is about boom retraction, not equipment fitted. Moved
+  `advanced: true` off "T-16.7, with winch 2, without winch 3" and onto
+  "T-29.0, without winch 2 and winch 3" instead, so the split is now:
+  both T-16.7 variants (retracted) in the main toggle, both T-29.0
+  variants (extended) under Advanced - winch state no longer affects
+  which group a config lands in. LTM 1300's T-19.6 was already correct
+  (its only boomConfig pair differs by extension, not equipment, so both
+  readings agreed). Verified in-browser: main toggle shows the two
+  T-16.7 entries, Advanced shows the two T-29.0 entries.
+
+================================================================================
