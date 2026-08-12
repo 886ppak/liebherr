@@ -519,6 +519,13 @@
           <div id="reeve-cache-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
         </div>
       </div>
+
+      <div class="card" id="reeve-manual-card" style="display:none;">
+        <div class="card-title">Reference Documentation</div>
+        <div class="hook-badge" id="reeve-manual-page-badge"></div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="reeve-manual-desc"></div>
+        <a class="btn" id="reeve-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
+      </div>
     </div>
 
     <!-- ================= TAB 5: COUNTERWEIGHT COMBINATIONS ================= -->
@@ -562,7 +569,7 @@
       <div class="card" id="cwt-manual-card" style="display:none;">
         <div class="card-title">Reference Documentation</div>
         <div class="hook-badge" id="cwt-manual-page-badge"></div>
-        <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;">Full OEM manual, kept intact — not a cropped excerpt. Some devices will open the page above automatically; if yours doesn't, use the page number to get there yourself.</div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="cwt-manual-desc"></div>
         <a class="btn" id="cwt-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
       </div>
     </div>
@@ -610,12 +617,14 @@
     const COUNTERWEIGHT_DATA = {
       '1250': {
         label: 'LTM 1250-5.1',
-        sourceNote: 'Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        sourceNote: 'Source: Liebherr doc LTM 1250-5-1-001 (0213656-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
         diagramImage: './counterweight/img/ltm1250-cwt-exploded-v2.png',
         diagramAlt: 'Liebherr LTM 1250-5.1 counterweight exploded CAD line diagram, parts 1-8',
         diagramWidth: 2625,
         diagramHeight: 1400,
         figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
+        manualUrl: 'https://drive.google.com/file/d/1ZHT10UONgoPWW2IK7STaAEL6Jeojd9dT/view?usp=drive_link',
+        manualPage: 881,
         // weight in t. centerTrim: flagged by the source doc as needing
         // plates 3 AND 4 both fitted to sit centered correctly on its own.
         // separate: mounts to the SIDES of the stack, not stacked at all
@@ -693,7 +702,7 @@
       // another crane.
       '1110': {
         label: 'LTM 1110-5.1',
-        sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        sourceNote: 'Source: Liebherr doc LTM 1110-5-1-000 (0214357-01), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
         diagramImage: './counterweight/img/ltm1110-cwt-exploded-v2.png',
         diagramAlt: 'Liebherr LTM 1110-5.1 counterweight exploded CAD line diagram, parts 1-8',
         diagramWidth: 1122,
@@ -809,12 +818,14 @@
       // weight gotcha this crane's aux ballast item required catching.
       '1130': {
         label: 'LTM 1130-5.1',
-        sourceNote: 'Source: Liebherr doc LTM 1130-5-1-008 (0212849-05), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2020. Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF) for precise, pixel-exact plate outlines. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
+        sourceNote: 'Source: Liebherr doc LTM 1130-5-1-008 (0212849-05), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2020. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
         diagramImage: './counterweight/img/ltm1130-cwt-exploded-v2.png',
         diagramAlt: 'Liebherr LTM 1130-5.1 counterweight exploded CAD line diagram, parts 1-8',
         diagramWidth: 1999,
         diagramHeight: 1030,
         figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05) — diagram re-drawn from an exploded 3D CAD model, not the original OEM artwork',
+        manualUrl: 'https://drive.google.com/file/d/1ruuyUoI51UWrUa6tCDtyt89ozDgStIeT/view?usp=drive_link',
+        manualPage: 807,
         components: [
           { id: 'p1', name: 'Counterweight Plate 1', weight: 3.7, shortLabel: '1',
             hotspots: [{ points: '1439,985 576,985 576,777 1439,777' }] },
@@ -890,6 +901,8 @@
         diagramWidth: 1569,
         diagramHeight: 1392,
         figRef: 'Re-drawn from a user-supplied reference image, not the chapter 4.07 OEM artwork used for the combination data above',
+        manualUrl: 'https://drive.google.com/file/d/1QiSOemRH-Zevx3wlf11-RouN-hZsCw8a/view?usp=drive_link',
+        manualPage: 841,
         // Replaces the old isometric-corner-view diagram (imprecise hand-
         // approximated hotspots, two overlapping faces at once - see
         // methodology.txt 10.9) with a cleaner side-angle exploded view
@@ -973,6 +986,8 @@
         diagramWidth: 1831,
         diagramHeight: 1266,
         figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03) — actual OEM exploded-view artwork, extracted directly, not redrawn.',
+        manualUrl: 'https://drive.google.com/file/d/11AKxwy5Xl3udo2b_R3CUhCWDwHzoptto/view?usp=drive_link',
+        manualPage: 987,
         components: [
           { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center', shortLabel: '',
             hotspots: [{ points: '333,1001 745,1001 745,1249 333,1249' }, { points: '1087,1001 1500,1001 1500,1249 1087,1249' }] },
@@ -1107,6 +1122,8 @@
         diagramWidth: 4643,
         diagramHeight: 1300,
         figRef: 'Re-drawn from a user-supplied exploded 3D CAD model (DXF) of this variant’s actual counterweight stack - not OEM artwork.',
+        manualUrl: 'https://drive.google.com/file/d/1fU-VjDgFGx8NcbJajghazvFk08wdlkDP/view?usp=drive_link',
+        manualPage: 931,
         components: [
           { id: 'p1', name: 'Receptacle Plate 1', weight: 6, shortLabel: '1',
             hotspots: [{ points: '1618,818 3027,818 3027,1203 1618,1203' }] },
@@ -1474,6 +1491,13 @@
       return `${data.manualUrl}${page}`;
     }
 
+    function cwtManualDescText(data) {
+      const base = 'Full OEM manual, kept intact — not a cropped excerpt.';
+      return data.manualPage
+        ? `${base} Some devices will open the page above automatically; if yours doesn't, use the page number to get there yourself.`
+        : base;
+    }
+
     function renderCwtTab() {
       const modelKey = document.getElementById('cwt-crane').value;
       const data = COUNTERWEIGHT_DATA[modelKey];
@@ -1621,6 +1645,7 @@
         manualCard.style.display = '';
         document.getElementById('cwt-manual-page-badge').textContent = data.manualPage ? `Page ${data.manualPage}` : '';
         document.getElementById('cwt-manual-page-badge').style.display = data.manualPage ? '' : 'none';
+        document.getElementById('cwt-manual-desc').textContent = cwtManualDescText(data);
         document.getElementById('cwt-manual-btn').href = cwtManualHref(data);
       } else {
         manualCard.style.display = 'none';
@@ -2713,6 +2738,71 @@
         ]}
     ];
 
+    // Full OEM manual reference links for the telescopic-boom reeving
+    // chapter, one per crane. No manualPage set for any of these (unlike
+    // the Counterweight tab's per-crane links) - these point at the whole
+    // reeving chapter rather than one page, so the "Page N" badge just
+    // stays hidden and it's a plain "open document" link. Reuses the same
+    // manualUrl->direct-download-link conversion (cwtManualHref) built for
+    // the Counterweight tab. See methodology.txt 10.36.
+    const REEVE_MANUAL_LINKS = {
+      '1100': { manualUrl: 'https://drive.google.com/file/d/1Bymz0HWBbrhfiob-r4gqSMuIUwmNCcsO/view?usp=drive_link' },
+      '1110': { manualUrl: 'https://drive.google.com/file/d/1ntGIzmW4P8r9-Sgk_sSN4au5uR3S3jwN/view?usp=drive_link' },
+      '1130': { manualUrl: 'https://drive.google.com/file/d/14JfKmu_RMqxkPiU4SVR7iyRxZ6qUb4MB/view?usp=drive_link' },
+      '1160': { manualUrl: 'https://drive.google.com/file/d/1DrMFpXr9KKCxrcRwPHKxkS69z43Sa-1s/view?usp=drive_link' },
+      '1220': { manualUrl: 'https://drive.google.com/file/d/1xiNjvaqjgPNZbkqW5XWQdRcUgb7BgH9y/view?usp=drive_link' },
+      '1250': { manualUrl: 'https://drive.google.com/file/d/1HRsryeoNZGLr4oLfhAtZ4oyd2YYPOpul/view?usp=drive_link' },
+      '1300': { manualUrl: 'https://drive.google.com/file/d/13GL-A4ZulSfx-CKAVTQu99w0vmGPat6E/view?usp=drive_link' },
+      '1650': { manualUrl: 'https://drive.google.com/file/d/1zryWo7yDw_tlczn05MDM0o2lCKvg6vW7/view?usp=drive_link' }
+    };
+
+    // Reference-doc links supplied ahead of the UI that will show them.
+    // Nothing here is read by any rendering code yet - each entry becomes a
+    // real manualUrl/manualPage field once its tab exists or its placement
+    // is confirmed. Keeping them here (rather than only in chat history) so
+    // they aren't lost before that happens. See methodology.txt 10.36.
+    const PENDING_REFERENCE_LINKS = {
+      // LRT 1100-2.1 and LTR 1220 don't have a Counterweight tab yet (LRT
+      // 1100's is pending - see task list / methodology.txt 10.12; LTR
+      // 1220's hasn't been started at all) - holding these combos links
+      // until those tabs are actually built, rather than adding a manual
+      // link with nothing behind it to click through to.
+      cwtCombosPendingTab: {
+        '1100': { manualUrl: 'https://drive.google.com/file/d/1BKNYTQgwgFYnSWw8daY87dOz3vv2r0Om/view?usp=drive_link', manualPage: 587, label: 'LRT 1100-2.1' },
+        '1220': { manualUrl: 'https://drive.google.com/file/d/14UaQ6QYTUQC5q4I2OilH1sWB42K_Lgie/view?usp=drive_link', manualPage: 819, label: 'LTR 1220' }
+      },
+      // "Driving with the Equipment in Place" - new tab, not yet designed.
+      // Person's explicit instruction: hold these until that tab exists
+      // rather than folding them into the Counterweight or Reeving cards.
+      drivingWithEquipment: {
+        '1130': { manualUrl: 'https://drive.google.com/file/d/1H4p7xg9diuvklydIvIlMT_BlWzldRY9R/view?usp=drive_link', manualPage: '24-26' },
+        '1160': { manualUrl: 'https://drive.google.com/file/d/1yZf3R4hYIy6iVY42lG7bZ7VmCdlrYa33/view?usp=drive_link', manualPage: '79-82' },
+        '1250': { manualUrl: 'https://drive.google.com/file/d/1pcvzf1AvrihFY4ZFXWPLGWV_YRUS-Cto/view?usp=drive_link', manualPage: '247' },
+        '1300': { manualUrl: 'https://drive.google.com/file/d/12qmJy8DZUAot_JXVM7GpU8F2_kzPSfx6/view?usp=drive_link', manualPage: '141-162' },
+        '1650': { manualUrl: 'https://drive.google.com/file/d/1aKRnvYiAFplJklt30ODEApAXR24jeGi0/view?usp=drive_link', manualPage: '269-276' }
+      },
+      // Placement unclear - flagged back to the person, not yet
+      // categorized into any tab.
+      unplaced: {
+        '1110_boomFrontRear': { manualUrl: 'https://drive.google.com/file/d/1CFyVAldGAWHCCGGJJ2BgVA91ieuhOwcJ/view?usp=drive_link', note: 'boom to front pg101 | boom to rear pg102 - which tab/feature does this belong to?' }
+      }
+    };
+
+    function renderReeveManualLink() {
+      const craneId = document.getElementById('reeve-crane').value;
+      const data = REEVE_MANUAL_LINKS[craneId];
+      const card = document.getElementById('reeve-manual-card');
+      if (data && data.manualUrl) {
+        card.style.display = '';
+        document.getElementById('reeve-manual-page-badge').textContent = data.manualPage ? `Page ${data.manualPage}` : '';
+        document.getElementById('reeve-manual-page-badge').style.display = data.manualPage ? '' : 'none';
+        document.getElementById('reeve-manual-desc').textContent = cwtManualDescText(data);
+        document.getElementById('reeve-manual-btn').href = cwtManualHref(data);
+      } else {
+        card.style.display = 'none';
+      }
+    }
+
     function populateReeveCraneSelect() {
       const sel = document.getElementById('reeve-crane');
       if (sel.options.length) return; // already populated
@@ -2744,6 +2834,7 @@
     function onReeveCraneChange() {
       populateReeveConfigSelect();
       onReeveConfigChange();
+      renderReeveManualLink();
     }
 
     function ensureReeveManifestLoaded() {
@@ -3000,6 +3091,7 @@
 
     function initReeveTab() {
       populateReeveCraneSelect();
+      renderReeveManualLink();
       if (reeveManifest) { renderReeveWayGrid(); return; }
       document.getElementById('reeve-snippet-wrap').innerHTML = '<span class="loading-text">Loading…</span>';
       ensureReeveManifestLoaded().then(() => renderReeveWayGrid());

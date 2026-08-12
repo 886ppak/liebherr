@@ -2104,3 +2104,72 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   switching to LTM 1250 hides the card entirely (display:none).
 
 ================================================================================
+
+10.36 Wired up the rest of the Counterweight manual links, added the same
+      Reference Documentation card to the Reeving Plan tab, second-pass
+      dev-jargon sweep on 1250/1110/1130's sourceNote, and held the links
+      that don't have a home yet
+  Person sent a large batch of Drive links + page numbers in one message,
+  organized by crane, each labelled by document type: "CWT combos",
+  "reeving tele", "Driving with Eq", plus one one-off ("boom to front
+  pg101 | boo to rear pg102" under the LTM1100 heading). Treated each
+  type separately rather than assuming they all go in one place:
+    - CWT combos: added manualUrl/manualPage to the 5 remaining cranes
+      that already have a Counterweight tab - LTM 1130 (807), LTM 1160
+      (841), LTM 1250 (881), LTM 1300 (931), LTM 1650 (987). LTM 1110's
+      link/page (861) was already wired in 10.34/10.35 from an earlier
+      message and matches this batch's "LTM1100" entry exactly - no
+      change needed there, just confirms the crane-label mapping from
+      10.34 was correct.
+    - reeving tele: person said directly "reeving tele goes in reeving
+      plan tab." Added a second Reference Documentation card, structurally
+      identical to the Counterweight one, to the Reeving Plan tab
+      (reeve-manual-card / renderReeveManualLink()), driven by a new
+      REEVE_MANUAL_LINKS map keyed by the same crane ids already used in
+      REEVE_CRANE_GROUPS. Reused cwtManualHref() as-is (already generic)
+      and factored the description text out into cwtManualDescText() so
+      both cards share the exact same page-aware/page-less wording
+      instead of duplicating it. None of these links came with a page
+      number (they point at the whole reeving/telescoping chapter, not
+      one page) so the "Page N" badge just stays hidden via the same
+      manualPage-optional logic already in place - confirmed all 8 cranes
+      (1100, 1110, 1130, 1160, 1220, 1250, 1300, 1650) render the link
+      with the badge hidden, card visible, correct converted href, no
+      console errors.
+    - Driving with Eq: person already said (previous message) to hold
+      these until that tab is designed. Stored as data only - see below -
+      not rendered anywhere.
+    - CWT combos for LRT 1100-2.1 (587) and LTR 1220 (819): neither crane
+      has a Counterweight tab yet (LRT 1100's build is still the pending
+      task from 10.12; LTR 1220 was never started for this tab, though it
+      already exists on the Load Chart/Hook Block/Reeving tabs). A
+      reference link with no data behind it to open the tab and see isn't
+      useful, so held rather than wired.
+    - "boom to front/rear" (LTM 1110 only, pg 101/102): doesn't match any
+      existing tab or feature - not Counterweight, not Reeving, not
+      Driving-with-Equipment. Flagged back to the person rather than
+      guessing at a placement.
+  All four held categories are stored in a new PENDING_REFERENCE_LINKS
+  const (not read by any rendering code - a holding pen, not a feature)
+  so the links and page numbers survive past this conversation instead of
+  only existing in chat history. Each entry becomes a real
+  manualUrl/manualPage field once its tab exists or its placement is
+  confirmed.
+  Separately, person flagged that LTM 1110's sourceNote still had the
+  same dev-process sentence called out and removed elsewhere before:
+  "Diagram re-extracted from an exploded 3D CAD model (user-supplied DXF)
+  for precise, pixel-exact plate outlines." Checked all sourceNotes and
+  found it verbatim in THREE cranes, not just the one reported - LTM
+  1250, LTM 1110, and LTM 1130 all had it (LTM 1250 and 1110 word-for-
+  word identical down to the GmbH year; LTM 1130 same sentence with its
+  own year). Removed the sentence from all three, leaving the source
+  citation and the "Reference tool only — cross-check..." safety line
+  intact. LTM 1160's sourceNote has a different, actually-relevant
+  caveat ("Diagram is a separate reference image, not confirmed to be
+  from the same source document") - left alone, that's provenance
+  information a user needs, not production process trivia. This is a
+  second sweep pass distinct from 10.somewhere earlier in the session;
+  these three must have been written or reverted after that first pass
+  and never re-checked.
+
+================================================================================
