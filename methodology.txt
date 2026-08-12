@@ -2189,3 +2189,28 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   waiting on that tab being designed.
 
 ================================================================================
+
+10.38 Reverted the direct-download link conversion from 10.35 - it forced
+      an actual file download instead of opening in a tab
+  Person noticed the Reference Documentation buttons were triggering a
+  download rather than opening the manual to look at. Root cause: Google
+  Drive's uc?export=download endpoint (used in 10.35 to give the
+  #page=N auto-jump its best shot) sends a Content-Disposition:
+  attachment response header, which forces the browser to save the file
+  instead of displaying it - regardless of whether the browser has a
+  native PDF viewer that would otherwise honour #page=N. That's a strictly
+  worse outcome than what the button is for (open and read the manual),
+  and the auto-jump it was chasing was already only a maybe (10.34 found
+  Drive's own /view and /preview never honour #page=N at all). Reverted
+  cwtManualHref() to a plain pass-through of the stored manualUrl -
+  Drive's normal /view link, which opens in a new tab like any other
+  link and doesn't force a download. Also softened the description text
+  in cwtManualDescText() to stop promising a "some devices" auto-jump
+  that isn't attempted anymore - now just tells the person to use the
+  page number themselves. This lands back on the person's original
+  design from 10.34: plain hyperlink + page number, nothing clever
+  attempted. Verified in-browser: LTM 1300's button href is now the
+  plain drive.google.com/file/d/.../view?usp=drive_link link, not a
+  uc?export=download one.
+
+================================================================================

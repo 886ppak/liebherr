@@ -1473,28 +1473,23 @@
         (c) => c.idx);
     }
 
-    // Converts a Google Drive "view" share link (drive.google.com/file/d/<id>/view...)
-    // into a direct-download link with a #page=N fragment. A browser's native
-    // PDF viewer honours #page=N on a raw PDF response (per the PDF Open
-    // Parameters spec) - Drive's own /view and /preview viewers do not, both
-    // confirmed by live testing (see methodology.txt 10.34). This is
-    // best-effort only: it works when the browser opens the PDF inline, and
-    // does nothing but land on page 1 when it doesn't (large files can also
-    // hit Drive's "can't scan for viruses" download-anyway interstitial). No
-    // way to detect either case in advance, so the page number is always
-    // shown too - manual fallback, not an error state.
+    // Opens the manual as originally shared - Drive's normal /view link.
+    // A direct-download link (uc?export=download) was tried in 10.35 to get
+    // a best-effort #page=N auto-jump, but Drive sends
+    // Content-Disposition: attachment on that endpoint, which forces an
+    // actual file download instead of opening in a tab - a worse trade
+    // than the auto-jump was worth, since /view and /preview never
+    // honoured #page=N anyway (confirmed dead in 10.34). Reverted per the
+    // person's original preference: plain link, tell them the page
+    // number, let them navigate themselves. See methodology.txt 10.38.
     function cwtManualHref(data) {
-      if (!data.manualUrl) return null;
-      const page = data.manualPage ? `#page=${data.manualPage}` : '';
-      const m = data.manualUrl.match(/\/file\/d\/([^/]+)/);
-      if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}${page}`;
-      return `${data.manualUrl}${page}`;
+      return data.manualUrl || null;
     }
 
     function cwtManualDescText(data) {
       const base = 'Full OEM manual, kept intact — not a cropped excerpt.';
       return data.manualPage
-        ? `${base} Some devices will open the page above automatically; if yours doesn't, use the page number to get there yourself.`
+        ? `${base} Opens the whole document — use the page number above to jump to the right spot yourself.`
         : base;
     }
 
