@@ -2705,3 +2705,20 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   to the correct panel in the final order, no console errors.
 
 ================================================================================
+
+10.49 Made Reeving Plans the default tab on load
+  Person asked for Reeving Plans (not Rope Retentioning) to be the tab
+  open on first load. Moved the "active" class from the Rope Retentioning
+  button/tab-content pair to the Reeving Plans pair. Caught one wiring gap
+  in testing: unlike calcCAD()/initCwtTab()/initDriveEqTab(), which run
+  unconditionally in the page's bottom-of-script init block regardless of
+  which tab is active, initReeveTab() (populates the crane/config selects
+  and loads the reeving diagram manifest) was ONLY ever called from
+  inside switchTab() when navigating TO reeve-tab by click - it had never
+  needed to run on page load before, because Reeving Plans was never the
+  default tab before. Added an explicit initReeveTab() call to the
+  init block so the tab isn't blank on first load now. Verified in-browser:
+  Reeving Plans opens by default with crane/config selects and the first
+  reeving diagram already populated, no console errors.
+
+================================================================================

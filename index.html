@@ -217,18 +217,18 @@
   </header>
 
   <nav class="nav-tabs">
-    <button class="tab-btn" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
+    <button class="tab-btn active" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
     <button class="tab-btn" onclick="switchTab('cwt-tab', event)">CWT Combinations</button>
     <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
-    <button class="tab-btn active" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
+    <button class="tab-btn" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
   </nav>
 
   <div class="container">
 
     <!-- ================= TAB 1: ROPE RETENTIONING ================= -->
-    <div id="rope-tab" class="tab-content active">
+    <div id="rope-tab" class="tab-content">
       <div class="card">
         <div class="card-title">Configuration &amp; Winch Setup</div>
         <div class="grid">
@@ -477,7 +477,7 @@
     </div>
 
     <!-- ================= TAB 4: REEVING PLAN ================= -->
-    <div id="reeve-tab" class="tab-content">
+    <div id="reeve-tab" class="tab-content active">
       <div class="card">
         <div class="card-title">Crane &amp; Boom Configuration</div>
         <div class="form-group">
@@ -4427,6 +4427,7 @@
     calcCAD();
     initCwtTab();
     initDriveEqTab();
+    initReeveTab(); // Reeving Plans is the default active tab on load
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
