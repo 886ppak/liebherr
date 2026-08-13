@@ -2996,3 +2996,45 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   errors.
 
 ================================================================================
+
+10.59 Real evenly-spaced explode gap (120mm) instead of a uniform outward
+      push
+  Person asked two things: whether to rename Onshape parts to match the
+  app's own component ids for future models (yes - would replace the
+  10.57 geometry-inference mapping with a direct, certain one), and
+  whether to explode/space the plates in Onshape itself, with what gap.
+  Answered: don't bake spacing into the CAD export - keep it in real
+  assembled position, since spacing is trivial to retune here without a
+  re-export, and each new crane is one less step for the person that way.
+  That answer meant actually fixing the explode to be a real gap rather
+  than what 10.57/10.58 shipped: pushDistance = maxDim * 0.18 applied
+  uniformly to every part's centroid regardless of position - for LTM
+  1130 that's ~1058mm, a fixed displacement per part, not a controlled
+  gap between adjacent faces (confirmed by direct measurement before
+  changing anything, not assumed).
+  Reworked explodeParts(): parts are now clustered by XZ proximity
+  (50mm tolerance - this model's actual stacked-plate matches are exact
+  to several decimal places, so real stacked plates cluster trivially;
+  non-stacked parts like the winch piece or the auxiliary ballast pair
+  don't share XZ with anything and land in their own single-member
+  cluster). A multi-member cluster (a real stack) is spaced by the new
+  explodeStack(): find whichever axis (x/y/z) has the most spread between
+  the cluster's centers - Y here, but not assumed, so a differently-
+  oriented future export still stacks correctly - sort along it, then walk
+  bottom to top accumulating exactly STACK_GAP (0.12 = 120mm) between each
+  part's own real thickness, so the gap is the same physical distance
+  everywhere regardless of that plate's own thickness. Single-member
+  clusters keep the old proportional outward push (pushOutward()) since
+  there's nothing to space them evenly against. Both paths still go
+  through the 10.58 world-to-local fix (factored out to applyWorldOffset())
+  rather than duplicating that logic.
+  STACK_GAP is the one number to change if 120mm ever looks wrong - a
+  one-line edit, no new model export needed.
+  Verified in-browser (Playwright, LTM 1130, both default and rotated
+  views): all six plates now show a clean, visibly even gap between them
+  rather than the previous uneven/bunched push; winch piece and both
+  ballast halves still separated clearly; click-to-select and the full
+  Composition/Total/2D-hotspot sync re-verified working after the rework.
+  No console errors.
+
+================================================================================
