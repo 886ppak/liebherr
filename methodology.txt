@@ -3094,3 +3094,42 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   re-fetched. No console errors.
 
 ================================================================================
+
+10.61 Added a tick/cross to state whether offline content is actually
+      fully downloaded
+  Person asked for a status indicator alongside 10.60's button rather
+  than just a fire-and-forget download action. New checkOfflineContentStatus()
+  reads the REAL current state from the Cache Storage API - the same
+  allOfflineContentUrls() list from 10.60 diffed against whatever's
+  actually sitting in the content cache - rather than just remembering
+  whether cacheAllOfflineContent() last ran successfully, since content
+  also gets cached one file at a time simply by viewing it (a reeving
+  diagram, a 3D model), exactly as it always has; the status needs to
+  reflect that too, not only a full-download run.
+  Doesn't hardcode sw.js's CONTENT_CACHE name as a second literal that
+  could drift from the one in sw.js - finds it at runtime as whichever
+  cache bucket isn't one of the versioned app-shell-* ones, since sw.js
+  only ever opens those two. Added a small span inside each "Offline
+  Availability" card-title (card-title's existing flex/space-between
+  layout right-aligns it for free, same trick as the CWT compare-view
+  checkbox and the Auxiliary Ballast enable checkbox before it) - ✓
+  Downloaded in var(--success) green, or ✗ Not fully downloaded (N
+  missing) in var(--danger) red.
+  Checked on three occasions: once on page load (covers whichever tab
+  loads by default, main vs beta differ on that - see the comment left in
+  place of assuming one), once on switchTab() for the three tabs, and once
+  at the end of cacheAllOfflineContent() itself. That last one caught a
+  real race first: the service worker's fetch handler writes each response
+  into CONTENT_CACHE via a fire-and-forget cache.put() not awaited by the
+  page's fetch() promise, so checking status the instant the download loop
+  finishes could still show 1-2 "missing" for writes that hadn't landed
+  yet. Fixed with one extra checkOfflineContentStatus() call 600ms later -
+  not a poll/retry loop, this was never a real ongoing race, just a
+  one-time confirmation that the last couple of writes had caught up.
+  Verified in-browser (Playwright): shows the correct cross with an
+  accurate missing-count before any download; download then immediately
+  shows the correct tick (no lingering false negative after the 600ms
+  fix); tick persists correctly across a full page reload (real Cache
+  Storage state, not in-memory-only). No console errors.
+
+================================================================================
