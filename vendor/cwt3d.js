@@ -136,6 +136,15 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
   const modelCenter = box.getCenter(new THREE.Vector3());
   const modelSize = box.getSize(new THREE.Vector3());
   const pushDistance = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.18;
+  // Left/right mounted pairs (aux ballast, wing weights - anything flagged
+  // `separate: true`) need to read as clearly split from EACH OTHER, not
+  // just nudged off the main stack - the base pushDistance above was tuned
+  // for that latter case and left genuinely paired items looking too close
+  // together (LTM 1300's 5L/5R, 6L/6R - see methodology.txt 10.65). Only
+  // affects participants whose app id is itself flagged separate, so a
+  // crane's other, non-paired lone parts (e.g. LTM 1130's winch) are
+  // untouched.
+  const pairPushDistance = pushDistance * 1.6;
 
   const participants = [];
   groupsByKey.forEach((groupNodes, key) => {
@@ -146,9 +155,10 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
       groupNodes.forEach(g => combined.union(new THREE.Box3().setFromObject(g)));
       participants.push({ groups: groupNodes, center: combined.getCenter(new THREE.Vector3()), size: combined.getSize(new THREE.Vector3()) });
     } else {
+      const isPair = !Array.isArray(mapping) && separateIds.has(mapping);
       groupNodes.forEach(g => {
         const gBox = new THREE.Box3().setFromObject(g);
-        participants.push({ groups: [g], center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()) });
+        participants.push({ groups: [g], center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()), isPair });
       });
     }
   });
@@ -173,7 +183,8 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
     if (cluster.length > 1) {
       explodeStack(cluster);
     } else {
-      pushOutward(cluster[0], modelCenter, pushDistance);
+      const p = cluster[0];
+      pushOutward(p, modelCenter, p.isPair ? pairPushDistance : pushDistance);
     }
   });
 }
@@ -182,12 +193,24 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
 // they're actually stacked on (the one with the most spread between their
 // centers - Y for a normal vertical stack, but not assumed, in case a
 // future crane's export is oriented differently).
+//
+// Ordered by BOTTOM edge (center - size/2), not center - confirmed against
+// LTM 1300's real receptacle geometry (methodology.txt 10.65): its 5-body
+// rigid block's combined bounding box is tall enough to span nearly the
+// same range as plates 2-4 above it, so its combined CENTER lands mid-stack
+// even though its base sits at the true bottom alongside plate 2's own
+// base. Sorting by center put plate 2 underneath it; sorting by bottom edge
+// puts the receptacle first, as it should be. The two even tie exactly on
+// bottom edge (both start at the stack's true floor) - broken by size
+// (larger footprint first) since a block whose base reaches this low while
+// also being taller is the one everything above is actually resting on.
 function explodeStack(cluster) {
   const spread = axis => Math.max(...cluster.map(p => p.center[axis])) - Math.min(...cluster.map(p => p.center[axis]));
   const axis = ['x', 'y', 'z'].reduce((a, b) => spread(b) > spread(a) ? b : a);
 
-  cluster.sort((a, b) => a.center[axis] - b.center[axis]);
-  let edge = cluster[0].center[axis] - cluster[0].size[axis] / 2;
+  const bottomEdge = p => p.center[axis] - p.size[axis] / 2;
+  cluster.sort((a, b) => bottomEdge(a) - bottomEdge(b) || b.size[axis] - a.size[axis]);
+  let edge = bottomEdge(cluster[0]);
   cluster.forEach(p => {
     const targetCenter = edge + p.size[axis] / 2;
     const delta = targetCenter - p.center[axis];
