@@ -928,26 +928,28 @@
         figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05) — diagram re-drawn as clean line art, not the original OEM artwork',
         manualUrl: 'https://drive.google.com/file/d/1ruuyUoI51UWrUa6tCDtyt89ozDgStIeT/view?usp=drive_link',
         manualPage: 807,
-        // Onshape-exported GLB (person-supplied). partMap ties each named
-        // mesh node in the model to this crane's own component id above -
-        // inferred from geometry, NOT confirmed against the source CAD's
-        // own labels, since the model carries only Onshape's arbitrary
-        // "Part N" part numbers with no weight/name metadata. Derivation:
-        // Part_10/Part_3 are an exact-mirror pair (identical size, centers
-        // symmetric about the model's X center) -> the two physical halves
-        // of p8 ("2x Auxiliary Ballast 8"). Part_1 has a distinctly
-        // different footprint/shape from the other six and sits outside
-        // their stack -> p7 (Winch 2*/Replacement Weight, a mechanism, not
-        // a flat plate). The remaining six share one exact footprint and
-        // stack contiguously along Y - matched to p1-p6 by comparing each
-        // one's thickness against that plate's known weight (same
-        // footprint + material -> weight scales with thickness); the
-        // resulting weight/volume ratios cluster tightly (~13-19), which
-        // is the main evidence this mapping is right. Flagged for the
-        // person to verify visually once live - a wrong pairing here only
-        // means the wrong plate highlights on click, it does NOT touch any
-        // weight or combo-matching logic, which stays driven entirely by
-        // the components list below. See methodology.txt 10.57.
+        // Onshape-exported GLB (person-supplied). Redone since the
+        // original (10.57) - that one carried only Onshape's arbitrary
+        // "Part N" numbers, so the mapping had to be inferred from
+        // geometry (thickness-vs-weight ratios) rather than confirmed.
+        // This version has parts labelled to match the app's own
+        // component names directly (same approach as LTM 1300, 10.63),
+        // so partMap below is a direct, confirmed lookup - kept as the
+        // proof of concept either way, per the person. GLTFLoader
+        // sanitizes the source labels on load (spaces -> underscores,
+        // "/" dropped rather than replaced - "Replacement Weight 7 /
+        // Winch 2*" becomes "Replacement_Weight_7__Winch_2*", note the
+        // double underscore where the slash's two flanking spaces both
+        // survived but the slash itself didn't) - partMap keys are the
+        // POST-sanitizing names, confirmed by loading the file rather
+        // than guessed. Both the replacement-weight/winch part and the
+        // auxiliary ballast pair are labelled identically on both of
+        // their physical halves (person: "labelled the replacement
+        // weight twice as it was two parts") - handled by the same
+        // shared-name matching as LTM 1300's receptacle (methodology.txt
+        // 10.63): both halves map to the one string id below, so they
+        // move and highlight as a single rigid block rather than two
+        // independent items.
         model3d: {
           // ?v= is not decorative - this URL is fetched into the service
           // worker's CONTENT_CACHE (see sw.js), which is cache-first
@@ -957,11 +959,13 @@
           // already have the old one cached will never see the new file.
           // Same convention as vendor/cwt3d.js's own ?v=. See
           // methodology.txt 10.58/10.60.
-          url: './counterweight/models/ltm1130-cwt.glb?v=1',
+          url: './counterweight/models/ltm1130-cwt.glb?v=2',
           partMap: {
-            'Part_4': 'p3', 'Part_6': 'p4', 'Part_9': 'p1', 'Part_8': 'p2',
-            'Part_7': 'p6', 'Part_5': 'p5', 'Part_1': 'p7',
-            'Part_10': 'p8', 'Part_3': 'p8'
+            'Counterweight_Plate_1': 'p1', 'Counterweight_Plate_2': 'p2',
+            'Counterweight_Plate_3': 'p3', 'Counterweight_Plate_4': 'p4',
+            'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6',
+            'Replacement_Weight_7__Winch_2*': 'p7',
+            'Auxiliary_Ballast_8': 'p8'
           }
         },
         components: [
