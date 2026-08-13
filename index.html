@@ -812,6 +812,32 @@
         figRef: 'Fig. 155645, Liebherr doc LTM 1110-5-1-000 (0214357-01) — diagram re-drawn as clean line art, not the original OEM artwork',
         manualUrl: 'https://drive.google.com/file/d/1MFDP-Uu-HRINNT5bitsJU3TrK79YTVuf/view?usp=drive_link',
         manualPage: 861,
+        // Person-supplied Onshape GLB, already positioned in their own
+        // exploded layout (preExploded: true - see methodology.txt 10.67)
+        // rather than relying on cwt3d.js's own explode heuristics, so
+        // this is the CAD's positions taken as-is, not inferred.
+        // Receptacle Plate 1 is 3 separate CAD bodies (left/base/right),
+        // same multi-body pattern as LTM 1300's receptacle - all 3 map to
+        // p1 and move together since none are separate:true. One naming
+        // quirk confirmed with the person before mapping: the file has
+        // TWO nodes both named "Counterweight_Plate_7" - the real plate
+        // (auto-renamed by GLTFLoader to "..._7_1", the larger of the
+        // two) and a tiny thin one that's just the Liebherr brand label
+        // decal on the back of the slab, not a component - left
+        // deliberately unmapped (shown but not selectable) rather than
+        // guessed into either p7 or the missing slot-8 item. The Winch
+        // 2*/Replacement Ballast slot (p8w/p8b) isn't modeled in this
+        // file at all - no matching geometry, so those two ids simply
+        // have no 3D representation (2D diagram still covers them fully).
+        model3d: {
+          url: './counterweight/models/ltm1110-cwt.glb?v=1',
+          preExploded: true,
+          partMap: {
+            'Receptacle_Plate_1left': 'p1', 'Receptacle_Plate_1base': 'p1', 'Receptacle_Plate_1right': 'p1',
+            'Counterweight_Plate_2': 'p2', 'Counterweight_Plate_3': 'p3', 'Counterweight_Plate_4': 'p4',
+            'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6', 'Counterweight_Plate_7_1': 'p7'
+          }
+        },
         // p3/p4 are ALWAYS present together in every published combo (never
         // one without the other) - unlike the old extracted-photo diagram
         // (see methodology.txt 10.7), this CAD tracing has a clean split
