@@ -3431,3 +3431,61 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   COUNTERWEIGHT_DATA, no manual list to update).
 
 ================================================================================
+
+10.69 Added model3d.extraParts - supplementary GLBs for a part that can't
+      come through the main assembly export at all
+  Follow-up to 10.68: the person asked why LTM 1110's Winch 2* (p8w)
+  wasn't visible in 3D. Confirmed rather than assumed - their own Onshape
+  instance list showed 11 real instances (a distinct "Replacement
+  Ballast/Winch 2*" item, visibly a substantial box in their own exploded
+  view, plus the two "Counterweight Plate 7" bodies from 10.68), but the
+  GLB actually traversed only 10 groups. The missing one wasn't a mapping
+  bug - the geometry itself never made it into the file.
+  Root cause, tracked down with the person live in their Onshape session
+  rather than guessed at from here: that instance lives in a Composite
+  Part (a merged/boolean result, its own object type in Onshape) which
+  the assembly-level glTF exporter silently drops even though it's a
+  normal referenced instance in the tree. Tried making it a plain
+  independent solid first ("Copy here..." on the composite) - didn't
+  work, produced a second composite instead of converting the type, so
+  abandoned that path rather than keep guessing at Onshape's own object
+  model from outside it.
+  Landed on exporting the Composite Part on its own as a separate small
+  GLB instead (its direct Export... command handles it fine standalone -
+  confirmed after a first attempt came through Draco-compressed, which
+  the app's vendored GLTFLoader has no decoder for; the person turned
+  compression off and re-exported successfully).
+  Added model3d.extraParts: [{ url, appId, rotationY }] - loadModel() is
+  now async and, after the main model is positioned (explode or
+  preExploded, either way), loads each extra GLB, treats its whole
+  contents as one rigid unit mapped to one app id (no partMap needed - a
+  dedicated file needs no name matching), and places it via a new
+  placeAboveWholeModel(): directly above the ENTIRE main model's
+  bounding box, centered over its XZ footprint, same STACK_GAP clearance
+  as everything else. Deliberately does NOT reuse explodeStack()'s
+  generic "most-spread axis" detection - a whole model's bbox is
+  reliably wider/deeper than tall, so that heuristic would pick the
+  wrong axis here; Y is hardcoded as up instead (true for every export
+  seen so far). rotationY corrects for a standalone single-part export
+  carrying its own Part Studio's default orientation, unrelated to the
+  main assembly's - the person confirmed the first attempt was rotated
+  wrong, corrected to 90 deg and re-verified visually before shipping,
+  same iterate-on-a-screenshot approach as every other tuned constant
+  this session (STACK_GAP, pairPushDistance, etc).
+  All main-model roots now sit inside a wrapping THREE.Group alongside
+  any extra parts, so frameCamera()/scene-add/clearScene() (which only
+  ever handled a single opaque "entry.root") needed no changes at all -
+  the container is just another Object3D as far as they're concerned.
+  allOfflineContentUrls() updated to walk extraParts[].url too, so the
+  Cache All Offline Content button and status ticks stay accurate without
+  a separate manual list.
+  Verified in-browser: p8w's real weight and countsToward:false behavior
+  unaffected (namedParts entries work identically whether they came from
+  the main file or an extra one), highlights the correct box sitting on
+  top of the stack, no console errors. Full crane sweep re-run clean
+  across all 7 cranes plus a full LTM 1110 id-by-id pass (p1-p7, p8w,
+  p8b) - p8b, which still has genuinely no geometry anywhere, confirmed
+  to fail gracefully (correct weight shown, nothing to highlight, no
+  error) same as before this change.
+
+================================================================================

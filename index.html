@@ -924,10 +924,16 @@
         // two) and a tiny thin one that's just the Liebherr brand label
         // decal on the back of the slab, not a component - left
         // deliberately unmapped (shown but not selectable) rather than
-        // guessed into either p7 or the missing slot-8 item. The Winch
-        // 2*/Replacement Ballast slot (p8w/p8b) isn't modeled in this
-        // file at all - no matching geometry, so those two ids simply
-        // have no 3D representation (2D diagram still covers them fully).
+        // guessed into either p7 or the slot-8 item.
+        // Winch 2* (p8w) isn't in the main assembly export at all - it
+        // lives in an Onshape Composite Part, which the assembly-level
+        // GLB exporter silently drops (confirmed by comparing instance
+        // counts against the person's own Onshape tree, not guessed).
+        // Exported separately as its own small GLB instead and wired in
+        // via extraParts - see loadModel()/placeAboveWholeModel() and
+        // methodology.txt 10.69. Replacement Ballast (p8b, the OTHER
+        // thing that can occupy this same slot) still has no geometry
+        // anywhere - the 2D diagram covers it fully regardless.
         model3d: {
           url: './counterweight/models/ltm1110-cwt.glb?v=1',
           preExploded: true,
@@ -935,7 +941,10 @@
             'Receptacle_Plate_1left': 'p1', 'Receptacle_Plate_1base': 'p1', 'Receptacle_Plate_1right': 'p1',
             'Counterweight_Plate_2': 'p2', 'Counterweight_Plate_3': 'p3', 'Counterweight_Plate_4': 'p4',
             'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6', 'Counterweight_Plate_7_1': 'p7'
-          }
+          },
+          extraParts: [
+            { url: './counterweight/models/ltm1110-winch2-cwt.glb?v=1', appId: 'p8w', rotationY: 90 }
+          ]
         },
         // p3/p4 are ALWAYS present together in every published combo (never
         // one without the other) - unlike the old extracted-photo diagram
@@ -1569,7 +1578,7 @@
     // the dynamic import in setCwtView() and by cacheAllOfflineContent()'s
     // file list, so the two can't drift apart and start caching different
     // versions of the same file.
-    const CWT3D_VERSION = 6;
+    const CWT3D_VERSION = 7;
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
@@ -4742,7 +4751,10 @@
       const reeveUrls = allReeveSvgFilenames(manifest).map(name => `./reeving/svg/${name}`);
 
       const modelKeys = Object.keys(COUNTERWEIGHT_DATA).filter(k => COUNTERWEIGHT_DATA[k].model3d);
-      const modelUrls = modelKeys.map(k => COUNTERWEIGHT_DATA[k].model3d.url);
+      const modelUrls = modelKeys.flatMap(k => {
+        const m = COUNTERWEIGHT_DATA[k].model3d;
+        return [m.url, ...(m.extraParts || []).map(p => p.url)];
+      });
       const viewerUrls = modelKeys.length ? [
         `./vendor/cwt3d.js?v=${CWT3D_VERSION}`,
         './vendor/three/three.module.min.js',
