@@ -3279,3 +3279,56 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   the first place). Full crane sweep clean, no console errors.
 
 ================================================================================
+
+10.65 Fixed exploded-stack ordering for rigid blocks whose combined bbox is
+      tall enough to overlap its neighbors' Y-range; added extra L/R gap
+      for genuinely paired (separate: true) items
+  Reported on LTM 1300: Receptacle Plate 1 (p1) rendered in the MIDDLE of
+  the exploded stack instead of at the very bottom, even though every
+  other plate sits on top of it. Same bug then reported on LTM 1130's
+  Plate 1. Confirmed the cause with real geometry before touching any
+  code (methodology-standard practice all session) by loading each GLB
+  headless and dumping explodeParts()'s own groupsByKey combined
+  center/size per key: LTM 1300's receptacle (5-body rigid block, 10.63)
+  has combined size.y = 0.815 - tall enough that its bounding box spans
+  almost the same Y-range as plates 2, 3 and 4 above it. explodeStack()
+  sorted by bbox CENTER, and the receptacle's center (y=1.475) landed
+  between plate 2's (y=1.205) and plate 3's (y=1.5225) - so plate 2 got
+  placed underneath it instead of the reverse. Both plate 1 and plate 2
+  actually start at the exact same bottom edge (y=1.0675) - the
+  receptacle isn't a flat slab sitting below plate 2, its 5 bodies
+  include structural bits that reach up alongside the whole lower stack,
+  which is exactly why sorting by center (the "average" height) rather
+  than base position was wrong.
+  Fix: explodeStack() now sorts by BOTTOM edge (center - size/2 on the
+  stack's dominant axis) instead of center. Bottom-edge ties (both start
+  at the stack's true floor) are broken by size, larger first - the block
+  whose base reaches this low while also being the tallest is the one
+  everything above is actually resting on. For a normal single-node plate
+  stack (no overlapping bboxes) bottom-edge order and center order are
+  identical, so this doesn't touch already-correct cranes.
+  Verified against real geometry for both cranes before shipping (not
+  just eyeballed after): re-ran the same headless dump with the new sort
+  key - LTM 1300 order came out 1,2,3,3,4,5 (was 2,1,3,4,5); LTM 1130
+  came out 1,2,3,4,5,6 (was already ambiguous/wrong in the same way).
+  Confirmed visually in-browser after: LTM 1300's receptacle and LTM
+  1130's Plate 1 both now sit clearly at the bottom of their stacks.
+  Second, unrelated request same session: LTM 1300's auxiliary ballast
+  pairs (aux5 = 5L/5R, aux6 = 6L/6R) needed more visual separation
+  between the left half and the right half specifically, not just more
+  separation from the main stack. These are lone (non-stacked)
+  participants pushed outward from the model's center by a single shared
+  pushDistance (10.63/10.64) - tuned for "clear the main stack," not for
+  "read as obviously split from its own other half." Added a second,
+  larger pushDistance (1.6x) that only applies to participants whose
+  mapped app id is itself separate: true - i.e. exactly the both-or-
+  neither multi-location components (aux5/aux6 here; LTM 1130's p8 gets
+  the same treatment for free, consistent with 10.64's reasoning, since
+  nothing here is crane-specific). A lone part that ISN'T flagged
+  separate (e.g. LTM 1130's winch/replacement-weight) keeps the original
+  distance - this only widens the gap for genuinely paired items.
+  Verified in-browser: LTM 1300's aux5 and aux6 pairs now sit clearly
+  apart from each other as well as from the main stack. Full crane sweep
+  re-run after both changes, clean, no console errors.
+
+================================================================================
