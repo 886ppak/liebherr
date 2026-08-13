@@ -3364,3 +3364,30 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   sweep clean.
 
 ================================================================================
+
+10.67 Added an opt-out for the 3D viewer's automatic explode entirely
+      (model3d.preExploded)
+  After three rounds of explode-positioning bugs across the two cranes
+  with 3D models so far (10.63-10.66 - a rigid block's combined bbox
+  landing it mid-stack, paired items needing extra mutual clearance, a
+  lone part needing to anchor above the stack instead of push outward),
+  the person offered to just position parts already exploded in Onshape
+  before exporting, rather than relying on cwt3d.js's own heuristics and
+  catching each new edge case after the fact. Better trade for future
+  cranes: the automatic explode is a genuinely good default (it's
+  handled every case seen so far, generically, once each was found), but
+  it's still an INFERENCE from raw assembled-position geometry, and every
+  crane's export is a new chance for a geometry shape the existing rules
+  don't anticipate - whereas the person doing the positioning themselves
+  in the same tool that produces the 2D diagrams they already hand-place
+  is the actual source of truth, not a guess.
+  Added `model3d.preExploded: true` as a per-crane opt-in - when set,
+  loadModel() skips the explodeParts() call entirely and uses the GLB's
+  own positions as-is. Not the default (nothing existing sets it - LTM
+  1130 and LTM 1300 both keep using the automatic explode, unaffected),
+  so this is purely additive. Full crane sweep re-run after adding the
+  flag, clean, no console errors - confirms the untouched code path
+  (explodeParts still runs for both existing cranes) wasn't disturbed by
+  adding the early-exit check.
+
+================================================================================

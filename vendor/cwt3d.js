@@ -371,7 +371,13 @@ function loadModel(modelKey, data, onDone) {
       });
     });
 
-    explodeParts(root, groupsByKey, partMap, separateIds, stackTopIds);
+    // model3d.preExploded: true - skip all of the above positioning
+    // heuristics entirely and trust the CAD export's own positions as
+    // already being the intended exploded view (person's own explode in
+    // Onshape, not inferred). Opt-in per crane, since every crane shipped
+    // before this flag existed relies on the automatic explode instead -
+    // see methodology.txt 10.67.
+    if (!data.model3d.preExploded) explodeParts(root, groupsByKey, partMap, separateIds, stackTopIds);
 
     const entry = { root, namedParts };
     modelCache[modelKey] = entry;
