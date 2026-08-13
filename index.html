@@ -515,23 +515,23 @@
         <div class="disclaimer">Diagrams are the actual OEM reeving plan artwork (doc. 98036716), extracted directly — not redrawn. Leading number = winch (1 or 2). Each token is a sheave position with a face suffix — <b>f</b> = boom-head front face, <b>r</b> = boom-head rear face (cab side); bare numbers are hook-block sheave positions. <b>F</b> = rope dead-ends at the fixed anchor point. Cross-check against the current rigging plan before use on site.</div>
       </div>
 
-      <div class="card">
-        <div class="card-title">Offline Availability</div>
-        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Diagrams are cached automatically as you view them. To make every diagram available offline right now (e.g. before heading somewhere without signal), download them all in one go.</div>
-        <button class="btn" id="reeve-cache-all-btn" onclick="cacheAllReeveDiagrams()" style="margin-top:0;">Download All Diagrams for Offline Use</button>
-        <div id="reeve-cache-progress-wrap" style="display:none; margin-top:12px;">
-          <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
-            <div id="reeve-cache-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
-          </div>
-          <div id="reeve-cache-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
-        </div>
-      </div>
-
       <div class="card" id="reeve-manual-card" style="display:none;">
         <div class="card-title">Reference Documentation</div>
         <div class="hook-badge" id="reeve-manual-page-badge"></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="reeve-manual-desc"></div>
         <a class="btn" id="reeve-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Offline Availability</div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
+        <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
+        <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
+          <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
+            <div class="cache-all-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div class="cache-all-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
+        </div>
       </div>
     </div>
 
@@ -587,6 +587,18 @@
         <div class="hook-badge" id="cwt-manual-page-badge"></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="cwt-manual-desc"></div>
         <a class="btn" id="cwt-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Offline Availability</div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
+        <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
+        <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
+          <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
+            <div class="cache-all-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div class="cache-all-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
+        </div>
       </div>
     </div>
 
@@ -645,6 +657,18 @@
         <div class="hook-badge" id="de-manual-page-badge"></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin:10px 0;" id="de-manual-desc"></div>
         <a class="btn" id="de-manual-btn" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:0; text-decoration:none;">Open Reference Documentation</a>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Offline Availability</div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
+        <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
+        <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
+          <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
+            <div class="cache-all-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div class="cache-all-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
+        </div>
       </div>
     </div>
 
@@ -921,7 +945,15 @@
         // weight or combo-matching logic, which stays driven entirely by
         // the components list below. See methodology.txt 10.57.
         model3d: {
-          url: './counterweight/models/ltm1130-cwt.glb',
+          // ?v= is not decorative - this URL is fetched into the service
+          // worker's CONTENT_CACHE (see sw.js), which is cache-first
+          // forever and untouched by CACHE_VERSION bumps. Bump this any
+          // time this specific GLB gets replaced with a new export
+          // (renamed parts, corrected geometry, etc.) or browsers that
+          // already have the old one cached will never see the new file.
+          // Same convention as vendor/cwt3d.js's own ?v=. See
+          // methodology.txt 10.58/10.60.
+          url: './counterweight/models/ltm1130-cwt.glb?v=1',
           partMap: {
             'Part_4': 'p3', 'Part_6': 'p4', 'Part_9': 'p1', 'Part_8': 'p2',
             'Part_7': 'p6', 'Part_5': 'p5', 'Part_1': 'p7',
@@ -1362,6 +1394,13 @@
     // `const`/`let` bindings, only its function declarations and whatever
     // gets put on window explicitly.
     window.COUNTERWEIGHT_DATA = COUNTERWEIGHT_DATA;
+
+    // Single source of truth for vendor/cwt3d.js's cache-busting query
+    // (see its own commit / methodology.txt 10.58) - referenced both by
+    // the dynamic import in setCwtView() and by cacheAllOfflineContent()'s
+    // file list, so the two can't drift apart and start caching different
+    // versions of the same file.
+    const CWT3D_VERSION = 3;
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
@@ -3013,12 +3052,13 @@
         // fetch-on-demand CONTENT_CACHE (see its own header comment) which
         // is cache-first forever and untouched by CACHE_VERSION bumps -
         // once a browser has loaded 3D view once, it would keep serving
-        // this exact file indefinitely otherwise. Bump this query value
-        // any time cwt3d.js itself changes (vendor/three/* and the GLBs
-        // don't need it - only cwt3d.js has had bugs fixed in place so
-        // far). See methodology.txt 10.58.
+        // this exact file indefinitely otherwise. Bump CWT3D_VERSION any
+        // time cwt3d.js itself changes (vendor/three/* doesn't need it -
+        // only cwt3d.js and each model3d.url, which are each versioned
+        // independently, have needed this so far). See methodology.txt
+        // 10.58/10.60.
         if (window.__cwt3dActivate) activate();
-        else import('./vendor/cwt3d.js?v=3').then(activate);
+        else import(`./vendor/cwt3d.js?v=${CWT3D_VERSION}`).then(activate);
       }
     }
 
@@ -4510,40 +4550,78 @@
       return Array.from(names);
     }
 
-    async function cacheAllReeveDiagrams() {
-      const btn = document.getElementById('reeve-cache-all-btn');
-      const wrap = document.getElementById('reeve-cache-progress-wrap');
-      const bar = document.getElementById('reeve-cache-progress-bar');
-      const text = document.getElementById('reeve-cache-progress-text');
-
-      btn.disabled = true;
-      btn.textContent = 'Downloading…';
-      wrap.style.display = 'block';
-
+    // Every URL that's fetched-on-demand into sw.js's CONTENT_CACHE rather
+    // than precached in the app shell - i.e. everything the "Cache All
+    // Offline Content" button needs to touch. Reeving diagrams and 3D
+    // models are cached automatically the first time someone views them;
+    // this just does that for everything, up front, in one go. A plain
+    // fetch() is enough to get "only downloads what it doesn't already
+    // have" for free - the service worker's own fetch handler is cache-
+    // first, so a URL already in CONTENT_CACHE resolves instantly with no
+    // network request at all. "Unless it's a new revision" is handled by
+    // each file's own URL, not by this function: vendor/cwt3d.js and every
+    // model3d.url carry an explicit ?v= query (see CWT3D_VERSION above and
+    // the comment on '1130'.model3d) that gets bumped whenever that
+    // specific file changes - a version bump is a new URL, hence a cache
+    // miss, hence a real fetch, with no explicit "is this stale" check
+    // needed anywhere. Counterweight 2D diagram images aren't included
+    // here since those are precached in the app shell already (see
+    // APP_SHELL in sw.js) - guaranteed available offline from install,
+    // not something this button needs to chase down.
+    async function allOfflineContentUrls() {
       const manifest = await ensureReeveManifestLoaded();
-      const filenames = allReeveSvgFilenames(manifest);
-      const total = filenames.length;
+      const reeveUrls = allReeveSvgFilenames(manifest).map(name => `./reeving/svg/${name}`);
+
+      const modelKeys = Object.keys(COUNTERWEIGHT_DATA).filter(k => COUNTERWEIGHT_DATA[k].model3d);
+      const modelUrls = modelKeys.map(k => COUNTERWEIGHT_DATA[k].model3d.url);
+      const viewerUrls = modelKeys.length ? [
+        `./vendor/cwt3d.js?v=${CWT3D_VERSION}`,
+        './vendor/three/three.module.min.js',
+        './vendor/three/three.core.min.js',
+        './vendor/three/GLTFLoader.js',
+        './vendor/three/OrbitControls.js',
+        './vendor/three/utils/BufferGeometryUtils.js',
+        './vendor/three/utils/SkeletonUtils.js'
+      ] : [];
+
+      return [...reeveUrls, ...viewerUrls, ...modelUrls];
+    }
+
+    async function cacheAllOfflineContent() {
+      const btns = document.querySelectorAll('.cache-all-btn');
+      const wraps = document.querySelectorAll('.cache-all-progress-wrap');
+      const bars = document.querySelectorAll('.cache-all-progress-bar');
+      const texts = document.querySelectorAll('.cache-all-progress-text');
+
+      btns.forEach(b => { b.disabled = true; b.textContent = 'Downloading…'; });
+      wraps.forEach(w => { w.style.display = 'block'; });
+
+      const urls = await allOfflineContentUrls();
+      const total = urls.length;
       let done = 0;
       let failed = 0;
 
       function updateProgress() {
         const pct = total > 0 ? Math.round((done / total) * 100) : 100;
-        bar.style.width = pct + '%';
-        text.textContent = `${done} of ${total} diagrams cached${failed ? ` (${failed} failed — will retry next time you're online)` : ''}`;
+        bars.forEach(bar => { bar.style.width = pct + '%'; });
+        texts.forEach(text => {
+          text.textContent = `${done} of ${total} files cached${failed ? ` (${failed} failed — will retry next time you're online)` : ''}`;
+        });
       }
       updateProgress();
 
-      // Fetch with limited concurrency rather than all 180+ at once — kinder
-      // to the network and to GitHub Pages' rate limits, and the service
-      // worker's own fetch handler is what actually stores each one into the
-      // persistent CONTENT_CACHE, so this loop just needs to trigger the GET.
+      // Fetch with limited concurrency rather than all at once — kinder to
+      // the network and to GitHub Pages' rate limits, and the service
+      // worker's own fetch handler is what actually stores each one into
+      // the persistent CONTENT_CACHE, so this loop just needs to trigger
+      // the GET.
       const CONCURRENCY = 6;
       let index = 0;
       async function worker() {
-        while (index < filenames.length) {
-          const name = filenames[index++];
+        while (index < urls.length) {
+          const url = urls[index++];
           try {
-            const res = await fetch(`./reeving/svg/${name}`);
+            const res = await fetch(url);
             if (!res.ok) failed++;
           } catch (e) {
             failed++;
@@ -4554,12 +4632,10 @@
       }
       await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-      btn.disabled = false;
-      btn.textContent = failed
-        ? `Retry Failed Downloads (${failed} remaining)`
-        : 'All Diagrams Cached ✓';
+      const label = failed ? `Retry Failed Downloads (${failed} remaining)` : 'All Offline Content Cached ✓';
+      btns.forEach(b => { b.disabled = false; b.textContent = label; });
       if (!failed) {
-        setTimeout(() => { wrap.style.display = 'none'; }, 3000);
+        setTimeout(() => { wraps.forEach(w => { w.style.display = 'none'; }); }, 3000);
       }
     }
 
