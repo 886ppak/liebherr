@@ -3038,3 +3038,59 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   No console errors.
 
 ================================================================================
+
+10.60 Consolidated "Cache All Offline Content" - one shared button instead
+      of reeving-only
+  Person's reasoning: with 3D models joining reeving diagrams as content
+  that's only cached once actually viewed, the existing reeve-only
+  "Download All Diagrams" button (10.something earlier) would leave 3D
+  models stranded the same way an unviewed reeving diagram used to be -
+  unavailable if a crew member needs a crane they've never opened before,
+  offline, on-site. Agreed a single consolidated button was better than a
+  second parallel one; person specified exact placement (below Reference
+  Documentation, on every tab that has one) and confirmed the title
+  ("Cache All Offline Content").
+  Removed the old reeve-tab-only "Offline Availability" card (sat above
+  Reference Documentation there) and added one shared version, styled
+  identically, below Reference Documentation on all three tabs that have
+  one: Reeving Plans, CWT Combinations, Driving with Equipment in Place.
+  Clicking it from ANY of the three runs the same complete download,
+  everywhere - not a tab-scoped subset - since the point is comprehensive
+  offline readiness regardless of which tab happened to be open. The three
+  DOM copies share one cache-all-btn/-progress-wrap/-progress-bar/-
+  progress-text class set (no ids, since there are three of each now) and
+  cacheAllOfflineContent() updates all three via querySelectorAll in
+  lockstep.
+  Renamed cacheAllReeveDiagrams() -> cacheAllOfflineContent() and widened
+  its file list (new allOfflineContentUrls()) to cover every reeving SVG
+  (unchanged), the 3D viewer support files (vendor/cwt3d.js + all of
+  vendor/three/*, only included at all if at least one crane has a
+  model3d), and every crane's model3d.url. Counterweight 2D diagram images
+  are deliberately NOT in this list - those are already precached in the
+  app shell (sw.js APP_SHELL, guaranteed available from install), so
+  there's nothing this button needs to chase down for them.
+  "Only downloads what it doesn't already have, unless it's a new
+  revision" - person's exact requirement - falls out of the existing
+  architecture rather than needing new logic: a plain fetch() per URL is
+  enough, since the service worker's own fetch handler is cache-first, so
+  an already-cached URL resolves instantly with zero network request.
+  "New revision" is handled per-file by that file's own URL, not by this
+  function: vendor/cwt3d.js and now every model3d.url (previously
+  unversioned - added ?v=1 to LTM 1130's GLB here, matching the ?v=
+  convention already on cwt3d.js, since the person may well replace this
+  exact model once its parts are renamed per their own question this
+  session) carry an explicit version query - bump it and the URL changes,
+  which is a cache miss, which forces a real fetch, with no "is this
+  stale" check needed anywhere. Added CWT3D_VERSION as the one shared
+  source of truth for cwt3d.js's version number, referenced by both
+  setCwtView()'s dynamic import and cacheAllOfflineContent(), so the two
+  can't drift and end up caching different versions of the same file.
+  Verified in-browser (Playwright): the button/progress elements appear on
+  all three tabs (three .cache-all-btn found); triggering it from Reeving
+  Plans downloads all 169 files (reeving diagrams + 3D viewer + the one
+  GLB) successfully with zero failures; a second run immediately after
+  completes 5.5x faster (0.28s vs 1.53s) purely from the service worker's
+  cache-first short-circuit, confirming already-cached files aren't
+  re-fetched. No console errors.
+
+================================================================================
