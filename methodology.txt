@@ -3391,3 +3391,43 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   adding the early-exit check.
 
 ================================================================================
+
+10.68 CWT Combinations: added LTM 1110's 3D model - first crane to use
+      preExploded (10.67), first real test of it
+  Person's own Onshape export, already positioned in their intended
+  exploded layout rather than assembled position - set preExploded: true
+  and mapped partMap straight to the CAD's own node names, no explode
+  heuristics involved at all for this crane.
+  Receptacle Plate 1 is 3 separate CAD bodies (Receptacle_Plate_1left/
+  base/right), same multi-body-glued-into-one-id pattern as LTM 1300's
+  receptacle (10.63) - all 3 map to p1.
+  One naming ambiguity caught before mapping, not guessed past: the file
+  has TWO nodes both literally named "Counterweight_Plate_7" - one large
+  (900 mesh children, ~2.3m, matches p7's real dimensions/2.5t weight)
+  and one tiny/thin (135 mesh children, ~0.8m x 0.08m x 0.03m, ~400x
+  smaller by volume). Given this crane's own CAD has a documented history
+  of a real plate 6/7 mix-up (10.7), asked rather than assumed which was
+  which - confirmed by the person: the large one (GLTFLoader auto-renames
+  it to "..._7_1" on load, since it's the second node sharing that exact
+  name) is the real plate 7; the tiny one is just the Liebherr brand
+  label decal baked onto the back of the slab as its own body, not a
+  component. partMap deliberately maps only "Counterweight_Plate_7_1" (the
+  real plate) to p7 and leaves the tiny decal node out of partMap
+  entirely, same as any other unmapped part - shown but not clickable.
+  Also confirmed absent from the file entirely: the Winch 2*/Replacement
+  Ballast slot (p8w/p8b, 10.7's mutually-exclusive slotGroup pair) - no
+  geometry anywhere near that size/location, so those two ids simply have
+  no 3D representation. Not a bug - the 2D diagram still covers them
+  fully, and namedParts naturally has no entries for an id with no
+  matching GLB node (nothing to highlight, nothing to break).
+  Verified in-browser: 3D toggle appears for 1110, all 7 modeled ids
+  (p1-p7) resolve to their correct real weights and highlight the
+  correct mesh (p1 = bottom receptacle, p7 = top plate, matching the
+  person's own exploded layout) with no explode logic run at all. Full
+  crane sweep across all 7 cranes clean, no console errors - confirms
+  adding a third model3d crane didn't disturb LTM 1130/1300's existing
+  (non-preExploded) behavior, and that allOfflineContentUrls() picked up
+  the new crane automatically (it derives model3d cranes generically from
+  COUNTERWEIGHT_DATA, no manual list to update).
+
+================================================================================
