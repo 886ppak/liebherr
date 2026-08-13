@@ -2890,3 +2890,76 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   center once zoomed in; no console errors.
 
 ================================================================================
+
+10.57 CWT Combinations: added a 3D model view for LTM 1130, alongside the
+      existing 2D diagram
+  Person supplied a person-made GLB/GLTF export (Onshape CAD, same source
+  as the 2D exploded diagrams) of LTM 1130's counterweight stack and asked
+  whether a real 3D viewer was feasible. Proved it first with a standalone
+  proof-of-concept before touching the app - loaded the GLB with Three.js,
+  confirmed each physical plate is its own named mesh node ("Part_N"), and
+  confirmed click-to-select via raycasting works against the real geometry,
+  not just a list. Person then asked to wire it to actual combo data and
+  ship it to both beta and live for hands-on testing.
+  New dependency: this is the app's first external JS library. Vendored
+  (not CDN - the app has to keep working offline) under vendor/three/:
+  three.module.min.js + three.core.min.js (its internal split-out chunk),
+  GLTFLoader.js + OrbitControls.js (three's examples/jsm addons, patched to
+  import three.module.min.js and each other via relative/importmap paths
+  instead of a bundler), and utils/BufferGeometryUtils.js +
+  utils/SkeletonUtils.js (GLTFLoader's own internal deps - the addon
+  doesn't work without them, easy to miss since they're not imported from
+  the entry point directly). ~970KB vendored total, cached once regardless
+  of how many cranes eventually get a model - and not fetched AT ALL until
+  needed: rather than a static <script type="module"> tag (which would
+  fetch+parse it on every single page load, including for people who never
+  touch CWT Combinations), setCwtView('3d') dynamically import()s
+  vendor/cwt3d.js on first switch to the 3D view. The page-level importmap
+  (mapping the bare "three" specifier to vendor/three/three.module.min.js)
+  still has to be a static tag - browsers only honor importmaps present
+  before the first module load - but that's inline JSON, no fetch of its
+  own. The browser caches the imported module by URL, so toggling 3D off
+  and back on, or switching crane, resolves instantly after the first
+  fetch rather than re-importing. New vendor/cwt3d.js is the viewer
+  itself; being an ES module, it cannot see index.html's classic-script
+  top-level const/let bindings, so it talks to the rest of the app purely
+  through window: reads window.COUNTERWEIGHT_DATA (now explicitly exported
+  there) and calls window.toggleCwtPlate(id) on a pick, exactly the same
+  function the 2D hotspots call, so 2D and 3D drive one shared selection
+  state with no parallel logic to keep in sync. renderCwtTab() calls
+  window.__cwt3dOnRender(...) on every render (cheap no-op unless the 3D
+  view is actually visible and already loaded); setCwtView('3d') calls
+  window.__cwt3dActivate(...) to load-or-reuse the model.
+  Part-to-component mapping: the GLB carries only Onshape's arbitrary
+  "Part N" numbers, no weight/name metadata, so which mesh is which of the
+  app's p1-p8 isn't in the file - inferred from geometry instead (see the
+  long comment on '1130'.model3d in index.html for the full derivation):
+  Part_10/Part_3 are an exact mirror pair -> p8's two physical halves;
+  Part_1 has a distinctly different shape/position from the rest -> p7
+  (a winch mechanism, not a flat plate); the remaining six share one exact
+  footprint and stack contiguously, matched to p1-p6 by thickness-vs-known-
+  weight ratio (consistently ~13-19 across all six, same footprint+
+  material assumption). Flagged to the person as inferred, not confirmed -
+  a wrong pairing only mislabels which plate highlights on click, it does
+  NOT touch cwtComboWeight/cwtFindMatchingCombo or any total/approved-combo
+  logic, which stay driven entirely by the existing components list.
+  Also added: an explode offset (each named part nudged outward from the
+  model's center on load, proportional to overall model size) since the
+  GLB stores the assembled position, not the pulled-apart view the 2D
+  diagrams show; a lazy load (the ~4.2MB GLB is fetched only on first
+  switch to 3D view, never on page load, matching the reeving-diagram
+  fetch-on-demand pattern rather than the always-cached app shell); and a
+  "2D Diagram / 3D Model" toggle on the Counterweight Stack card, hidden
+  entirely for every crane without a model3d entry (currently every crane
+  but 1130).
+  Verified in-browser (Playwright): toggle only appears for LTM 1130;
+  switching to 3D loads and renders the model; clicking a plate directly
+  on the model selects it, and that selection is immediately reflected in
+  the Composition panel, Total Counterweight, AND the 2D hotspot view when
+  switching back - full round-trip, not view-local state; switching away
+  to a crane with no model hides the toggle and falls back to 2D with no
+  crash; switching crane always resets to 2D view. No console errors.
+  Regression-checked all seven cranes' 2D hotspot rendering afterward -
+  unchanged.
+
+================================================================================
