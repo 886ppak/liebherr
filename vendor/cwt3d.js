@@ -127,7 +127,7 @@ const STACK_GAP = 0.12; // 120mm
 //    winch/replacement-weight part, or an auxiliary ballast pair mounted
 //    to the sides rather than stacked) gets pushed outward from the whole
 //    model's center instead.
-function explodeParts(root, groupsByKey, partMap, separateIds) {
+function explodeParts(root, groupsByKey, partMap, separateIds, stackTopIds) {
   // Box3.setFromObject and worldToLocal below both rely on current
   // matrixWorld values, which are otherwise only refreshed on render - at
   // this point the model hasn't been added to the scene yet, so force it.
@@ -147,6 +147,14 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
   const pairPushDistance = pushDistance * 1.6;
 
   const participants = [];
+  // Parts flagged `explodeTop: true` (LTM 1130's winch/replacement-weight)
+  // don't get the default radial push at all - they're mounted ON TOP of
+  // the main stack in real life, off to one side in XZ, so the outward
+  // push (tuned for genuinely side-mounted parts) shoved this one sideways
+  // and left it hidden behind the stack from most camera angles instead of
+  // reading as sitting on top of it. See placeAtStackTop() and
+  // methodology.txt 10.66.
+  const stackTopParticipants = [];
   groupsByKey.forEach((groupNodes, key) => {
     const mapping = partMap[key];
     const rigidBlock = !Array.isArray(mapping) && !separateIds.has(mapping) && groupNodes.length > 1;
@@ -156,9 +164,12 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
       participants.push({ groups: groupNodes, center: combined.getCenter(new THREE.Vector3()), size: combined.getSize(new THREE.Vector3()) });
     } else {
       const isPair = !Array.isArray(mapping) && separateIds.has(mapping);
+      const isStackTop = !Array.isArray(mapping) && stackTopIds.has(mapping);
       groupNodes.forEach(g => {
         const gBox = new THREE.Box3().setFromObject(g);
-        participants.push({ groups: [g], center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()), isPair });
+        const p = { groups: [g], center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()), isPair };
+        if (isStackTop) stackTopParticipants.push(p);
+        else participants.push(p);
       });
     }
   });
@@ -179,14 +190,21 @@ function explodeParts(root, groupsByKey, partMap, separateIds) {
     if (cluster) cluster.push(p); else clusters.push([p]);
   });
 
+  // Track the biggest stack (the real plate stack, vs. any incidental
+  // 2-member cluster) so explodeTop participants below have something
+  // real to anchor to.
+  let mainStack = null;
   clusters.forEach(cluster => {
     if (cluster.length > 1) {
       explodeStack(cluster);
+      if (!mainStack || cluster.length > mainStack.length) mainStack = cluster;
     } else {
       const p = cluster[0];
       pushOutward(p, modelCenter, p.isPair ? pairPushDistance : pushDistance);
     }
   });
+
+  if (mainStack) stackTopParticipants.forEach(p => placeAtStackTop(p, mainStack));
 }
 
 // Spaces a cluster of stacked participants evenly along whichever axis
@@ -226,6 +244,28 @@ function pushOutward(p, modelCenter, distance) {
   if (dir.lengthSq() < 1e-6) return;
   dir.normalize().multiplyScalar(distance);
   p.groups.forEach(g => applyWorldOffset(g, dir));
+}
+
+// Places a lone `explodeTop`-flagged part directly above the main stack,
+// centered over its footprint (not the part's own original XZ position,
+// wherever it happened to be mounted) - same STACK_GAP clearance as a
+// real stacked plate would get. Generic over whichever axis the stack
+// cluster is actually stacked on, same as explodeStack() itself.
+function placeAtStackTop(p, stackCluster) {
+  const spread = axis => Math.max(...stackCluster.map(m => m.center[axis])) - Math.min(...stackCluster.map(m => m.center[axis]));
+  const axis = ['x', 'y', 'z'].reduce((a, b) => spread(b) > spread(a) ? b : a);
+  const otherAxes = ['x', 'y', 'z'].filter(a => a !== axis);
+
+  const topEdge = Math.max(...stackCluster.map(m => m.center[axis] + m.size[axis] / 2));
+  const targetCenter = topEdge + STACK_GAP + p.size[axis] / 2;
+
+  const offset = new THREE.Vector3(0, 0, 0);
+  offset[axis] = targetCenter - p.center[axis];
+  otherAxes.forEach(a => {
+    const stackCenterOnAxis = stackCluster.reduce((sum, m) => sum + m.center[a], 0) / stackCluster.length;
+    offset[a] = stackCenterOnAxis - p.center[a];
+  });
+  p.groups.forEach(g => applyWorldOffset(g, offset));
 }
 
 // group.position is interpreted in its PARENT's local space, and this
@@ -281,6 +321,10 @@ function loadModel(modelKey, data, onDone) {
     // big comment on explodeParts() for why this has to come from the
     // app's own component data rather than being guessed from geometry.
     const separateIds = new Set(data.components.filter(c => c.separate).map(c => c.id));
+    // Components mounted ON TOP of the main stack rather than beside it
+    // (e.g. LTM 1130's winch/replacement-weight) - see placeAtStackTop()
+    // and methodology.txt 10.66.
+    const stackTopIds = new Set(data.components.filter(c => c.explodeTop).map(c => c.id));
     const namedParts = [];
 
     // A partMap entry is either a plain app id string (every matching-
@@ -327,7 +371,7 @@ function loadModel(modelKey, data, onDone) {
       });
     });
 
-    explodeParts(root, groupsByKey, partMap, separateIds);
+    explodeParts(root, groupsByKey, partMap, separateIds, stackTopIds);
 
     const entry = { root, namedParts };
     modelCache[modelKey] = entry;
