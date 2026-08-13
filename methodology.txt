@@ -2858,3 +2858,35 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   behaves as expected in both directions on LTM 1650. No console errors.
 
 ================================================================================
+
+10.56 Outrigger Support Positioning: added an opt-in old/new position
+      compare view
+  Person's idea: show the new (shifted) crane center in blue to match its
+  existing target-dot color, and the old center in yellow to match the
+  existing front-direction arrow's color, with a toggle to turn the
+  comparison on/off rather than always showing both. Off by default -
+  confirmed with the person first, since the canvas already reads fine
+  with just the single grey footprint + blue new-center dot, and always-on
+  would add clutter nobody asked for.
+  Added a checkbox ("Compare old/new position") in the Visual Site Plan
+  card-title, mirroring the existing Rope Retentioning tab's inline
+  checkbox pattern (label wrapping input, card-title's flex layout
+  right-aligns it for free). New `compareMode` module-level var, flipped
+  by toggleCompareMode(), which just re-runs calcCAD() to redraw - no
+  separate redraw path needed.
+  Refactored the single hardcoded footprint-rectangle draw into
+  drawFootprintBox(offsetX, offsetY, strokeColor, fillColor) so the same
+  code draws both the old footprint (offset 0,0, unchanged grey, always
+  drawn) and, only when compareMode is on AND the shift is nonzero, a
+  second footprint outlined in blue at the shifted offset, plus a small
+  yellow dot at the old center. Gated on "shift nonzero" specifically
+  because at zero shift the old and new positions are identical - drawing
+  both would just be two overlapping outlines for no information.
+  Nothing about the underlying leg math, MUST MOVE determination (10.55),
+  or default (untoggled) rendering changed - purely an additive, opt-in
+  overlay. Verified in-browser (Playwright, LTM 1650, 3m lateral shift):
+  toggle off matches the pre-existing look exactly; toggle on shows the
+  second blue footprint outline and a visible yellow dot at the old
+  center once zoomed in; no console errors.
+
+================================================================================

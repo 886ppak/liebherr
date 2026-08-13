@@ -527,7 +527,12 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Visual Site Plan <span style="font-size:0.75rem; color:var(--text-muted);">(Tap points for info)</span></div>
+          <div class="card-title">Visual Site Plan <span style="font-size:0.75rem; color:var(--text-muted);">(Tap points for info)</span>
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none;">
+              <input type="checkbox" id="cad-compare-toggle" onchange="toggleCompareMode()" style="width:auto; cursor:pointer;">
+              Compare old/new position
+            </label>
+          </div>
           <div class="toolbar-row">
             <button class="toolbar-btn" onclick="adjustZoom(0.8)">−</button>
             <span id="zoomReadout" class="toolbar-readout">100%</span>
@@ -3562,6 +3567,17 @@
     let panX = 0, panY = 0;
     let lastMapped = [], lastFp = null, lastShiftX = 0, lastShiftY = 0;
 
+    // Off by default: the canvas already shows the crane's new center (blue
+    // dot) against the old chassis footprint (grey). Compare mode adds the
+    // old center (yellow dot) and a second footprint outline at the new
+    // position (blue) so both positions are fully visible at once - useful
+    // when checking a shift, but busier, so it's opt-in rather than always on.
+    let compareMode = false;
+    function toggleCompareMode() {
+      compareMode = document.getElementById('cad-compare-toggle').checked;
+      calcCAD();
+    }
+
     function rotatePoint(x, y) {
       const cos = Math.cos(viewRotation), sin = Math.sin(viewRotation);
       return { x: x * cos - y * sin, y: x * sin + y * cos };
@@ -3696,21 +3712,37 @@
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
 
-      // Chassis footprint rectangle, centered on the CURRENT (unshifted) origin
-      // — drawn as a rotated polygon since it's not screen-axis-aligned once
-      // the view is spun. front = negative Y, rear = positive Y.
-      if (fp) {
+      // Chassis footprint rectangle at a given center offset (logical mm,
+      // pre-rotation) — drawn as a rotated polygon since it's not
+      // screen-axis-aligned once the view is spun. front = negative Y,
+      // rear = positive Y. Shared by the old-position footprint (always
+      // drawn, centered on the origin) and, in compare mode, a second one
+      // at the new (shifted) position.
+      function drawFootprintBox(offsetX, offsetY, strokeColor, fillColor) {
         const corners = [
-          S(-fp.width/2, -fp.front), S(fp.width/2, -fp.front),
-          S(fp.width/2, fp.rear),    S(-fp.width/2, fp.rear)
+          S(offsetX - fp.width/2, offsetY - fp.front), S(offsetX + fp.width/2, offsetY - fp.front),
+          S(offsetX + fp.width/2, offsetY + fp.rear),  S(offsetX - fp.width/2, offsetY + fp.rear)
         ];
-        ctx.strokeStyle = '#4b5563'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+        ctx.strokeStyle = strokeColor; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(corners[0].x, corners[0].y);
         for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(75,85,99,0.15)'; ctx.fill();
+        ctx.fillStyle = fillColor; ctx.fill();
         ctx.stroke();
+      }
+
+      const hasShift = shiftX !== 0 || shiftY !== 0;
+
+      if (fp) drawFootprintBox(0, 0, '#4b5563', 'rgba(75,85,99,0.15)');
+      if (fp && compareMode && hasShift) drawFootprintBox(shiftX, -shiftY, '#38bdf8', 'rgba(56,189,248,0.10)');
+
+      // Old center: only meaningful once the crane has actually shifted -
+      // otherwise it would sit exactly on top of the new-center dot below.
+      if (compareMode && hasShift) {
+        const oldCenter = S(0, 0);
+        ctx.fillStyle = '#e5a900'; ctx.strokeStyle = '#e5a900'; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(oldCenter.x, oldCenter.y, 4, 0, 2 * Math.PI); ctx.fill();
       }
 
       const crane = S(shiftX, -shiftY);
