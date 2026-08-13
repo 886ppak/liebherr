@@ -3008,8 +3008,17 @@
         // the imported module by URL, so a second call here (switching
         // crane, or toggling 3D off then back on) resolves instantly
         // without re-fetching.
+        // The ?v= on cwt3d.js is deliberate and NOT decorative: unlike
+        // index.html itself, this file is fetched into sw.js's
+        // fetch-on-demand CONTENT_CACHE (see its own header comment) which
+        // is cache-first forever and untouched by CACHE_VERSION bumps -
+        // once a browser has loaded 3D view once, it would keep serving
+        // this exact file indefinitely otherwise. Bump this query value
+        // any time cwt3d.js itself changes (vendor/three/* and the GLBs
+        // don't need it - only cwt3d.js has had bugs fixed in place so
+        // far). See methodology.txt 10.58.
         if (window.__cwt3dActivate) activate();
-        else import('./vendor/cwt3d.js').then(activate);
+        else import('./vendor/cwt3d.js?v=2').then(activate);
       }
     }
 

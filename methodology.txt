@@ -2963,3 +2963,36 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   unchanged.
 
 ================================================================================
+
+10.58 Fixed 3D explode direction - was pushing parts sideways, not along
+      their real stacking axis
+  Person tested and reported the plates didn't line up, despite matching
+  the 2D diagram cleanly in Onshape (the same file the 2D diagram was
+  itself extracted from) - so the source geometry wasn't in question, the
+  bug had to be in explodeParts() (10.57). Confirmed directly against the
+  raw GLTF JSON rather than guessing: every "occurrence of Part N" parent
+  node carries a baked ROTATION as part of its transform matrix (the same
+  rotation on every one, just different translation) - not a pure
+  translation like the explode code assumed. explodeParts() computed the
+  "push outward" direction correctly in world space, but added it straight
+  to `group.position`, which Three.js interprets in the PARENT's local
+  frame - a frame rotated ~90 degrees from world space here. That mismatch
+  is exactly what pushed parts sideways instead of along their real
+  stacking axis.
+  Fix: convert the target position to world space first (current world
+  position + offset), then convert THAT into the parent's local space via
+  `group.parent.worldToLocal(...)` before assigning it to group.position -
+  correct regardless of whatever rotation/scale sits between the node and
+  world space, rather than assuming there isn't any. Also added an
+  explicit `root.updateMatrixWorld(true)` before any of this, since the
+  model isn't in the scene graph yet at explode time (that happens after,
+  in __cwt3dActivate) and matrixWorld is otherwise only refreshed on
+  render.
+  Verified in-browser (Playwright, LTM 1130): the six stacked plates now
+  separate cleanly along one consistent vertical axis instead of drifting
+  sideways/diagonally: screenshotted from two angles to confirm. Re-ran
+  the full click round-trip (3D pick -> Composition panel -> Total
+  Counterweight -> 2D hotspot) after the fix - still correct. No console
+  errors.
+
+================================================================================
