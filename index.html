@@ -809,10 +809,10 @@
           { id: 'p7', name: 'Counterweight Plate 7', weight: 2.5, shortLabel: '7',
             hotspots: [{ points: '989,511 133,511 133,428 989,428' }] },
           { id: 'p8w', name: 'Winch 2*', weight: 0.8, countsToward: false, slotGroup: 'slot8', shortLabel: '8 / Winch #2',
-            slotWarning: 'Winch 2* and Replacement Ballast fill the same slot and weigh the same, but they are NOT interchangeable. This is Winch 2* — an actual auxiliary winch is fitted here, giving the crane winch 2 capability. It is not just extra dead weight.',
+            slotWarning: 'Winch 2* and Replacement Ballast are interchangeable — only one is ever fitted in this slot, and both weigh 0.8t. This is Winch 2*: its 0.8t is NOT counted toward this combo\'s total counterweight, unlike Replacement Ballast\'s.',
             hotspots: [{ points: '694,320 404,320 404,54 694,54' }] },
           { id: 'p8b', name: 'Replacement Ballast', weight: 0.8, slotGroup: 'slot8', shortLabel: '8',
-            slotWarning: 'Winch 2* and Replacement Ballast fill the same slot and weigh the same, but they are NOT interchangeable. This is Replacement Ballast — dead weight only, no winch fitted. The crane does NOT have winch 2 capability with this selected.',
+            slotWarning: 'Winch 2* and Replacement Ballast are interchangeable — only one is ever fitted in this slot, and both weigh 0.8t. This is Replacement Ballast: its 0.8t IS counted toward this combo\'s total counterweight, unlike Winch 2*\'s.',
             hotspots: [] }
         ],
         // 25.4t appears twice with genuinely different compositions (a
@@ -2880,12 +2880,12 @@
           notices.push(`${c.name} is only confirmed centered correctly when plates 3 and 4 are both also fitted. With this selection, ${c.name.toLowerCase()} may not be centered correctly and can be damaged — verify physical centering before use.`);
         }
       });
-      // slotWarning: for slot-sharing alternatives that are NOT functionally
-      // equivalent despite matching weight (e.g. LTM 1110's Winch 2* vs
-      // Replacement Ballast - one gives actual winch capability, the other
-      // is dead weight) - flag whichever one is currently selected so
-      // nobody reads the matching weight/slot as "these are basically the
-      // same part."
+      // slotWarning: for slot-sharing alternatives that match on weight but
+      // NOT on how they count toward the total (e.g. LTM 1110's Winch 2* vs
+      // Replacement Ballast - interchangeable, same 0.8t, but only Ballast's
+      // 0.8t counts toward the combo total, per countsToward above) - flag
+      // whichever one is currently selected so nobody reads the matching
+      // weight as "counts the same either way."
       data.components.filter(c => c.slotWarning && cwtSelected.has(c.id)).forEach(c => {
         notices.push(c.slotWarning);
       });
