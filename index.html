@@ -4694,23 +4694,28 @@
     // state, read straight from the Cache Storage API - not just whatever
     // cacheAllOfflineContent() last did, since content also gets cached
     // one file at a time simply by viewing it (a reeving diagram, a 3D
-    // model), same as it always has. Deliberately doesn't hardcode sw.js's
-    // CONTENT_CACHE name (a second literal that could silently drift from
-    // the one in sw.js) - the content cache is whichever cache bucket
-    // ISN'T one of the versioned app-shell-* ones, and sw.js only ever
-    // opens those two.
+    // model), same as it always has.
+    //
+    // Originally tried to open sw.js's CONTENT_CACHE bucket directly,
+    // picked out by guessing "whichever cache name isn't app-shell-*".
+    // Person found it on a real device: button said everything cached
+    // successfully, status still showed the full original miss count as
+    // if nothing existed - the guess was landing on the wrong bucket (or
+    // none), not a real bug in what's actually cached. Switched to
+    // caches.match(url), which searches every cache bucket for the origin
+    // without needing to know or guess any bucket's name at all - the same
+    // thing the service worker's own fetch handler effectively relies on
+    // when it decides something's already cached, so this now asks the
+    // exact question that matters ("is this URL cached anywhere") instead
+    // of first guessing where to look. See methodology.txt 10.62.
     async function checkOfflineContentStatus() {
       const statusEls = document.querySelectorAll('.cache-all-status');
       if (!statusEls.length) return;
       if (!window.caches) return; // Cache Storage unsupported - leave blank rather than guess.
 
       const required = await allOfflineContentUrls();
-      const cacheNames = await caches.keys();
-      const contentCacheName = cacheNames.find(n => !n.startsWith('app-shell-'));
-      const cached = contentCacheName ? await caches.open(contentCacheName).then(c => c.keys()) : [];
-      const cachedUrls = new Set(cached.map(req => req.url));
-
-      const missing = required.filter(u => !cachedUrls.has(new URL(u, location.href).href));
+      const hits = await Promise.all(required.map(u => caches.match(u).then(r => !!r)));
+      const missing = required.filter((_, i) => !hits[i]);
       const complete = required.length > 0 && missing.length === 0;
 
       statusEls.forEach(el => {

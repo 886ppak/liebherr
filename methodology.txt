@@ -3133,3 +3133,32 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   Storage state, not in-memory-only). No console errors.
 
 ================================================================================
+
+10.62 Fixed checkOfflineContentStatus() showing the full original miss
+      count even after a genuinely successful download
+  Worked fine in every sandbox test (10.61), but person hit it on a real
+  device: button correctly read "All Offline Content Cached", status span
+  next to it still showed "Not fully downloaded (169 missing)" - the exact
+  original count, as if the download had done nothing at all, despite it
+  having actually worked (offline content was genuinely usable).
+  Root cause was the status check's own approach, not the caching itself:
+  it opened sw.js's CONTENT_CACHE bucket by GUESSING its name ("whichever
+  cache isn't app-shell-*") rather than asking the browser directly.
+  Getting the exact original count back means that guess resolved to no
+  bucket at all on this device/browser (cacheNames.find() returning
+  undefined), not a partial miss - so the check fell back to comparing
+  against an empty list, reporting everything missing regardless of what
+  was actually cached.
+  Replaced the whole "find the bucket, open it, list its keys, compare
+  URLs" approach with caches.match(url) per required URL - this searches
+  every cache bucket for the origin without the caller needing to know or
+  guess any bucket's name, which is also effectively what the service
+  worker's own fetch handler relies on to decide something's already
+  cached. Strictly more robust than the bucket-name guess it replaces, not
+  just a fix for this one device.
+  Verified in-browser (Playwright): correct cross with accurate count
+  before download, correct tick immediately after, tick persists across a
+  full reload - same coverage as 10.61's original tests, now against the
+  more robust lookup. No console errors.
+
+================================================================================
