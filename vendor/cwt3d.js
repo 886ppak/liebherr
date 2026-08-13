@@ -89,22 +89,37 @@ function clearScene() {
 // stack reads as an exploded view (matching the 2D diagrams) rather than
 // its real assembled position, which the GLB itself stores as-is.
 function explodeParts(root, namedParts) {
+  // Box3.setFromObject and worldToLocal below both rely on current
+  // matrixWorld values, which are otherwise only refreshed on render - at
+  // this point the model hasn't been added to the scene yet, so force it.
+  root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   const modelCenter = box.getCenter(new THREE.Vector3());
   const modelSize = box.getSize(new THREE.Vector3());
   const explodeDistance = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.18;
 
-  const byGroup = new Map();
-  namedParts.forEach(p => {
-    if (!byGroup.has(p.group)) byGroup.set(p.group, p.group);
-  });
-  byGroup.forEach(group => {
+  const groups = new Set(namedParts.map(p => p.group));
+  groups.forEach(group => {
     const gBox = new THREE.Box3().setFromObject(group);
     const gCenter = gBox.getCenter(new THREE.Vector3());
     const dir = gCenter.clone().sub(modelCenter);
     if (dir.lengthSq() < 1e-6) return;
-    dir.normalize();
-    group.position.add(dir.multiplyScalar(explodeDistance));
+    dir.normalize().multiplyScalar(explodeDistance);
+
+    // group.position is interpreted in its PARENT's local space, and this
+    // model's CAD-exported occurrence nodes each carry a baked rotation
+    // (confirmed in the raw GLTF: every "occurrence of Part N" node has a
+    // rotation matrix, not just a translation). Adding a world-space
+    // direction straight to group.position ignores that rotation and
+    // pushes the part sideways instead of along its real stacking axis -
+    // converting the target WORLD position into the parent's local space
+    // instead accounts for whatever rotation sits between this node and
+    // world space, however the export structured it. See methodology.txt
+    // 10.58.
+    const worldPos = new THREE.Vector3();
+    group.getWorldPosition(worldPos);
+    const targetWorldPos = worldPos.add(dir);
+    group.position.copy(group.parent.worldToLocal(targetWorldPos));
   });
 }
 
