@@ -403,10 +403,12 @@ async function loadModel(modelKey, data, onDone) {
         const extraRoot = await loadGLTFAsync(extra.url);
         // A standalone single-part export carries its own Part Studio's
         // default orientation, not the main assembly's - nothing ties the
-        // two together the way a shared assembly file would. rotationY
+        // two together the way a shared assembly file would. rotationX/Y/Z
         // (degrees) corrects that per part; applied before placement so
         // the centering math below measures the ALREADY-rotated box.
+        if (extra.rotationX) extraRoot.rotation.x = THREE.MathUtils.degToRad(extra.rotationX);
         if (extra.rotationY) extraRoot.rotation.y = THREE.MathUtils.degToRad(extra.rotationY);
+        if (extra.rotationZ) extraRoot.rotation.z = THREE.MathUtils.degToRad(extra.rotationZ);
         extraRoot.traverse((child) => {
           if (child.isMesh) {
             child.material = child.material.clone();
@@ -431,23 +433,33 @@ async function loadModel(modelKey, data, onDone) {
 }
 
 // Places a supplementary part (its own separately-loaded GLB, see
-// model3d.extraParts above) directly above the ENTIRE main model,
-// centered over its XZ footprint. Unlike explodeStack()/placeAtStackTop(),
-// which detect the stacking axis generically from a cluster of
-// participants, a whole model's bounding box is reliably wider/deeper
-// than it is tall - the "most spread" heuristic would pick the wrong
-// axis here. Y is hardcoded as "up" instead, true for every crane export
-// seen so far (gravity-aligned CAD).
+// model3d.extraParts above) directly above the main model, centered over
+// the TOP-MOST slab's own footprint specifically - not the whole model's
+// footprint, which is usually wider/deeper (lower plates in a stack are
+// often bigger than the top one), so centering on the whole model left
+// the part looking offset toward a corner instead of centered on the
+// plate it actually sits on. The top slab is found generically (every
+// mesh whose own top edge sits within STACK_GAP of the model's highest
+// point, unioned together) rather than by hardcoding which app id is
+// "the top plate" - works for any crane's stack shape without
+// crane-specific code. Y is hardcoded as "up" (not detected via
+// explodeStack()'s "most spread axis" heuristic, which would pick the
+// wrong axis for a whole model - reliably wider/deeper than tall), true
+// for every crane export seen so far (gravity-aligned CAD).
 function placeAboveWholeModel(extraGroup, mainRoot) {
-  const mainBox = new THREE.Box3().setFromObject(mainRoot);
-  const mainCenter = mainBox.getCenter(new THREE.Vector3());
+  const meshBoxes = [];
+  mainRoot.traverse((child) => { if (child.isMesh) meshBoxes.push(new THREE.Box3().setFromObject(child)); });
+  const modelTop = Math.max(...meshBoxes.map(b => b.max.y));
+  const topSlab = new THREE.Box3();
+  meshBoxes.forEach(b => { if (b.max.y > modelTop - STACK_GAP) topSlab.union(b); });
+  const slabCenter = topSlab.getCenter(new THREE.Vector3());
 
   const extraBox = new THREE.Box3().setFromObject(extraGroup);
   const extraCenter = extraBox.getCenter(new THREE.Vector3());
   const extraSize = extraBox.getSize(new THREE.Vector3());
 
-  const targetY = mainBox.max.y + STACK_GAP + extraSize.y / 2;
-  const offset = new THREE.Vector3(mainCenter.x - extraCenter.x, targetY - extraCenter.y, mainCenter.z - extraCenter.z);
+  const targetY = modelTop + STACK_GAP + extraSize.y / 2;
+  const offset = new THREE.Vector3(slabCenter.x - extraCenter.x, targetY - extraCenter.y, slabCenter.z - extraCenter.z);
   applyWorldOffset(extraGroup, offset);
 }
 

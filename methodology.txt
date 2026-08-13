@@ -3487,5 +3487,25 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   p8b) - p8b, which still has genuinely no geometry anywhere, confirmed
   to fail gracefully (correct weight shown, nothing to highlight, no
   error) same as before this change.
+  Follow-up same day: placeAboveWholeModel() centered on the WHOLE main
+  model's XZ footprint, which is usually wider/deeper than the specific
+  top plate the part actually sits on (lower plates in a stack are often
+  bigger) - looked visibly off-center, sitting toward a corner rather
+  than centered on its own plate. Fixed generically: find every mesh
+  whose own top edge sits within STACK_GAP of the model's highest point,
+  union those into a "top slab" box, and center on THAT instead of the
+  whole model - no hardcoded app id for "which part is the top plate."
+  Also added rotationX/rotationZ alongside the existing rotationY, since
+  a standalone single-part export's orientation is a coin flip relative
+  to the main assembly and might need correcting on any axis, not just
+  yaw. Exact rotation for LTM 1110's Winch 2* still unresolved as of this
+  entry - the person is dialing in the correct "lying flat" orientation
+  directly in Onshape's own rotate tool rather than more blind
+  trial-and-error rotationX values from here, and may re-export with it
+  baked in (or swap the part directly into the main assembly export
+  instead of using extraParts at all, in which case this whole mechanism
+  won't even be needed for this specific part - it'd just become a normal
+  partMap entry like any other plate). Left at rotationY: 90 only (the
+  one axis not contradicted so far) pending whichever file arrives next.
 
 ================================================================================

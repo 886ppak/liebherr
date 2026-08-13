@@ -844,6 +844,12 @@
             'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6', 'Counterweight_Plate_7_1': 'p7'
           },
           extraParts: [
+            // rotationX still pending - the person is dialing in the exact
+            // "lying flat" orientation directly in Onshape's rotate tool
+            // and will re-export with it baked in, rather than more
+            // guess-and-check rotationX values from here. rotationY: 90
+            // (the yaw) is the one part of this confirmed reasonable so
+            // far - kept as-is until the new export arrives.
             { url: './counterweight/models/ltm1110-winch2-cwt.glb?v=1', appId: 'p8w', rotationY: 90 }
           ]
         },
@@ -1479,7 +1485,7 @@
     // the dynamic import in setCwtView() and by cacheAllOfflineContent()'s
     // file list, so the two can't drift apart and start caching different
     // versions of the same file.
-    const CWT3D_VERSION = 7;
+    const CWT3D_VERSION = 8;
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
