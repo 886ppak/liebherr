@@ -569,7 +569,7 @@
           </thead>
           <tbody id="cad-results"></tbody>
         </table>
-        <div class="disclaimer">MUST MOVE = in the crane's direct path of travel for this shift. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway — and flags NOT POSSIBLE if that spot is currently under the crane's own chassis, before it moves. On the site plan, the blue outlined dot for an optional leg shows that same target spot.</div>
+        <div class="disclaimer">MUST MOVE = its current spot would sit under the crane's own chassis once this shift is complete, checked per leg against the actual footprint and shift — not just which side of the crane it's on, so a diagonal shift can require a front or rear leg to move too. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway — and flags NOT POSSIBLE if that spot is currently under the crane's own chassis, before it moves. On the site plan, the blue outlined dot for an optional leg shows that same target spot.</div>
       </div>
 
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
@@ -3592,13 +3592,6 @@
       // A "+forward" user input must DECREASE the internal Y value.
       const shiftY = -shiftYinput;
 
-      // A pad only needs picking up if it sits in the crane's actual path of
-      // travel — that only happens with a lateral component. A pure fwd/bwd
-      // move never runs over any pad, so nothing is strictly required to move.
-      let requiredIds = [];
-      if (shiftX > 0) requiredIds = [1, 2];
-      else if (shiftX < 0) requiredIds = [3, 4];
-
       let resultsHtml = '';
       let mappedOutriggers = [];
 
@@ -3636,7 +3629,15 @@
         const stayDir = dirFor(stayRawAngle);
         const stayAngle = Math.round(Math.abs(stayRawAngle) * 10) / 10;
 
-        const isRequired = requiredIds.includes(item.id);
+        // A pad is required to move only if leaving it exactly where it is
+        // would land it under the crane's chassis once the crane finishes
+        // this shift - i.e. its own (relX, relY), which is already its
+        // "if left in place" position relative to the crane's NEW center,
+        // run through the same box test used for the "if moved" clash
+        // check above. Checked per pad, per crane, per shift - not a
+        // left/right-of-travel heuristic, so a diagonal shift can require
+        // a front or rear pad to move too, not just a lateral one.
+        const isRequired = clashesWithFootprint(relX, relY, fp);
         const plotX = isRequired ? newX : baseX;
         const plotY = isRequired ? newY : baseY;
 

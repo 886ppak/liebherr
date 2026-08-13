@@ -2823,3 +2823,38 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   render as expected, no console errors.
 
 ================================================================================
+
+10.55 Outrigger Support Positioning: MUST MOVE now a real collision check,
+      not a left/right heuristic
+  Previous logic (requiredIds) hardcoded P1/P2 as MUST MOVE for any
+  rightward shift and P3/P4 for any leftward shift, regardless of shift
+  magnitude, direction Y-component, or actual pad geometry - the person
+  said at the time this was just an assumption, not something checked.
+  Person asked directly: would each pad actually collide with the crane's
+  new chassis position if left exactly where it is?
+  The math already existed for the other half of this - clashesWithFootprint()
+  and, for every pad, its "if left in place" position relative to the
+  crane's NEW center (relX, relY, used for the "If Left in Place" table
+  column). Replaced the heuristic with `clashesWithFootprint(relX, relY, fp)`
+  per pad: a pad is MUST MOVE only if its own current spot genuinely falls
+  under the chassis footprint once this shift is complete - checked
+  individually per pad/crane/shift, not by which side of the crane it's on.
+  Updated the "MUST MOVE" disclaimer to describe the real rule instead of
+  "direct path of travel."
+  Consequences worth knowing: a pure fore/aft shift can still require no
+  pad to move (X offset unaffected, and every pad's baseline X sits well
+  outside the footprint half-width for every crane in FOOTPRINTS) but a
+  diagonal shift can now pull in a front or rear pad that the old rule
+  never flagged. Also confirmed a genuine "sweep window": a pad only
+  clashes within a specific shift-magnitude range in the matching
+  direction - e.g. LTM 1650's P2 is MUST MOVE at shiftX=+4m but clears
+  again by shiftX=+8m, since by then the crane has already moved past
+  that pad's original spot entirely. This is expected box-overlap
+  behavior, not a bug.
+  Verified in-browser (Playwright) across LTM 1100 and LTM 1650: pure
+  lateral shifts reproduce sensible required/optional splits, pure
+  fore/aft shifts require nothing at small magnitudes, a diagonal shift
+  correctly flags a non-lateral pad, and the shift-magnitude sweep window
+  behaves as expected in both directions on LTM 1650. No console errors.
+
+================================================================================
