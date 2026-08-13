@@ -523,7 +523,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Offline Availability</div>
+        <div class="card-title">Offline Availability <span class="cache-all-status" style="font-size:0.8rem; text-transform:none; font-weight:400;"></span></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
         <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
         <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
@@ -590,7 +590,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Offline Availability</div>
+        <div class="card-title">Offline Availability <span class="cache-all-status" style="font-size:0.8rem; text-transform:none; font-weight:400;"></span></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
         <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
         <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
@@ -660,7 +660,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Offline Availability</div>
+        <div class="card-title">Offline Availability <span class="cache-all-status" style="font-size:0.8rem; text-transform:none; font-weight:400;"></span></div>
         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
         <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
         <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
@@ -687,6 +687,10 @@
 
       if (tabId === 'cad-tab') calcCAD();
       if (tabId === 'reeve-tab') initReeveTab();
+      // Re-checked on every visit, not just after the button runs - content
+      // also gets cached one file at a time just by viewing it, so the
+      // tick/cross needs to reflect that too, not only a full-download run.
+      if (['reeve-tab', 'cwt-tab', 'driveeq-tab'].includes(tabId)) checkOfflineContentStatus();
     }
 
     // Shared helper: fill a <select> from an array, options built via textFn/valueFn.
@@ -4587,6 +4591,36 @@
       return [...reeveUrls, ...viewerUrls, ...modelUrls];
     }
 
+    // Ticks or crosses every .cache-all-status span with the REAL current
+    // state, read straight from the Cache Storage API - not just whatever
+    // cacheAllOfflineContent() last did, since content also gets cached
+    // one file at a time simply by viewing it (a reeving diagram, a 3D
+    // model), same as it always has. Deliberately doesn't hardcode sw.js's
+    // CONTENT_CACHE name (a second literal that could silently drift from
+    // the one in sw.js) - the content cache is whichever cache bucket
+    // ISN'T one of the versioned app-shell-* ones, and sw.js only ever
+    // opens those two.
+    async function checkOfflineContentStatus() {
+      const statusEls = document.querySelectorAll('.cache-all-status');
+      if (!statusEls.length) return;
+      if (!window.caches) return; // Cache Storage unsupported - leave blank rather than guess.
+
+      const required = await allOfflineContentUrls();
+      const cacheNames = await caches.keys();
+      const contentCacheName = cacheNames.find(n => !n.startsWith('app-shell-'));
+      const cached = contentCacheName ? await caches.open(contentCacheName).then(c => c.keys()) : [];
+      const cachedUrls = new Set(cached.map(req => req.url));
+
+      const missing = required.filter(u => !cachedUrls.has(new URL(u, location.href).href));
+      const complete = required.length > 0 && missing.length === 0;
+
+      statusEls.forEach(el => {
+        el.innerHTML = complete
+          ? '<span style="color:var(--success);">✓ Downloaded</span>'
+          : `<span style="color:var(--danger);">✗ Not fully downloaded${missing.length ? ` (${missing.length} missing)` : ''}</span>`;
+      });
+    }
+
     async function cacheAllOfflineContent() {
       const btns = document.querySelectorAll('.cache-all-btn');
       const wraps = document.querySelectorAll('.cache-all-progress-wrap');
@@ -4637,6 +4671,16 @@
       if (!failed) {
         setTimeout(() => { wraps.forEach(w => { w.style.display = 'none'; }); }, 3000);
       }
+      // The service worker's fetch handler writes each response into
+      // CONTENT_CACHE as a fire-and-forget cache.put() - it isn't awaited
+      // by the fetch() promise this loop just finished, so the very last
+      // few writes can still be in flight for a moment after every fetch()
+      // above has already resolved. Checking immediately can show a false
+      // "N missing" for stragglers that land a beat later; one retry after
+      // a short delay is enough (this isn't a real race to chase further -
+      // it self-corrects on the next tab visit regardless).
+      checkOfflineContentStatus();
+      setTimeout(checkOfflineContentStatus, 600);
     }
 
     // Initialize Page Controls
@@ -4649,6 +4693,7 @@
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
+    checkOfflineContentStatus(); // covers first load - switchTab() (which also calls this) only runs on a later click, and it updates every .cache-all-status span regardless of which tab is currently active
   </script>
 
   <!-- 3D counterweight viewer (CWT Combinations tab, cranes with a model3d
