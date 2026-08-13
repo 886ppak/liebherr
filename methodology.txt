@@ -2787,3 +2787,23 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   T-16.7 entries, Advanced shows the two T-29.0 entries.
 
 ================================================================================
+
+10.53 Corrected LTM 1110's Winch 2*/Replacement Ballast slotWarning wording
+  The existing slotWarning text (10.19-era) called the two "NOT
+  interchangeable" and framed the difference as winch capability (actual
+  winch fitted vs dead weight). Person corrected this: they ARE
+  interchangeable - only one is ever fitted in the shared slot, that part
+  was always true - the real, OEM-confirmed distinction (per the
+  countsToward comment above the components array, 10.7) is that they
+  affect the combo's TOTAL COUNTERWEIGHT differently despite matching
+  0.8t weight: Replacement Ballast's 0.8t counts toward the total,
+  Winch 2*'s does not. Rewrote both slotWarning strings (p8w, p8b) to
+  lead with "are interchangeable" and state the counts-toward-total
+  difference explicitly instead of the capability framing. Also fixed
+  the summary comment above the notice-building code (previously said
+  "NOT functionally equivalent... one gives actual winch capability") to
+  match. Verified in-browser: selecting a combo with Winch 2* shows the
+  corrected notice, selecting one with Replacement Ballast shows its
+  counterpart, no console errors.
+
+================================================================================
