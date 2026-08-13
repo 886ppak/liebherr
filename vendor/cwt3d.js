@@ -91,18 +91,29 @@ function clearScene() {
 // without touching any CAD export: this is the only number that matters.
 const STACK_GAP = 0.12; // 120mm
 
-// Moves each named part clear of its neighbors so the assembly reads as an
+// Moves each part clear of its neighbors so the assembly reads as an
 // exploded view rather than its real assembled position (which is all the
-// GLB stores). Two different moves, depending on what a part actually is:
-//  - Parts that share an XZ position with others (a true vertical stack,
-//    like LTM 1130's six plates) get spaced by exactly STACK_GAP between
-//    adjacent faces, in real units - not a proportional push, an actual gap.
+// GLB stores). Works on "participants" rather than raw GLB nodes - a
+// participant is either one GLB node, or several moving as ONE rigid
+// block. A block is needed whenever a single partMap key maps several GLB
+// nodes to the very same single app id (LTM 1300's receptacle is 5
+// separate small CAD bodies, person-labelled "1" throughout to match the
+// 2D diagram's one "Plate 1" label, all needing to move as a single
+// physical item rather than scattering independently) - anything else
+// (a lone node, or an array-mapped key like the two interchangeable
+// Plate 3 copies, which SHOULD separate from each other) still explodes
+// node-by-node exactly as before. See methodology.txt 10.63.
+//
+// Two different moves, depending on what a participant actually is:
+//  - Participants that share an XZ position with others (a true vertical
+//    stack, like LTM 1130's six plates) get spaced by exactly STACK_GAP
+//    between adjacent faces, in real units - not a proportional push, an
+//    actual gap.
 //  - Everything else (nothing else to line up against - e.g. LTM 1130's
-//    winch/replacement-weight part, or the auxiliary ballast pair mounted
+//    winch/replacement-weight part, or an auxiliary ballast pair mounted
 //    to the sides rather than stacked) gets pushed outward from the whole
-//    model's center instead, same as every part got before this function
-//    existed in its current form.
-function explodeParts(root, namedParts) {
+//    model's center instead.
+function explodeParts(root, groupsByKey, partMap) {
   // Box3.setFromObject and worldToLocal below both rely on current
   // matrixWorld values, which are otherwise only refreshed on render - at
   // this point the model hasn't been added to the scene yet, so force it.
@@ -112,9 +123,20 @@ function explodeParts(root, namedParts) {
   const modelSize = box.getSize(new THREE.Vector3());
   const pushDistance = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.18;
 
-  const groups = [...new Set(namedParts.map(p => p.group))].map(group => {
-    const gBox = new THREE.Box3().setFromObject(group);
-    return { group, center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()) };
+  const participants = [];
+  groupsByKey.forEach((groupNodes, key) => {
+    const mapping = partMap[key];
+    const rigidBlock = !Array.isArray(mapping) && groupNodes.length > 1;
+    if (rigidBlock) {
+      const combined = new THREE.Box3();
+      groupNodes.forEach(g => combined.union(new THREE.Box3().setFromObject(g)));
+      participants.push({ groups: groupNodes, center: combined.getCenter(new THREE.Vector3()), size: combined.getSize(new THREE.Vector3()) });
+    } else {
+      groupNodes.forEach(g => {
+        const gBox = new THREE.Box3().setFromObject(g);
+        participants.push({ groups: [g], center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()) });
+      });
+    }
   });
 
   // Cluster by XZ proximity - true stacked plates share (near-)identical X
@@ -125,12 +147,12 @@ function explodeParts(root, namedParts) {
   // plate's own footprint.
   const XZ_TOLERANCE = 0.05;
   const clusters = [];
-  groups.forEach(g => {
+  participants.forEach(p => {
     const cluster = clusters.find(c => {
       const ref = c[0];
-      return Math.hypot(g.center.x - ref.center.x, g.center.z - ref.center.z) < XZ_TOLERANCE;
+      return Math.hypot(p.center.x - ref.center.x, p.center.z - ref.center.z) < XZ_TOLERANCE;
     });
-    if (cluster) cluster.push(g); else clusters.push([g]);
+    if (cluster) cluster.push(p); else clusters.push([p]);
   });
 
   clusters.forEach(cluster => {
@@ -142,31 +164,31 @@ function explodeParts(root, namedParts) {
   });
 }
 
-// Spaces a cluster of stacked parts evenly along whichever axis they're
-// actually stacked on (the one with the most spread between their
+// Spaces a cluster of stacked participants evenly along whichever axis
+// they're actually stacked on (the one with the most spread between their
 // centers - Y for a normal vertical stack, but not assumed, in case a
 // future crane's export is oriented differently).
 function explodeStack(cluster) {
-  const spread = axis => Math.max(...cluster.map(g => g.center[axis])) - Math.min(...cluster.map(g => g.center[axis]));
+  const spread = axis => Math.max(...cluster.map(p => p.center[axis])) - Math.min(...cluster.map(p => p.center[axis]));
   const axis = ['x', 'y', 'z'].reduce((a, b) => spread(b) > spread(a) ? b : a);
 
   cluster.sort((a, b) => a.center[axis] - b.center[axis]);
   let edge = cluster[0].center[axis] - cluster[0].size[axis] / 2;
-  cluster.forEach(g => {
-    const targetCenter = edge + g.size[axis] / 2;
-    const delta = targetCenter - g.center[axis];
+  cluster.forEach(p => {
+    const targetCenter = edge + p.size[axis] / 2;
+    const delta = targetCenter - p.center[axis];
     const offset = new THREE.Vector3(0, 0, 0);
     offset[axis] = delta;
-    applyWorldOffset(g.group, offset);
-    edge = targetCenter + g.size[axis] / 2 + STACK_GAP;
+    p.groups.forEach(g => applyWorldOffset(g, offset));
+    edge = targetCenter + p.size[axis] / 2 + STACK_GAP;
   });
 }
 
-function pushOutward(g, modelCenter, distance) {
-  const dir = g.center.clone().sub(modelCenter);
+function pushOutward(p, modelCenter, distance) {
+  const dir = p.center.clone().sub(modelCenter);
   if (dir.lengthSq() < 1e-6) return;
   dir.normalize().multiplyScalar(distance);
-  applyWorldOffset(g.group, dir);
+  p.groups.forEach(g => applyWorldOffset(g, dir));
 }
 
 // group.position is interpreted in its PARENT's local space, and this
@@ -185,6 +207,25 @@ function applyWorldOffset(group, worldOffset) {
   group.position.copy(group.parent.worldToLocal(targetWorldPos));
 }
 
+// GLTFLoader auto-renames sibling nodes that share a name, appending
+// "_1", "_2", etc (confirmed directly against LTM 1300's export - its
+// receptacle is modeled as 5 separate small CAD parts, all named "1" by
+// the person to match the 2D diagram's single "Plate 1" label, which
+// GLTFLoader turns into "1", "1_1", "1_2", "1_3", "1_4"). Matches the
+// EXACT node name against partMap first; only if that fails does it try
+// stripping one trailing "_<digits>" and matching the base - so a
+// genuinely distinct partMap key that happens to end in "_<digits>"
+// (nothing does today, but nothing stops it) still wins outright, and
+// this never fires at all for a model with no name collisions (e.g. LTM
+// 1130's Part_1..Part_10, already unique, matched on the first try every
+// time).
+function partMapKeyFor(name, partMap) {
+  if (partMap[name] !== undefined) return name;
+  const m = /^(.*)_\d+$/.exec(name);
+  if (m && partMap[m[1]] !== undefined) return m[1];
+  return null;
+}
+
 function loadModel(modelKey, data, onDone) {
   if (modelCache[modelKey]) { onDone(modelCache[modelKey]); return; }
   if (loadingInProgress[modelKey]) return;
@@ -196,26 +237,55 @@ function loadModel(modelKey, data, onDone) {
   const loader = new GLTFLoader();
   loader.load(data.model3d.url, (gltf) => {
     const root = gltf.scene;
+    root.updateMatrixWorld(true);
     const partMap = data.model3d.partMap;
     const namedParts = [];
-    const groupsSeen = new Set();
 
+    // A partMap entry is either a plain app id string (every matching-
+    // named node, however many there are, gets that same id - the common
+    // case) or an array of app ids, for a name shared by physically
+    // distinct parts that need DIFFERENT ids (LTM 1300's two identical,
+    // interchangeable Plate 3 copies -> p3a/p3b, both literally named "3"
+    // in the CAD file with no way to tell them apart by name alone).
+    // Array entries are assigned by position, sorted along whichever axis
+    // has the most spread between that specific name-group's members -
+    // not assumed to be Y, in case some future crane's pair sits side by
+    // side instead of stacked.
+    const groupsByKey = new Map();
     root.traverse((obj) => {
-      const m = /^Part[ _](\d+)$/.exec(obj.name);
-      if (!m) return;
-      const glbName = obj.name.replace(' ', '_');
-      const appId = partMap[glbName];
-      if (!appId) return; // unmapped part - shown but not selectable
-      groupsSeen.add(obj);
-      obj.traverse((child) => {
-        if (child.isMesh) {
-          child.material = child.material.clone();
-          namedParts.push({ appId, glbName, mesh: child, group: obj, baseColor: child.material.color.clone() });
+      if (obj.type !== 'Group') return;
+      const key = partMapKeyFor(obj.name, partMap);
+      if (!key) return; // unmapped part - shown but not selectable
+      if (!groupsByKey.has(key)) groupsByKey.set(key, []);
+      groupsByKey.get(key).push(obj);
+    });
+
+    groupsByKey.forEach((groupNodes, key) => {
+      const mapping = partMap[key];
+      let assignments;
+      if (Array.isArray(mapping)) {
+        const withCenters = groupNodes.map(g => ({ group: g, center: new THREE.Box3().setFromObject(g).getCenter(new THREE.Vector3()) }));
+        const spread = axis => Math.max(...withCenters.map(w => w.center[axis])) - Math.min(...withCenters.map(w => w.center[axis]));
+        const axis = ['x', 'y', 'z'].reduce((a, b) => spread(b) > spread(a) ? b : a);
+        withCenters.sort((a, b) => a.center[axis] - b.center[axis]);
+        if (withCenters.length !== mapping.length) {
+          console.warn(`cwt3d: "${key}" expected ${mapping.length} instance(s), found ${withCenters.length} - some app ids may be left unmatched.`);
         }
+        assignments = withCenters.map((w, i) => [w.group, mapping[i]]).filter(([, appId]) => appId !== undefined);
+      } else {
+        assignments = groupNodes.map(g => [g, mapping]);
+      }
+      assignments.forEach(([group, appId]) => {
+        group.traverse((child) => {
+          if (child.isMesh) {
+            child.material = child.material.clone();
+            namedParts.push({ appId, glbName: group.name, mesh: child, group, baseColor: child.material.color.clone() });
+          }
+        });
       });
     });
 
-    explodeParts(root, namedParts);
+    explodeParts(root, groupsByKey, partMap);
 
     const entry = { root, namedParts };
     modelCache[modelKey] = entry;
