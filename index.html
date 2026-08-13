@@ -555,13 +555,22 @@
 
       <div class="card">
         <div class="card-title">Counterweight Stack</div>
+        <div class="mode-toggle" id="cwt-view-toggle" style="display:none; margin-bottom:10px;">
+          <button class="mode-btn active" id="cwt-view-2d-btn" onclick="setCwtView('2d')">2D Diagram</button>
+          <button class="mode-btn" id="cwt-view-3d-btn" onclick="setCwtView('3d')">3D Model</button>
+        </div>
         <div id="cwt-image-wrap" class="cwt-image-wrap">
           <div id="cwt-zoom-inner" class="cwt-zoom-inner">
             <img src="./counterweight/img/ltm1250-cwt-exploded-v2.png" alt="Liebherr LTM 1250-5.1 counterweight exploded CAD line diagram, parts 1-8">
             <svg id="cwt-hotspots" class="cwt-hotspots-svg" viewBox="0 0 2625 1400" preserveAspectRatio="xMidYMid meet"></svg>
           </div>
         </div>
-        <div class="cwt-zoom-hint">Pinch to zoom, drag to pan when zoomed in.</div>
+        <div id="cwt-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a;">
+          <div id="cwt-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
+          <div id="cwt-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
+        </div>
+        <div class="cwt-zoom-hint" id="cwt-zoom-hint">Pinch to zoom, drag to pan when zoomed in.</div>
+        <div class="cwt-zoom-hint" id="cwt-3d-hint" style="display:none;">Drag to rotate, scroll or pinch to zoom, tap a plate to add or remove it.</div>
         <div id="cwt-status" style="margin-top:12px;"></div>
         <div id="cwt-notice" class="warn-box" style="display:none; margin-top:10px;"></div>
         <div class="disclaimer">Tap a plate directly on the diagram to add or remove it — any combination can be selected, but only the ones matching the manufacturer's published chart are flagged as approved. <span id="cwt-fig-ref"></span>. Tap regions trace each plate's own outline; cross-check the actual physical mounting against the current assembly drawing before use on site.</div>
@@ -891,6 +900,34 @@
         figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05) — diagram re-drawn as clean line art, not the original OEM artwork',
         manualUrl: 'https://drive.google.com/file/d/1ruuyUoI51UWrUa6tCDtyt89ozDgStIeT/view?usp=drive_link',
         manualPage: 807,
+        // Onshape-exported GLB (person-supplied). partMap ties each named
+        // mesh node in the model to this crane's own component id above -
+        // inferred from geometry, NOT confirmed against the source CAD's
+        // own labels, since the model carries only Onshape's arbitrary
+        // "Part N" part numbers with no weight/name metadata. Derivation:
+        // Part_10/Part_3 are an exact-mirror pair (identical size, centers
+        // symmetric about the model's X center) -> the two physical halves
+        // of p8 ("2x Auxiliary Ballast 8"). Part_1 has a distinctly
+        // different footprint/shape from the other six and sits outside
+        // their stack -> p7 (Winch 2*/Replacement Weight, a mechanism, not
+        // a flat plate). The remaining six share one exact footprint and
+        // stack contiguously along Y - matched to p1-p6 by comparing each
+        // one's thickness against that plate's known weight (same
+        // footprint + material -> weight scales with thickness); the
+        // resulting weight/volume ratios cluster tightly (~13-19), which
+        // is the main evidence this mapping is right. Flagged for the
+        // person to verify visually once live - a wrong pairing here only
+        // means the wrong plate highlights on click, it does NOT touch any
+        // weight or combo-matching logic, which stays driven entirely by
+        // the components list below. See methodology.txt 10.57.
+        model3d: {
+          url: './counterweight/models/ltm1130-cwt.glb',
+          partMap: {
+            'Part_4': 'p3', 'Part_6': 'p4', 'Part_9': 'p1', 'Part_8': 'p2',
+            'Part_7': 'p6', 'Part_5': 'p5', 'Part_1': 'p7',
+            'Part_10': 'p8', 'Part_3': 'p8'
+          }
+        },
         components: [
           { id: 'p1', name: 'Counterweight Plate 1', weight: 3.7, shortLabel: '1',
             hotspots: [{ points: '1439,985 576,985 576,777 1439,777' }] },
@@ -1320,6 +1357,11 @@
         ]
       }
     };
+    // Exposed for the 3D counterweight viewer module (a <script type="module">
+    // further down) - module scripts don't see a classic script's top-level
+    // `const`/`let` bindings, only its function declarations and whatever
+    // gets put on window explicitly.
+    window.COUNTERWEIGHT_DATA = COUNTERWEIGHT_DATA;
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
@@ -2704,6 +2746,7 @@
     function onCwtCraneChange() {
       cwtSelected = new Set();
       cwtResetZoom();
+      setCwtView('2d');
       populateCwtComboSelect();
       renderCwtTab();
     }
@@ -2935,6 +2978,38 @@
         document.getElementById('cwt-manual-btn').href = cwtManualHref(data);
       } else {
         manualCard.style.display = 'none';
+      }
+
+      // 3D view toggle: only offered for cranes with a model3d entry.
+      // Switching crane always falls back to the 2D diagram (setCwtView
+      // resets cwtView3DActive) rather than trying to carry "3D on" across
+      // a crane that might not have a model at all.
+      const viewToggle = document.getElementById('cwt-view-toggle');
+      viewToggle.style.display = data.model3d ? '' : 'none';
+      if (window.__cwt3dOnRender) window.__cwt3dOnRender(modelKey, data, cwtSelected);
+    }
+
+    let cwtView3DActive = false;
+    function setCwtView(mode) {
+      cwtView3DActive = (mode === '3d');
+      document.getElementById('cwt-view-2d-btn').classList.toggle('active', !cwtView3DActive);
+      document.getElementById('cwt-view-3d-btn').classList.toggle('active', cwtView3DActive);
+      document.getElementById('cwt-image-wrap').style.display = cwtView3DActive ? 'none' : '';
+      document.getElementById('cwt-3d-wrap').style.display = cwtView3DActive ? '' : 'none';
+      document.getElementById('cwt-zoom-hint').style.display = cwtView3DActive ? 'none' : '';
+      document.getElementById('cwt-3d-hint').style.display = cwtView3DActive ? '' : 'none';
+      if (cwtView3DActive) {
+        const modelKey = document.getElementById('cwt-crane').value;
+        const activate = () => window.__cwt3dActivate(modelKey, COUNTERWEIGHT_DATA[modelKey], cwtSelected);
+        // Three.js + the viewer module (~970KB) are never fetched at all
+        // until this first switch to 3D view - dynamic import() rather than
+        // a static <script type="module"> tag, so nobody pays for this on
+        // a page load that never touches the 3D view. The browser caches
+        // the imported module by URL, so a second call here (switching
+        // crane, or toggling 3D off then back on) resolves instantly
+        // without re-fetching.
+        if (window.__cwt3dActivate) activate();
+        else import('./vendor/cwt3d.js').then(activate);
       }
     }
 
@@ -4489,6 +4564,24 @@
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
+  </script>
+
+  <!-- 3D counterweight viewer (CWT Combinations tab, cranes with a model3d
+       entry only - currently just LTM 1130). Three.js only ships as ES
+       modules, so vendor/cwt3d.js is one; it talks back to the classic
+       script above purely through window (see its own header comment). Not
+       loaded via a static <script type="module"> tag - setCwtView('3d')
+       in the classic script above dynamically import()s it on first use,
+       so neither this nor the multi-MB GLB it loads are fetched at all
+       unless someone actually opens the 3D view. The importmap still has
+       to be a static tag (browsers only look at importmaps present before
+       the first module load), but it's just inline JSON - no fetch. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.min.js"
+    }
+  }
   </script>
 </body>
 </html>
