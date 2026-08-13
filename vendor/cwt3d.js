@@ -303,7 +303,13 @@ function partMapKeyFor(name, partMap) {
   return null;
 }
 
-function loadModel(modelKey, data, onDone) {
+function loadGLTFAsync(url) {
+  return new Promise((resolve, reject) => {
+    new GLTFLoader().load(url, (gltf) => resolve(gltf.scene), undefined, reject);
+  });
+}
+
+async function loadModel(modelKey, data, onDone) {
   if (modelCache[modelKey]) { onDone(modelCache[modelKey]); return; }
   if (loadingInProgress[modelKey]) return;
   loadingInProgress[modelKey] = true;
@@ -311,9 +317,8 @@ function loadModel(modelKey, data, onDone) {
   const labelEl = document.getElementById('cwt-3d-label');
   labelEl.textContent = 'Loading 3D model…';
 
-  const loader = new GLTFLoader();
-  loader.load(data.model3d.url, (gltf) => {
-    const root = gltf.scene;
+  try {
+    const root = await loadGLTFAsync(data.model3d.url);
     root.updateMatrixWorld(true);
     const partMap = data.model3d.partMap;
     // Components mounted in multiple physically separate locations under
@@ -379,15 +384,71 @@ function loadModel(modelKey, data, onDone) {
     // see methodology.txt 10.67.
     if (!data.model3d.preExploded) explodeParts(root, groupsByKey, partMap, separateIds, stackTopIds);
 
-    const entry = { root, namedParts };
+    // model3d.extraParts: supplementary GLBs loaded and placed alongside
+    // the main model - for a part that can't come through the main
+    // assembly's own GLB export at all (LTM 1110's Winch 2*/Replacement
+    // Ballast lives in an Onshape Composite Part, which the assembly-level
+    // exporter silently drops - confirmed by comparing instance counts,
+    // not guessed). Exported as its own tiny standalone GLB instead. Each
+    // one is treated as a single rigid whole (no partMap needed - it's
+    // one dedicated file for one app id) and placed directly above the
+    // WHOLE main model, centered - same idea as placeAtStackTop(), just
+    // anchored to the full model's bounding box since there's no cluster
+    // list to anchor to when the part lives in a separate file entirely.
+    // See methodology.txt 10.69.
+    const container = new THREE.Group();
+    container.add(root);
+    if (data.model3d.extraParts) {
+      for (const extra of data.model3d.extraParts) {
+        const extraRoot = await loadGLTFAsync(extra.url);
+        // A standalone single-part export carries its own Part Studio's
+        // default orientation, not the main assembly's - nothing ties the
+        // two together the way a shared assembly file would. rotationY
+        // (degrees) corrects that per part; applied before placement so
+        // the centering math below measures the ALREADY-rotated box.
+        if (extra.rotationY) extraRoot.rotation.y = THREE.MathUtils.degToRad(extra.rotationY);
+        extraRoot.traverse((child) => {
+          if (child.isMesh) {
+            child.material = child.material.clone();
+            namedParts.push({ appId: extra.appId, glbName: child.name, mesh: child, group: extraRoot, baseColor: child.material.color.clone() });
+          }
+        });
+        container.add(extraRoot);
+        container.updateMatrixWorld(true);
+        placeAboveWholeModel(extraRoot, root);
+      }
+    }
+
+    const entry = { root: container, namedParts };
     modelCache[modelKey] = entry;
     loadingInProgress[modelKey] = false;
     onDone(entry);
-  }, undefined, (err) => {
+  } catch (err) {
     loadingInProgress[modelKey] = false;
     labelEl.textContent = '3D model failed to load. Falling back to the 2D diagram is recommended.';
     console.error('cwt3d load error', err);
-  });
+  }
+}
+
+// Places a supplementary part (its own separately-loaded GLB, see
+// model3d.extraParts above) directly above the ENTIRE main model,
+// centered over its XZ footprint. Unlike explodeStack()/placeAtStackTop(),
+// which detect the stacking axis generically from a cluster of
+// participants, a whole model's bounding box is reliably wider/deeper
+// than it is tall - the "most spread" heuristic would pick the wrong
+// axis here. Y is hardcoded as "up" instead, true for every crane export
+// seen so far (gravity-aligned CAD).
+function placeAboveWholeModel(extraGroup, mainRoot) {
+  const mainBox = new THREE.Box3().setFromObject(mainRoot);
+  const mainCenter = mainBox.getCenter(new THREE.Vector3());
+
+  const extraBox = new THREE.Box3().setFromObject(extraGroup);
+  const extraCenter = extraBox.getCenter(new THREE.Vector3());
+  const extraSize = extraBox.getSize(new THREE.Vector3());
+
+  const targetY = mainBox.max.y + STACK_GAP + extraSize.y / 2;
+  const offset = new THREE.Vector3(mainCenter.x - extraCenter.x, targetY - extraCenter.y, mainCenter.z - extraCenter.z);
+  applyWorldOffset(extraGroup, offset);
 }
 
 function frameCamera(root) {
