@@ -3332,3 +3332,35 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   re-run after both changes, clean, no console errors.
 
 ================================================================================
+
+10.66 LTM 1130's winch/replacement-weight (p7) hidden behind the exploded
+      stack - moved it to sit on top instead, generically
+  Reported: p7 (mounted on top of the main plate stack in real life) was
+  hard to see in the 3D view, hidden behind the stack. Cause: p7 is a
+  lone (non-stacked) participant, so it got the same radial outward push
+  as any other lone part (10.63) - fine for something genuinely mounted
+  to the SIDE, wrong for something mounted on TOP, since its own XZ
+  position sits slightly off-center from the stack's footprint and the
+  push exaggerated that sideways offset instead of correcting for it.
+  Fix, generic rather than 1130-specific: components can now carry
+  `explodeTop: true` (same reused-signal pattern as `separate`, 10.64/
+  10.65 - a flag on the app's own component data, not a geometry guess or
+  a hardcoded id check). explodeParts() pulls any such participant out of
+  the normal cluster/push pipeline entirely and, once the real plate
+  stack has been exploded, places it via a new placeAtStackTop(): directly
+  above the tallest exploded cluster (found generically as whichever
+  cluster ended up with the most members, not assumed to be "the" stack
+  by id), centered over that cluster's XZ centroid rather than the part's
+  own original XZ, with the same STACK_GAP clearance a real stacked plate
+  gets. Generic over whichever axis the stack is actually stacked on,
+  matching explodeStack()'s own axis detection.
+  Set explodeTop: true on LTM 1130's p7 only (the one component this
+  applies to today). Verified in-browser: p7 now renders clearly on top
+  of the stack, centered, from multiple rotation angles - previously
+  tucked behind/beside it. Re-ran all 8 of LTM 1130's own ids (correct
+  weights, correct highlighting, no console errors) to confirm restructuring
+  explodeParts() around the new stackTopParticipants split didn't disturb
+  the existing rigid-block/pair/plain-stack participants. Full crane
+  sweep clean.
+
+================================================================================

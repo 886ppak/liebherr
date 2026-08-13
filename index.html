@@ -981,7 +981,13 @@
             hotspots: [{ points: '1439,406 576,406 576,370 1439,370' }] },
           { id: 'p6', name: 'Counterweight Plate 6', weight: 2.2, shortLabel: '6',
             hotspots: [{ points: '1439,360 576,360 576,314 1439,314' }] },
-          { id: 'p7', name: 'Replacement Weight 7 / Winch 2*', weight: 2.9, shortLabel: '7 / Winch #2',
+          // explodeTop: true - mounted on top of the main plate stack in
+          // real life (not beside it, despite sitting off to one side in
+          // the CAD export's own XZ), so the 3D viewer's default outward
+          // push shoved it sideways and left it hidden behind the stack
+          // from most angles. See vendor/cwt3d.js's placeAtStackTop() and
+          // methodology.txt 10.66.
+          { id: 'p7', name: 'Replacement Weight 7 / Winch 2*', weight: 2.9, shortLabel: '7 / Winch #2', explodeTop: true,
             hotspots: [{ points: '1275,286 741,286 741,46 1275,46' }] },
           // combined pair, same modeling as 1250's "2x Hook Ballast" - one
           // toggle, weight is the two sides added together (see 10.8 for
@@ -1438,7 +1444,7 @@
     // the dynamic import in setCwtView() and by cacheAllOfflineContent()'s
     // file list, so the two can't drift apart and start caching different
     // versions of the same file.
-    const CWT3D_VERSION = 4;
+    const CWT3D_VERSION = 5;
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
