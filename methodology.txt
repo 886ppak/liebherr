@@ -3162,3 +3162,65 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   more robust lookup. No console errors.
 
 ================================================================================
+
+10.63 CWT Combinations: added LTM 1300's 3D model - first crane with parts
+      labelled by the person to match the app directly, not inferred
+  Person's own labelling, matching this crane's real component ids
+  (p1-p5, aux5, aux6) rather than Onshape's arbitrary numbering like LTM
+  1130's model had - so this partMap is a direct, confirmed lookup, not
+  10.57's geometry-based guess. Flagged two things about the labelling
+  before supplying the file: wing weights 5/6 labelled "5L"/"5R" and
+  "6L"/"6R" (left/right), and the receptacle (Plate 1) labelled "1" on
+  every one of its several small CAD bodies.
+  Neither turned out to be as simple as "just add more partMap entries" -
+  both exposed real gaps in 10.57/10.58's matching logic, which had only
+  ever seen LTM 1130's uniquely-named parts:
+  - GLTFLoader auto-renames sibling nodes that share a name ("1" becomes
+    "1", "1_1", "1_2", "1_3", "1_4" for the receptacle's 5 bodies; same
+    for the crane's two identical, interchangeable Plate 3 copies, both
+    labelled "3" -> "3"/"3_1"). The old matching code only ever checked
+    the exact node name against partMap, so it would have silently found
+    ONLY the first instance of each and missed the rest. New
+    partMapKeyFor() tries the exact name first, and only falls back to
+    stripping one trailing "_<digits>" and matching THAT base if the exact
+    name isn't a key - so this never fires for a model with no name
+    collisions (LTM 1130 still matches everything on the first try) and
+    can't misfire on a genuine partMap key that happens to end in
+    "_<digits>" (none do today, but nothing stops it).
+  - The two Plate 3 copies need to be independently selectable as p3a/p3b
+    (their real app ids) despite being unable to tell apart by name at
+    all. partMap values can now be an array (`'3': ['p3a', 'p3b']`) -
+    cwt3d.js sorts that name's matched instances along whichever axis has
+    the most spread between them and assigns ids by position, rather than
+    needing a real distinguishing name.
+  - The receptacle's 5 bodies all map to the SAME single id (p1) - if
+    exploded individually like 10.57/10.58 treated every part, they'd
+    scatter as 5 separate fragments instead of moving as the one physical
+    item they actually are. explodeParts() (and loadModel()) now work on
+    "participants" rather than raw GLB nodes: a name that maps several GLB
+    nodes to one single app id becomes ONE rigid block (combined bounding
+    box, every member node moved by the identical world-space offset via
+    10.58's applyWorldOffset - preserving their relative arrangement to
+    each other); an array-mapped name, or a name with only one matching
+    node, still explodes node-by-node exactly as before. Confirmed this
+    was the right call before generalizing it, not assumed: an array
+    mapping means "these need to look independently selectable" and a
+    string mapping across multiple nodes means "this is one item made of
+    several bodies" - the two cases actually do need different explode
+    behavior, not just different appId assignment.
+  New file counterweight/models/ltm1300-cwt.glb (?v=1, same cache-busting
+  convention as LTM 1130's, methodology.txt 10.60).
+  Verified in-browser (Playwright): all 8 of LTM 1300's component ids
+  (p1, p2, p3a, p3b, p4, p5, aux5, aux6) individually select, highlight,
+  and show the correct weight in the Composition panel; screenshotted p1
+  selected from two angles - the receptacle's 5 bodies light up as one
+  contiguous shape, not scattered fragments; screenshotted p3a+p3b
+  selected together - the two Plate 3 copies show clearly separated in
+  the stack and both highlight, "Selected: 2 part(s)"; re-ran all 8 of LTM
+  1130's own component ids afterward to confirm the refactor didn't
+  regress it - identical results to before; full crane sweep confirms the
+  3D toggle appears only for LTM 1130 and LTM 1300, 2D hotspot rendering
+  unchanged on all seven cranes. No console errors or partMap
+  count-mismatch warnings anywhere in testing.
+
+================================================================================

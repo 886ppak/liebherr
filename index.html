@@ -1262,6 +1262,36 @@
         figRef: 'Diagram re-drawn as clean line art from this variant’s actual counterweight stack — not OEM artwork.',
         manualUrl: 'https://drive.google.com/file/d/1fU-VjDgFGx8NcbJajghazvFk08wdlkDP/view?usp=drive_link',
         manualPage: 931,
+        // Person-supplied Onshape GLB, this time with parts already
+        // labelled to match the app's own numbering (unlike LTM 1130's
+        // model3d, 10.57, where the mapping had to be inferred from
+        // geometry) - so this partMap is a direct, confirmed lookup, not a
+        // guess. Two things the person flagged about their own labelling
+        // that this map has to account for, both handled generically in
+        // cwt3d.js rather than as one-off cases (see partMapKeyFor() and
+        // the "rigid block" explode logic, methodology.txt 10.63):
+        //  - Wing weights 5/6 labelled "5L"/"5R" and "6L"/"6R" (left/right)
+        //    - both sides of each pair map to the SAME id (aux5/aux6), same
+        //    as the app's own "2x Auxiliary Ballast" both-or-neither
+        //    modeling.
+        //  - The receptacle (Plate 1) is 5 separate small CAD bodies, all
+        //    labelled plain "1" - GLTFLoader auto-renames the duplicates
+        //    ("1", "1_1".."1_4"), and since all 5 map to the same single id
+        //    (p1) they move as one rigid block when exploded rather than
+        //    scattering independently.
+        //  - The one case NOT resolved by labelling alone: Plate 3 has two
+        //    identical, interchangeable physical copies, both labelled "3"
+        //    (GLTFLoader -> "3"/"3_1") - since interchangeable means there's
+        //    truly no real difference between them, `['p3a', 'p3b']` lets
+        //    cwt3d.js split the two instances by position rather than
+        //    needing a way to tell them apart by name.
+        model3d: {
+          url: './counterweight/models/ltm1300-cwt.glb?v=1',
+          partMap: {
+            '1': 'p1', '2': 'p2', '3': ['p3a', 'p3b'], '4': 'p4', '5': 'p5',
+            '5L': 'aux5', '5R': 'aux5', '6L': 'aux6', '6R': 'aux6'
+          }
+        },
         components: [
           { id: 'p1', name: 'Receptacle Plate 1', weight: 6, shortLabel: '1',
             hotspots: [{ points: '1618,818 3027,818 3027,1203 1618,1203' }] },
