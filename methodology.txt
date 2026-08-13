@@ -2807,3 +2807,19 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   counterpart, no console errors.
 
 ================================================================================
+
+10.54 Smoothed the 10.53 slotWarning phrasing
+  Person flagged "its 0.8t is NOT counted toward this combo's total
+  counterweight, unlike Replacement Ballast's" as awkward - the trailing
+  possessive with no noun after it ("Replacement Ballast's") read oddly.
+  Reworded both p8w/p8b slotWarning strings to name which item this
+  combo actually has fitted and state the effect plainly against the
+  on-screen "Total Counterweight" label (the #cwt-status metric card)
+  instead of the vaguer "combo's total counterweight": e.g. "This combo
+  has Winch 2* fitted, so its 0.8t does not count toward the Total
+  Counterweight figure — Replacement Ballast's 0.8t would." Wording only,
+  no change to the underlying claim (still verified true per 10.53/the
+  28.2t vs 29.0t OEM combo pair). Verified in-browser: both notices
+  render as expected, no console errors.
+
+================================================================================
