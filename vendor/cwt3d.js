@@ -85,9 +85,23 @@ function clearScene() {
   });
 }
 
-// Nudges every named part outward from the model's overall center so the
-// stack reads as an exploded view (matching the 2D diagrams) rather than
-// its real assembled position, which the GLB itself stores as-is.
+// Gap left between adjacent faces of parts that are genuinely stacked on
+// each other (model units = meters, confirmed against LTM 1130's own real
+// plate weights/footprint - see methodology.txt 10.57). Easy to retune
+// without touching any CAD export: this is the only number that matters.
+const STACK_GAP = 0.12; // 120mm
+
+// Moves each named part clear of its neighbors so the assembly reads as an
+// exploded view rather than its real assembled position (which is all the
+// GLB stores). Two different moves, depending on what a part actually is:
+//  - Parts that share an XZ position with others (a true vertical stack,
+//    like LTM 1130's six plates) get spaced by exactly STACK_GAP between
+//    adjacent faces, in real units - not a proportional push, an actual gap.
+//  - Everything else (nothing else to line up against - e.g. LTM 1130's
+//    winch/replacement-weight part, or the auxiliary ballast pair mounted
+//    to the sides rather than stacked) gets pushed outward from the whole
+//    model's center instead, same as every part got before this function
+//    existed in its current form.
 function explodeParts(root, namedParts) {
   // Box3.setFromObject and worldToLocal below both rely on current
   // matrixWorld values, which are otherwise only refreshed on render - at
@@ -96,31 +110,79 @@ function explodeParts(root, namedParts) {
   const box = new THREE.Box3().setFromObject(root);
   const modelCenter = box.getCenter(new THREE.Vector3());
   const modelSize = box.getSize(new THREE.Vector3());
-  const explodeDistance = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.18;
+  const pushDistance = Math.max(modelSize.x, modelSize.y, modelSize.z) * 0.18;
 
-  const groups = new Set(namedParts.map(p => p.group));
-  groups.forEach(group => {
+  const groups = [...new Set(namedParts.map(p => p.group))].map(group => {
     const gBox = new THREE.Box3().setFromObject(group);
-    const gCenter = gBox.getCenter(new THREE.Vector3());
-    const dir = gCenter.clone().sub(modelCenter);
-    if (dir.lengthSq() < 1e-6) return;
-    dir.normalize().multiplyScalar(explodeDistance);
-
-    // group.position is interpreted in its PARENT's local space, and this
-    // model's CAD-exported occurrence nodes each carry a baked rotation
-    // (confirmed in the raw GLTF: every "occurrence of Part N" node has a
-    // rotation matrix, not just a translation). Adding a world-space
-    // direction straight to group.position ignores that rotation and
-    // pushes the part sideways instead of along its real stacking axis -
-    // converting the target WORLD position into the parent's local space
-    // instead accounts for whatever rotation sits between this node and
-    // world space, however the export structured it. See methodology.txt
-    // 10.58.
-    const worldPos = new THREE.Vector3();
-    group.getWorldPosition(worldPos);
-    const targetWorldPos = worldPos.add(dir);
-    group.position.copy(group.parent.worldToLocal(targetWorldPos));
+    return { group, center: gBox.getCenter(new THREE.Vector3()), size: gBox.getSize(new THREE.Vector3()) };
   });
+
+  // Cluster by XZ proximity - true stacked plates share (near-)identical X
+  // and Z, differing only in Y, however tall the stack; anything without a
+  // match sits alone in its own single-member cluster. 50mm tolerance is
+  // generous against real CAD-export precision (this model's actual match
+  // is exact to several decimal places) while nowhere close to any real
+  // plate's own footprint.
+  const XZ_TOLERANCE = 0.05;
+  const clusters = [];
+  groups.forEach(g => {
+    const cluster = clusters.find(c => {
+      const ref = c[0];
+      return Math.hypot(g.center.x - ref.center.x, g.center.z - ref.center.z) < XZ_TOLERANCE;
+    });
+    if (cluster) cluster.push(g); else clusters.push([g]);
+  });
+
+  clusters.forEach(cluster => {
+    if (cluster.length > 1) {
+      explodeStack(cluster);
+    } else {
+      pushOutward(cluster[0], modelCenter, pushDistance);
+    }
+  });
+}
+
+// Spaces a cluster of stacked parts evenly along whichever axis they're
+// actually stacked on (the one with the most spread between their
+// centers - Y for a normal vertical stack, but not assumed, in case a
+// future crane's export is oriented differently).
+function explodeStack(cluster) {
+  const spread = axis => Math.max(...cluster.map(g => g.center[axis])) - Math.min(...cluster.map(g => g.center[axis]));
+  const axis = ['x', 'y', 'z'].reduce((a, b) => spread(b) > spread(a) ? b : a);
+
+  cluster.sort((a, b) => a.center[axis] - b.center[axis]);
+  let edge = cluster[0].center[axis] - cluster[0].size[axis] / 2;
+  cluster.forEach(g => {
+    const targetCenter = edge + g.size[axis] / 2;
+    const delta = targetCenter - g.center[axis];
+    const offset = new THREE.Vector3(0, 0, 0);
+    offset[axis] = delta;
+    applyWorldOffset(g.group, offset);
+    edge = targetCenter + g.size[axis] / 2 + STACK_GAP;
+  });
+}
+
+function pushOutward(g, modelCenter, distance) {
+  const dir = g.center.clone().sub(modelCenter);
+  if (dir.lengthSq() < 1e-6) return;
+  dir.normalize().multiplyScalar(distance);
+  applyWorldOffset(g.group, dir);
+}
+
+// group.position is interpreted in its PARENT's local space, and this
+// model's CAD-exported occurrence nodes each carry a baked rotation
+// (confirmed in the raw GLTF: every "occurrence of Part N" node has a
+// rotation matrix, not just a translation). Adding a world-space offset
+// straight to group.position ignores that rotation and pushes the part in
+// the wrong direction - converting the target WORLD position into the
+// parent's local space instead accounts for whatever rotation sits
+// between this node and world space, however the export structured it.
+// See methodology.txt 10.58.
+function applyWorldOffset(group, worldOffset) {
+  const worldPos = new THREE.Vector3();
+  group.getWorldPosition(worldPos);
+  const targetWorldPos = worldPos.add(worldOffset);
+  group.position.copy(group.parent.worldToLocal(targetWorldPos));
 }
 
 function loadModel(modelKey, data, onDone) {
