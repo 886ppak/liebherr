@@ -3224,3 +3224,58 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   count-mismatch warnings anywhere in testing.
 
 ================================================================================
+
+10.64 Redid LTM 1130's 3D model with direct labels; fixed a real explode
+      bug it exposed (auxiliary ballast pair glued together)
+  Person redid the original LTM 1130 GLB (10.57's, mapped by inferring
+  geometry from Onshape's arbitrary "Part N" numbers) with parts labelled
+  to match the app's own component names directly, same approach as LTM
+  1300 (10.63) - explicitly kept as the proof of concept either way, not
+  requested because the original was wrong so much as confirmed-vs-
+  inferred being worth having. Confirmed the post-sanitizing node names
+  by actually loading the file rather than guessing: GLTFLoader replaces
+  spaces with underscores and drops "/" outright (not replaced), so
+  "Replacement Weight 7 / Winch 2*" becomes "Replacement_Weight_7__Winch_2*"
+  (double underscore - both spaces around the dropped slash survived).
+  Person flagged the replacement-weight/winch part is labelled identically
+  on both its physical halves ("labelled it twice as it was two parts") -
+  same shared-name pattern as LTM 1300's receptacle, so partMapKeyFor()
+  and the rigid-block explode logic (10.63) already handled it with zero
+  new code.
+  What WASN'T already handled: the auxiliary ballast pair (p8) is ALSO
+  labelled identically on both halves, but unlike the receptacle or the
+  winch part, its two halves are mounted on genuinely opposite sides of
+  the crane. 10.63's rigid-block logic doesn't distinguish "one item
+  split across several CAD bodies" from "one both-or-neither id mounted
+  in separate locations" - it glued the ballast pair into one block too,
+  combining two boxes from opposite sides of the crane into a bounding
+  box centered right back near the model's own middle, so pushOutward
+  barely moved it and it visually overlapped the main stack instead of
+  separating - caught by looking at the actual render, not assumed to be
+  fine because the underlying selection/weight logic was already correct
+  (it was - only the explode positioning was wrong).
+  A pure geometry-based distinguishing rule doesn't exist here: the
+  receptacle's 5 bodies span ~2.4m from each other (must glue) while the
+  ballast pair's 2 bodies span ~3.7m (must NOT glue) - too close in
+  magnitude to threshold on distance alone. Used a signal that already
+  existed in the app's own component data instead of inventing a new CAD-
+  labelling convention or a fragile heuristic: `separate: true`, set on
+  exactly this kind of both-or-neither multi-location component already
+  (originally added for the 2D hotspot system, well before this 3D viewer
+  existed - LTM 1130's p8 and LTM 1300's aux5/aux6 all already carry it).
+  explodeParts()/loadModel() now take a separateIds set (built from
+  `data.components.filter(c => c.separate)`) - a shared-name key only
+  becomes a rigid block if its target id is NOT in that set; a separate-
+  flagged id keeps exploding each of its instances independently instead,
+  same as before 10.63 ever existed for it specifically.
+  Verified in-browser (Playwright): before the separate-flag fix, p8
+  visibly overlapped the main stack in a screenshot; after, both halves
+  clearly separate from the stack and from each other. Re-ran all 8 of
+  LTM 1130's own ids (correct weights, correct highlighting) and all 8 of
+  LTM 1300's (unaffected by the fix - p1's receptacle still glues, since
+  p1 was never separate-flagged; aux5/aux6 were already independent
+  before this change since 1300's L/R halves have distinct names, not a
+  shared one, so groupsByKey never had >1 node under one key for them in
+  the first place). Full crane sweep clean, no console errors.
+
+================================================================================

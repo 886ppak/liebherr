@@ -96,13 +96,27 @@ const STACK_GAP = 0.12; // 120mm
 // GLB stores). Works on "participants" rather than raw GLB nodes - a
 // participant is either one GLB node, or several moving as ONE rigid
 // block. A block is needed whenever a single partMap key maps several GLB
-// nodes to the very same single app id (LTM 1300's receptacle is 5
-// separate small CAD bodies, person-labelled "1" throughout to match the
-// 2D diagram's one "Plate 1" label, all needing to move as a single
-// physical item rather than scattering independently) - anything else
-// (a lone node, or an array-mapped key like the two interchangeable
-// Plate 3 copies, which SHOULD separate from each other) still explodes
-// node-by-node exactly as before. See methodology.txt 10.63.
+// nodes to the very same single app id AND that app id is a genuinely
+// single physical item just split across several CAD bodies (LTM 1300's
+// receptacle is 5 separate small CAD bodies, person-labelled "1"
+// throughout to match the 2D diagram's one "Plate 1" label). It is NOT
+// what's wanted for an app id that's mounted in multiple physically
+// separate locations sharing one name/id purely because it's one
+// both-or-neither toggle (LTM 1130's auxiliary ballast, mounted on
+// opposite sides of the crane, both CAD bodies person-labelled identically
+// "Auxiliary Ballast 8") - gluing THAT into one block combines two boxes
+// on opposite sides of the crane into a bounding box centered back near
+// the model's own middle, so it barely moves at all when pushed outward
+// and visually overlaps the main stack instead of separating from it.
+// The distinguishing signal already exists in the app's own component
+// data rather than needing new CAD labelling conventions: `separate: true`
+// (set on exactly this kind of both-or-neither, multi-location component
+// for the 2D hotspot system's benefit, well before this 3D viewer
+// existed) means "explode each instance independently"; its absence means
+// "these bodies together are one physical item, move as a block." A lone
+// node, or an array-mapped key like the two interchangeable Plate 3
+// copies (which SHOULD separate from each other), still explodes
+// node-by-node regardless of this flag. See methodology.txt 10.64.
 //
 // Two different moves, depending on what a participant actually is:
 //  - Participants that share an XZ position with others (a true vertical
@@ -113,7 +127,7 @@ const STACK_GAP = 0.12; // 120mm
 //    winch/replacement-weight part, or an auxiliary ballast pair mounted
 //    to the sides rather than stacked) gets pushed outward from the whole
 //    model's center instead.
-function explodeParts(root, groupsByKey, partMap) {
+function explodeParts(root, groupsByKey, partMap, separateIds) {
   // Box3.setFromObject and worldToLocal below both rely on current
   // matrixWorld values, which are otherwise only refreshed on render - at
   // this point the model hasn't been added to the scene yet, so force it.
@@ -126,7 +140,7 @@ function explodeParts(root, groupsByKey, partMap) {
   const participants = [];
   groupsByKey.forEach((groupNodes, key) => {
     const mapping = partMap[key];
-    const rigidBlock = !Array.isArray(mapping) && groupNodes.length > 1;
+    const rigidBlock = !Array.isArray(mapping) && !separateIds.has(mapping) && groupNodes.length > 1;
     if (rigidBlock) {
       const combined = new THREE.Box3();
       groupNodes.forEach(g => combined.union(new THREE.Box3().setFromObject(g)));
@@ -239,6 +253,11 @@ function loadModel(modelKey, data, onDone) {
     const root = gltf.scene;
     root.updateMatrixWorld(true);
     const partMap = data.model3d.partMap;
+    // Components mounted in multiple physically separate locations under
+    // one both-or-neither id (e.g. an auxiliary ballast pair) - see the
+    // big comment on explodeParts() for why this has to come from the
+    // app's own component data rather than being guessed from geometry.
+    const separateIds = new Set(data.components.filter(c => c.separate).map(c => c.id));
     const namedParts = [];
 
     // A partMap entry is either a plain app id string (every matching-
@@ -285,7 +304,7 @@ function loadModel(modelKey, data, onDone) {
       });
     });
 
-    explodeParts(root, groupsByKey, partMap);
+    explodeParts(root, groupsByKey, partMap, separateIds);
 
     const entry = { root, namedParts };
     modelCache[modelKey] = entry;
