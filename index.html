@@ -589,6 +589,16 @@
         </div>
       </div>
 
+      <div class="card" id="carrier-3d-card" style="display:none;">
+        <div class="card-title">3D Carrier Preview <span style="font-size:0.75rem; color:var(--text-muted); text-transform:none; font-weight:400;">(look-and-see only — not tied to the site plan yet)</span></div>
+        <button class="toolbar-btn" id="carrier-3d-toggle-btn" style="width:100%;" onclick="toggleCarrier3D()">Show 3D Carrier Model</button>
+        <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
+          <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
+          <div id="carrier-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
+        </div>
+        <div class="cwt-zoom-hint" id="carrier-3d-hint" style="display:none;">Drag to rotate, scroll or pinch to zoom.</div>
+      </div>
+
       <div class="card">
         <div class="card-title" style="color:var(--success);">All Four Legs — Reference Frames</div>
         <table>
@@ -1659,6 +1669,20 @@
     // file list, so the two can't drift apart and start caching different
     // versions of the same file.
     const CWT3D_VERSION = 11;
+
+    // Single source of truth for vendor/carrier3d.js's cache-busting query,
+    // same reasoning as CWT3D_VERSION above.
+    const CARRIER3D_VERSION = 1;
+
+    // Which cranes have a 3D carrier (chassis) model available - a "look
+    // and see" preview on the Outrigger Support Positioning tab, NOT wired
+    // into that tab's own must-move/clash-detection math. Keyed the same
+    // as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
+    // cranes have an exported model so far - see methodology.txt 10.76.
+    const CARRIER_MODELS = {
+      '1110': './outrigger/models/ltm1110-carrier.glb',
+      '1650': './outrigger/models/ltm1650-carrier.glb'
+    };
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
@@ -3931,8 +3955,50 @@
     let clickableTargets = [];
     let selectedTarget = null;
 
+    // 3D carrier preview card: shown only for cranes with a CARRIER_MODELS
+    // entry, and always falls back to hidden/off when the crane changes -
+    // same reasoning as CWT's setCwtView reset (don't try to carry "3D on"
+    // across a crane that might not have a model at all). Tracked
+    // separately from calcCAD()'s own modelKey read since calcCAD() runs on
+    // every shift/pad input change too, not just a crane switch - resetting
+    // on every one of those would close an open preview the user is
+    // actively looking at. See methodology.txt 10.76.
+    let carrier3DModelKey = null;
+    let carrier3DActive = false;
+
+    function updateCarrier3DAvailability(modelKey) {
+      const card = document.getElementById('carrier-3d-card');
+      const url = CARRIER_MODELS[modelKey];
+      card.style.display = url ? '' : 'none';
+      if (modelKey === carrier3DModelKey) return;
+      carrier3DModelKey = modelKey;
+      carrier3DActive = false;
+      document.getElementById('carrier-3d-toggle-btn').textContent = 'Show 3D Carrier Model';
+      document.getElementById('carrier-3d-wrap').style.display = 'none';
+      document.getElementById('carrier-3d-hint').style.display = 'none';
+    }
+
+    function toggleCarrier3D() {
+      const modelKey = document.getElementById('cad-crane').value;
+      const url = CARRIER_MODELS[modelKey];
+      if (!url) return;
+      carrier3DActive = !carrier3DActive;
+      document.getElementById('carrier-3d-toggle-btn').textContent = carrier3DActive ? 'Hide 3D Carrier Model' : 'Show 3D Carrier Model';
+      document.getElementById('carrier-3d-wrap').style.display = carrier3DActive ? '' : 'none';
+      document.getElementById('carrier-3d-hint').style.display = carrier3DActive ? '' : 'none';
+      if (carrier3DActive) {
+        // Three.js + the viewer module are never fetched until this first
+        // toggle - dynamic import(), same reasoning as CWT's 3D view (see
+        // its own comment on setCwtView). Cached by URL after that.
+        const activate = () => window.__carrier3dActivate(modelKey, url);
+        if (window.__carrier3dActivate) activate();
+        else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
+      }
+    }
+
     function calcCAD() {
       const modelKey = document.getElementById('cad-crane').value;
+      updateCarrier3DAvailability(modelKey);
       const craneObj = cadFleetData[modelKey];
       const fp = FOOTPRINTS[modelKey];
       const baseData = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL];
@@ -4943,7 +5009,25 @@
         './vendor/three/utils/SkeletonUtils.js'
       ] : [];
 
-      return [...reeveUrls, ...viewerUrls, ...modelUrls];
+      const carrierKeys = Object.keys(CARRIER_MODELS);
+      const carrierModelUrls = carrierKeys.map(k => CARRIER_MODELS[k]);
+      const carrierViewerUrls = carrierKeys.length ? [
+        `./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`,
+        './vendor/three/three.module.min.js',
+        './vendor/three/three.core.min.js',
+        './vendor/three/GLTFLoader.js',
+        './vendor/three/DRACOLoader.js',
+        './vendor/three/draco/draco_decoder.js',
+        './vendor/three/draco/draco_decoder.wasm',
+        './vendor/three/draco/draco_wasm_wrapper.js',
+        './vendor/three/OrbitControls.js',
+        './vendor/three/utils/BufferGeometryUtils.js',
+        './vendor/three/utils/SkeletonUtils.js'
+      ] : [];
+
+      // Deduped: cwt3d.js and carrier3d.js share the same vendor/three/*
+      // files, listed by both viewerUrls and carrierViewerUrls above.
+      return [...new Set([...reeveUrls, ...viewerUrls, ...modelUrls, ...carrierViewerUrls, ...carrierModelUrls])];
     }
 
     // Ticks or crosses every .cache-all-status span with the REAL current

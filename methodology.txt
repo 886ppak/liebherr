@@ -3751,4 +3751,53 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   not yet inspected/wired up - that's the next mission's work, not part
   of this fix.
 
+10.76 Outrigger Support Positioning: added a 3D carrier (chassis) preview,
+      the "next mission" flagged in 10.75
+  New vendor/carrier3d.js module, deliberately much simpler than
+  cwt3d.js: no partMap, no click selection/highlighting, no explode
+  logic. The carrier is a single rigid whole - its own real assembled
+  position from the CAD export IS the intended view (nothing to pull
+  apart into an exploded layout), and its materials already carry the
+  crane's own Liebherr colours baked in from Onshape (confirmed by
+  inspecting both GLBs' material list directly - yellow/red/grey/black
+  already present, not flat grey placeholder), so nothing needed
+  recolouring either. Reuses the same vendored three.js/GLTFLoader/
+  DRACOLoader/OrbitControls modules and shared Draco decoder as
+  cwt3d.js - both these carrier exports and the counterweight exports
+  come out of Onshape Draco-compressed by default.
+  Explicitly scoped as "look and see" only, per the person's own
+  framing - a toggle button on the Outrigger tab, NOT wired into that
+  tab's own must-move/clash-detection math. That integration (matching
+  the pad-collision work from 10.73/10.74) is possible future work, not
+  part of this.
+  Files moved from the session's scratch download location into
+  outrigger/models/ (ltm1110-carrier.glb, ltm1650-carrier.glb) -
+  matches the existing counterweight/models/ convention. New
+  CARRIER_MODELS map (index.html) keyed the same as
+  cadFleetData/COUNTERWEIGHT_DATA ('1110', '1650') - only 2 of the
+  outrigger tab's 7 cranes have an exported carrier model so far, so
+  the preview card only shows for those two, hidden entirely for the
+  other 5 (checked: 1130/1300 correctly hide it, 1110/1650 correctly
+  show it).
+  Switching crane always resets the toggle back to hidden/off - same
+  reasoning as CWT's setCwtView reset, don't try to carry "3D on"
+  across a crane that might not have a model. Tracked with its own
+  carrier3DModelKey/carrier3DActive state rather than piggybacking on
+  calcCAD()'s own modelKey read, since calcCAD() also runs on every
+  shift/pad input change - resetting an open preview every time someone
+  nudges a shift value would be a real regression, not just noise.
+  allOfflineContentUrls() extended to include both carrier GLBs and
+  carrier3d.js's own vendor file list, deduped against cwt3d.js's
+  existing vendor/three/* entries (both viewers share the same core
+  three.js/GLTFLoader/DRACOLoader/OrbitControls files) via a Set - so
+  "Cache All Offline Content" on the other tabs picks these up too,
+  without listing the same vendored files twice.
+  Verified in-browser: card hidden for 1130/1300, shown for 1110/1650;
+  toggle shows/hides the canvas and correctly fetches+renders each
+  crane's own model (confirmed visually - Liebherr yellow/black LTM
+  1110, primarily grey/white LTM 1650 chassis - matches what each
+  crane's own material list contains); switching crane while the
+  preview was open resets the toggle back to "Show 3D Carrier Model"
+  and hides the canvas; no console errors.
+
 ================================================================================
