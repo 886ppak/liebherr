@@ -55,3 +55,7 @@ No build step, no framework, no dependencies — `index.html` is the entire app 
 To deploy a change: edit the files, bump `CACHE_VERSION` in `sw.js` if you touched `index.html`, the icons, or either manifest, then commit and push — GitHub Pages picks it up automatically. Without the version bump, installed copies keep serving the old cached app shell until someone taps "check for update."
 
 `methodology.txt` documents the reasoning behind the non-obvious parts of this app — sign conventions in the outrigger tab, a retentioning formula that looks like a bug but isn't, and known unresolved items. Read it before changing anything in tabs 1-3.
+
+## License
+
+All rights reserved — see [`LICENSE`](./LICENSE). This code is not open source; viewing it here doesn't grant permission to copy, reuse, or redistribute it.
