@@ -3507,5 +3507,15 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   won't even be needed for this specific part - it'd just become a normal
   partMap entry like any other plate). Left at rotationY: 90 only (the
   one axis not contradicted so far) pending whichever file arrives next.
+  Resolved same day: person swapped Winch 2* directly into the main
+  Onshape assembly (as "Part_1") and re-exported, exactly the "won't even
+  be needed" outcome above - added 'Part_1': 'p8w' to the regular
+  partMap, removed the extraParts entry and the standalone composite GLB
+  entirely. Bumped the main model's ?v= (content changed). extraParts/
+  placeAboveWholeModel() stay in cwt3d.js unused by any crane right now -
+  real, working infrastructure for the same situation recurring on a
+  future crane, not speculative code. Verified in-browser: p8w renders
+  lying flat, correctly positioned on top of the stack per the person's
+  own layout, no console errors. Full crane sweep clean.
 
 ================================================================================
