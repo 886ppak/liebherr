@@ -187,14 +187,14 @@ window.__carrier3dActivate = function (modelKey, url) {
 // CAD export, more so than the OEM-sheet-derived FOOTPRINTS approximation
 // - only finds WHERE within that box the slew center sits, using
 // FOOTPRINTS' front/rear as a fraction along the model's own measured
-// length. calibration.frontAtMinZ says which end of the box (min or max Z)
-// is the front, confirmed per-crane by rendering a straight-down view and
-// visually identifying the driving cab (see methodology.txt 10.77) -
-// that's the one thing that can't be derived from the geometry alone.
-// calibration.lateralSign flips left/right if a crane's export happens to
-// have +X reading as the opposite side from the site plan's own "+X =
-// right" convention.
-function computeCalibration(root, footprint, calibration) {
+// length as a starting estimate. calibration.frontAtMinZ says which end of
+// the box (min or max Z) is the front, confirmed per-crane by rendering a
+// straight-down view and visually identifying the driving cab (see
+// methodology.txt 10.77) - that's the one thing that can't be derived from
+// the geometry alone. calibration.lateralSign flips left/right if a
+// crane's export happens to have +X reading as the opposite side from the
+// site plan's own "+X = right" convention.
+function computeFormulaCalibration(root, footprint, calibration) {
   const box = new THREE.Box3().setFromObject(root);
   const groundY = box.min.y;
   const lateralCenter = (box.min.x + box.max.x) / 2;
@@ -210,6 +210,80 @@ function computeCalibration(root, footprint, calibration) {
   const dirSign = calibration.frontAtMinZ ? 1 : -1;
   const slewZ = frontTipZ + dirSign * fractionFromFront * measuredLength;
   return { groundY, lateralCenter, slewZ, dirSign, lateralSign: calibration.lateralSign || 1 };
+}
+
+// The formula above gets the right general area, but a person comparing
+// the rendered pad against the model's own outrigger beam/foot geometry
+// noticed a real, visible offset (methodology.txt 10.78) - fair, since
+// FOOTPRINTS' front/rear are OEM-sheet figures, not measured off this
+// specific CAD export. When the model actually HAS outrigger geometry
+// (not every crane's export does - LTM 1650's is missing one of the two
+// beam pairs entirely, see 10.76/10.77), that geometry is a much better
+// anchor than the formula: it's the real, exported thing, not a derived
+// estimate. This finds each of the 4 corners' own farthest-reaching point
+// (the outrigger foot sits at the very tip of the extended beam, so "most
+// extreme point in that quadrant" finds it directly, without needing to
+// identify which named part is "the foot" - there's nothing to name it by
+// anyway, Onshape's own part names are all just "Part N") and nudges the
+// formula's lateralCenter/slewZ so its OWN prediction for each real leg's
+// CURRENT (unshifted) position lines up with that detected point exactly.
+// Falls back to the unmodified formula wherever a quadrant's geometry
+// can't be found or looks implausible (checked against that leg's own
+// known r, so a missing beam pair - like 1650's rear one - doesn't get
+// "corrected" using some unrelated far-off part instead).
+function refineCalibrationFromGeometry(root, cal, calibration, baseLegs) {
+  if (!baseLegs || !baseLegs.length) return cal;
+
+  const corners = { '1_-1': null, '1_1': null, '-1_-1': null, '-1_1': null };
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const box = new THREE.Box3().setFromObject(obj);
+    if (!isFinite(box.min.x)) return;
+    [[box.min.x, box.min.z], [box.min.x, box.max.z], [box.max.x, box.min.z], [box.max.x, box.max.z]].forEach(([x, z]) => {
+      const qx = x >= cal.lateralCenter ? 1 : -1;
+      const qz = z >= cal.slewZ ? 1 : -1;
+      const key = `${qx}_${qz}`;
+      const reach = Math.abs(x - cal.lateralCenter);
+      if (!corners[key] || reach > corners[key].reach) corners[key] = { x, z, reach };
+    });
+  });
+
+  let dxSum = 0, dzSum = 0, matched = 0;
+  baseLegs.forEach((leg) => {
+    const siteIsRight = cal.lateralSign === 1 ? leg.x >= 0 : leg.x < 0;
+    const siteIsFront = leg.y < 0; // site plan convention: front = negative Y
+    const qx = siteIsRight ? 1 : -1;
+    const wantMinZ = calibration.frontAtMinZ ? siteIsFront : !siteIsFront;
+    const qz = wantMinZ ? -1 : 1;
+    const corner = corners[`${qx}_${qz}`];
+    if (!corner) return;
+
+    const predicted = siteToWorld(cal, leg.x, leg.y);
+    // Sanity check: a genuine match should be within the same ballpark as
+    // this leg's own known reach (r), not e.g. the cab or tail block
+    // standing in for a beam pair the model doesn't actually have.
+    const detectedR = Math.hypot(corner.x - cal.lateralCenter, corner.z - cal.slewZ) * 1000;
+    if (detectedR < leg.r * 0.5 || detectedR > leg.r * 1.5) return;
+
+    dxSum += corner.x - predicted.x;
+    dzSum += corner.z - predicted.z;
+    matched++;
+  });
+
+  if (matched === 0) return cal;
+  return { ...cal, lateralCenter: cal.lateralCenter + dxSum / matched, slewZ: cal.slewZ + dzSum / matched };
+}
+
+// Refinement involves a full scene traversal - worth doing once per model
+// and reusing, not redoing on every calcCAD() (fires on every shift/pad
+// input change, not just when the 3D preview is first opened).
+const calibrationCache = {};
+function computeCalibration(modelKey, root, footprint, calibration, baseLegs) {
+  if (calibrationCache[modelKey]) return calibrationCache[modelKey];
+  const formulaCal = computeFormulaCalibration(root, footprint, calibration);
+  const refined = refineCalibrationFromGeometry(root, formulaCal, calibration, baseLegs);
+  calibrationCache[modelKey] = refined;
+  return refined;
 }
 
 // Site plan convention (see index.html): x = lateral, +right; y =
@@ -228,16 +302,21 @@ const LEG_MARKER_COLOR = 0xf8fafc;
 
 function applySync(modelKey, root, args) {
   clearOutriggers();
-  const cal = computeCalibration(root, args.footprint, args.calibration);
+  const cal = computeCalibration(modelKey, root, args.footprint, args.calibration, args.baseLegs);
   outriggerGroup = new THREE.Group();
 
   args.legs.forEach(leg => {
     const pos = siteToWorld(cal, leg.x, leg.y);
 
-    const markerGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.35, 16);
+    // Flat and close to ground, deliberately not a tall pin - a raised
+    // marker reads as visually offset from the real foot geometry in any
+    // angled (non-top-down) view, from simple perspective, even once the
+    // underlying X/Z position is exactly right (see methodology.txt
+    // 10.78's own before/after comparison).
+    const markerGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 16);
     const markerMat = new THREE.MeshStandardMaterial({ color: LEG_MARKER_COLOR });
     const marker = new THREE.Mesh(markerGeo, markerMat);
-    marker.position.set(pos.x, pos.y + 0.18, pos.z);
+    marker.position.set(pos.x, pos.y + 0.06, pos.z);
     outriggerGroup.add(marker);
 
     if (!leg.pad) return;
@@ -271,8 +350,13 @@ function applySync(modelKey, root, args) {
 // = CARRIER_CALIBRATION[modelKey], legs = calcCAD()'s own mappedOutriggers
 // array (same objects the 2D canvas draws from - x/y/movedX/movedY/pad
 // mean exactly what they mean there, deliberately not reinterpreted here).
-window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, legs) {
-  pendingSync[modelKey] = { footprint, calibration, legs };
+// baseLegs = each leg's own CURRENT (unshifted) r/x/y, straight from
+// cadFleetData - used only once, to anchor the calibration against the
+// model's real geometry (see refineCalibrationFromGeometry above); kept
+// separate from `legs` since those reflect whatever the shift/pad inputs
+// currently show, not necessarily the physical current position.
+window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, legs, baseLegs) {
+  pendingSync[modelKey] = { footprint, calibration, legs, baseLegs };
   if (currentModelKey !== modelKey || !scene) return;
   const root = modelCache[modelKey];
   if (!root) return; // still loading - applySync() replays this once it's in
