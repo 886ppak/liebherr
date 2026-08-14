@@ -3674,3 +3674,36 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   console errors.
 
 ================================================================================
+
+10.74 Outrigger ground pads: recolored to match this tab's own existing
+      current/future convention (yellow now, blue if moved)
+  10.73's pad rectangles/ghost pad were both violet, a color not used
+  anywhere else on this tab. Person asked for the pad's CURRENT position
+  to read solid + yellow, and its GHOSTED (if-moved) position to read
+  dashed + blue - which is exactly the convention this tab already uses
+  everywhere else (compare mode's old-center dot is the same yellow
+  #e5a900; the existing ghost target dot/line for an optional leg is
+  already the same blue #38bdf8), so this brings pads in line with
+  something already established rather than inventing a third color
+  language.
+  Current pad (drawPadBox at o.x/o.y): solid yellow outline/fill,
+  unchanged from 10.73 otherwise. Its own marker DOT also switches to
+  yellow when a pad is present (overriding the leg's must-move green /
+  optional amber dot specifically) - the must-move/optional status isn't
+  lost, since it's still fully carried by the connecting line's own
+  color+dash style and the P-label, both left untouched; only the dot
+  fill changes. Ghost pad (drawPadBox at o.movedX/o.movedY): recolored
+  from dashed violet to dashed blue, matching the ghost dot that was
+  already blue. Legend split from one "ground pad" swatch into two:
+  "pad (current)" (solid yellow) and "pad (if moved)" (dashed blue).
+  Verified in-browser: solid yellow pad+dot at the current position,
+  dashed blue pad at the ghost target, no change to must-move/optional
+  line styling or the table. Incidentally re-confirmed 10.73's "if
+  moved" pad-aware clash check still fires correctly through this color
+  change too - LTM 1130 with P3's pad on flagged "NOT POSSIBLE under
+  current footprint" for its ghost target, visibly overlapping the
+  actual chassis footprint outline in the screenshot. Pads-off default
+  path re-verified byte-for-byte unchanged (identical table output to
+  pre-10.73 baseline). No console errors.
+
+================================================================================
