@@ -3800,4 +3800,73 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   preview was open resets the toggle back to "Show 3D Carrier Model"
   and hides the canvas; no console errors.
 
+10.77 3D Carrier Preview: tied outrigger pad positions to the site plan
+  Person's own framing after seeing 10.76 work: "can you try tie them
+  to a site plan". Adds leg markers and pad boxes (current position:
+  solid; "if moved" target: ghosted) into the 3D scene, positioned
+  using the SAME leg/pad data the 2D canvas itself draws from
+  (calcCAD()'s own mappedOutriggers/lastFp - x/y/movedX/movedY/pad
+  passed through unreinterpreted, including the exact same "only ghost
+  when it differs from current" condition the 2D canvas already uses)
+  - not a separate parallel calculation that could quietly drift from
+  the 2D plan's own numbers.
+  The hard part: mapping the site plan's real-world mm coordinates
+  (relative to the slew center) onto the CAD model's own arbitrary
+  local coordinate space. Chose NOT to rescale the model to fit
+  FOOTPRINTS' width/front/rear figures - the CAD export is already
+  dimensionally accurate (more so than those OEM-sheet-derived
+  approximations), rescaling it would only introduce distortion.
+  Instead: measure the model's own bounding box, then use FOOTPRINTS'
+  front/(front+rear) as a FRACTION to locate where within that box the
+  slew center sits along the model's length axis (Z, confirmed the
+  longer axis for both cranes' exports) - this only requires knowing
+  which END of the box is the front, not the model's true real-world
+  size. That one fact - front-at-min-Z or front-at-max-Z - is the only
+  thing that can't be derived from the geometry alone.
+  Confirmed LTM 1110's orientation by rendering a straight-down
+  (orthographic-style) view and visually identifying the driving cab
+  (clear windshield/mirror geometry, unambiguous) - cab sits at min Z,
+  so frontAtMinZ: true. Verified this is actually right, not just
+  plausible, by rendering the calculated P1-P4 marker positions
+  alongside the real model from the same straight-down angle: all four
+  land exactly on the tips of the model's own four outrigger beams,
+  both front pair and rear pair, with the left/right pairing also
+  matching the 2D plan's own P2=front-right/P3=front-left convention.
+  Shifted-position test (ghost pads) confirmed too: "must move" legs'
+  solid pad relocates to the new spot (matches 2D - no ghost, since
+  x already equals movedX there), "optional but clashing" legs show
+  the current solid pad plus a distinct blue ghost box at the target
+  spot, exactly mirroring the 2D canvas's own two-state behavior.
+  LTM 1650 is a different story: its export is far sparser (28 parts
+  vs 1110's 289, confirmed back in 10.76) and only has ONE of the two
+  outrigger-beam pairs modeled at all - no driving cab geometry either,
+  so there was nothing to visually confirm frontAtMinZ against. Used
+  the same fraction-based math with a best-effort frontAtMinZ: true
+  guess, then checked it the same way as 1110 - rendered the
+  calculated markers against the model. The front pair (P2/P3) landed
+  exactly on the one modeled beam, which is real confirmation of the
+  length-axis and left/right calibration both being correct. The rear
+  pair (P1/P4) landed right at the very edge of the model's own
+  bounding box, close enough to the tip that the sparse export is more
+  likely explanation than a calibration error (this model is plausibly
+  just missing some rear-most chassis structure - the same document
+  this crane's Composite Part/STEP-reimport saga came from, see
+  10.75's methodology entry). Flagged uncertain: true on '1650' in
+  CARRIER_CALIBRATION for this reason - the math is consistent and the
+  confirmable half checks out, but nothing here should be taken as
+  precisely confirmed the way 1110's is until a fuller carrier export
+  exists for it.
+  Marker/pad colours match the 2D legend exactly (#e5a900 current,
+  #38bdf8 ghost) rather than inventing a separate 3D palette. Sync is
+  replayed automatically once a still-loading model finishes (toggling
+  3D on and calcCAD() firing happen at nearly the same time, so the
+  very first sync call almost always arrives before the multi-MB model
+  has finished fetching - would otherwise silently do nothing and wait
+  for the next unrelated input change). CARRIER3D_VERSION bumped 1->2.
+  Card subtitle and in-canvas label text updated to reflect that this
+  is no longer look-and-see only, with an explicit "approximate, not
+  survey-precision" caveat - the calibration is a real, checked
+  alignment, but still built from OEM dimension-sheet figures and a
+  bounding-box fraction, not a CAD-to-CAD coordinate match.
+
 ================================================================================

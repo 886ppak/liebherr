@@ -590,7 +590,7 @@
       </div>
 
       <div class="card" id="carrier-3d-card" style="display:none;">
-        <div class="card-title">3D Carrier Preview <span style="font-size:0.75rem; color:var(--text-muted); text-transform:none; font-weight:400;">(look-and-see only — not tied to the site plan yet)</span></div>
+        <div class="card-title">3D Carrier Preview <span style="font-size:0.75rem; color:var(--text-muted); text-transform:none; font-weight:400;">(outrigger pad positions are approximate — see note below)</span></div>
         <button class="toolbar-btn" id="carrier-3d-toggle-btn" style="width:100%;" onclick="toggleCarrier3D()">Show 3D Carrier Model</button>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
@@ -1672,16 +1672,31 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 1;
+    const CARRIER3D_VERSION = 2;
 
-    // Which cranes have a 3D carrier (chassis) model available - a "look
-    // and see" preview on the Outrigger Support Positioning tab, NOT wired
-    // into that tab's own must-move/clash-detection math. Keyed the same
-    // as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
+    // Which cranes have a 3D carrier (chassis) model available. Keyed the
+    // same as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
     // cranes have an exported model so far - see methodology.txt 10.76.
     const CARRIER_MODELS = {
       '1110': './outrigger/models/ltm1110-carrier.glb',
       '1650': './outrigger/models/ltm1650-carrier.glb'
+    };
+
+    // Per-crane calibration for mapping the site plan's own leg/pad
+    // positions onto the loaded CAD model - see vendor/carrier3d.js's own
+    // header comment for the math. frontAtMinZ: which end of the model's
+    // bounding box (min or max Z) is the front - confirmed by rendering a
+    // straight-down view of each model and visually identifying the
+    // driving cab (LTM 1110: cab clearly visible at min Z, high detail
+    // 289-part export). LTM 1650's export is much sparser (28 parts, no
+    // cab geometry, only one of the two outrigger-beam pairs modeled) so
+    // this is a best-effort guess using the same front/rear-fraction logic
+    // rather than a visually confirmed one - flagged uncertain so it's
+    // easy to find and flip if it turns out backwards. See methodology.txt
+    // 10.77.
+    const CARRIER_CALIBRATION = {
+      '1110': { frontAtMinZ: true, lateralSign: 1 },
+      '1650': { frontAtMinZ: true, lateralSign: 1, uncertain: true }
     };
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
@@ -3990,10 +4005,25 @@
         // Three.js + the viewer module are never fetched until this first
         // toggle - dynamic import(), same reasoning as CWT's 3D view (see
         // its own comment on setCwtView). Cached by URL after that.
-        const activate = () => window.__carrier3dActivate(modelKey, url);
+        const activate = () => { window.__carrier3dActivate(modelKey, url); syncCarrier3DOutriggers(); };
         if (window.__carrier3dActivate) activate();
         else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
       }
+    }
+
+    // Pushes calcCAD()'s own leg/pad positions (lastMapped/lastFp - the
+    // exact same objects the 2D canvas draws from) into the 3D preview, if
+    // it's currently open. A no-op whenever it isn't - called from both
+    // calcCAD() itself (so shift/pad changes update an already-open
+    // preview live) and toggleCarrier3D() (so opening it for the first
+    // time doesn't wait for the next unrelated input change). See
+    // methodology.txt 10.77.
+    function syncCarrier3DOutriggers() {
+      if (!carrier3DActive || !window.__carrier3dSyncOutriggers || !lastFp) return;
+      const modelKey = document.getElementById('cad-crane').value;
+      const calibration = CARRIER_CALIBRATION[modelKey];
+      if (!calibration) return;
+      window.__carrier3dSyncOutriggers(modelKey, lastFp, calibration, lastMapped);
     }
 
     function calcCAD() {
@@ -4086,6 +4116,7 @@
       document.getElementById('cad-results').innerHTML = resultsHtml;
       lastMapped = mappedOutriggers; lastFp = fp; lastShiftX = shiftX; lastShiftY = shiftYinput;
       drawCADCanvas(shiftX, shiftYinput, mappedOutriggers, fp);
+      syncCarrier3DOutriggers();
     }
 
     function drawCADCanvas(shiftX, shiftY, outriggers, fp) {
