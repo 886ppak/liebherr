@@ -525,12 +525,28 @@ function onCanvasClick(ev) {
 }
 
 const SELECTED_COLOR = new THREE.Color(0x10b981);
+// A slot's OTHER member is selected instead of this mesh's own appId (e.g.
+// LTM 1110's Replacement Ballast chosen over Winch 2* - the slot only has
+// geometry for one of its two members, see methodology.txt 10.69/10.72).
+// Without this, picking the member with no mesh made the slot's only
+// visible geometry fall back to baseColor - visually identical to nothing
+// being selected at all, even though the slot IS occupied. Distinct color
+// from SELECTED_COLOR so "this slot is filled, just not by what you're
+// looking at" reads differently from "this exact part is selected."
+const ALT_SELECTED_COLOR = new THREE.Color(0xec4899);
 
-function syncHighlight(modelKey, selectedSet) {
+function syncHighlight(modelKey, data, selectedSet) {
   const entry = modelCache[modelKey];
   if (!entry) return;
   entry.namedParts.forEach(p => {
-    p.mesh.material.color.copy(selectedSet.has(p.appId) ? SELECTED_COLOR : p.baseColor);
+    let color = p.baseColor;
+    if (selectedSet.has(p.appId)) {
+      color = SELECTED_COLOR;
+    } else if (p.slotGroup) {
+      const altSelected = data.components.some(c => c.slotGroup === p.slotGroup && c.id !== p.appId && selectedSet.has(c.id));
+      if (altSelected) color = ALT_SELECTED_COLOR;
+    }
+    p.mesh.material.color.copy(color);
   });
   const labelEl = document.getElementById('cwt-3d-label');
   const selectedNames = entry.namedParts
@@ -556,17 +572,17 @@ window.__cwt3dActivate = function (modelKey, data, selectedSet) {
     if (cached) {
       scene.add(cached.root);
       frameCamera(cached.root);
-      syncHighlight(modelKey, selectedSet);
+      syncHighlight(modelKey, data, selectedSet);
     } else {
       loadModel(modelKey, data, (entry) => {
         if (currentModelKey !== modelKey) return; // user switched away while loading
         scene.add(entry.root);
         frameCamera(entry.root);
-        syncHighlight(modelKey, selectedSet);
+        syncHighlight(modelKey, data, selectedSet);
       });
     }
   } else {
-    syncHighlight(modelKey, selectedSet);
+    syncHighlight(modelKey, data, selectedSet);
   }
 };
 
@@ -578,5 +594,5 @@ window.__cwt3dOnRender = function (modelKey, data, selectedSet) {
   const wrap = document.getElementById('cwt-3d-wrap');
   if (!wrap || wrap.style.display === 'none') return;
   if (!data || !data.model3d) return;
-  if (currentModelKey === modelKey) syncHighlight(modelKey, selectedSet);
+  if (currentModelKey === modelKey) syncHighlight(modelKey, data, selectedSet);
 };
