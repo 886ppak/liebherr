@@ -4034,4 +4034,76 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   cranes without a carrier model still correctly hide the card; no
   console errors.
 
+10.81 3D Carrier Preview: fixed the pad/foot alignment, for real this time
+  Person's own screenshot on LTM 1110: the calculated pad marker and the
+  model's own real outrigger foot geometry were STILL clearly two
+  separate points - not a small residual, a real visible gap on all four
+  corners. This meant 10.78's original "geometry-anchored calibration"
+  claim was wrong, or had regressed. Root-caused properly this time by
+  reproducing it locally (confirmed: identical gap, even in a pure
+  straight-down Top View where camera-angle parallax isn't a factor) and
+  iterating through several wrong theories before landing on the real
+  fix - worth recording all of them, since each one looked plausible and
+  each one was checked, not assumed:
+   1. Single global averaged offset (10.78's actual bug): applying one
+      averaged (detected - predicted) offset uniformly to all four legs
+      can only correct a constant frame-offset error, not the kind of
+      per-leg/scale mismatch this turned out to have. Replaced with an
+      independent per-axis least-squares LINE fit (site mm -> world
+      metres) through however many legs' geometry could be confirmed -
+      genuinely better, but the fitted line still doesn't pass through
+      any single leg's own point exactly, so a real (smaller) gap
+      remained even after this fix alone.
+   2. Farthest-reaching single VERTEX per quadrant: wrong, because a long
+      rectangular BEAM's own extreme corner is a real vertex too (unlike
+      a round foot's bounding-box corner, which isn't a point on the
+      shape at all) - this just found the beam's own tip, not the foot.
+   3. Most compact single MESH: also wrong. Dumped every mesh within 1.5m
+      of one corner and found 500+ of them - this Onshape export splits
+      every real part into hundreds of tiny per-face sub-meshes
+      (millimetre-scale bolt heads, decals, fillets), so "compact" just
+      grabbed some near-zero-size decal.
+   4. What actually works: aggregate sub-meshes back into their own PART
+      first (each real Onshape part occupies exactly one parent node in
+      this export - confirmed by dumping and aggregating: one 2.7m-long
+      part is obviously the beam, one short 0.95m-tall part is obviously
+      the jack cylinder, one 0.5x0.5m part sitting right at the model's
+      own lowest Y is obviously the foot plate), THEN filter to parts
+      within 15cm of the model's own lowest point (the foot plate TOUCHES
+      THE GROUND - the cylinder above it, the beam, and nearby hardware
+      don't), THEN take the LARGEST footprint among those ground-level
+      survivors (the plate itself, not incidental ground-adjacent
+      hardware). Also switched from the winning part's bounding-box
+      centre to its own vertex centroid, less sensitive to a single
+      asymmetric detail (an off-centre boss, a bracket on one side)
+      skewing a bounding box away from the part's true visual centre.
+   5. Even with (4)'s detection now correctly finding the foot plate,
+      there was STILL a real residual gap - because a least-squares fit
+      through 4 points doesn't pass through any one of them exactly, and
+      that residual was exactly what was still showing on screen. Fixed
+      by not routing a leg's own CURRENT position through the fitted line
+      at all when its geometry was directly confirmed: legAnchors (leg id
+      -> its own exact detected point) is now checked first in
+      siteToWorld(), bypassing the fit entirely for that leg's current
+      marker/pad. The fitted line is still used for extrapolating to a
+      SHIFTED (ghost) position, where there's no real geometry to check
+      against anyway - imprecision there is far less visible/important
+      than getting a leg's own CURRENT position exactly right.
+  Verified by re-testing the exact same corner after each of the 5
+  changes above, in order, with cropped/upscaled screenshots each time -
+  confirms this wasn't guesswork, each step was checked against the
+  previous one before moving to the next theory. Final result: LTM
+  1110's marker sits exactly on the real foot geometry at all four
+  corners (checked in Top View, no visible gap at any corner); LTM
+  1650's front pair (the only pair with real geometry to check against)
+  shows the same result; the whole-chassis ghost footprint and per-leg
+  ghost pads (10.79/10.80's own features) still work correctly with a
+  shift applied and Compare mode on - unaffected by any of this, since
+  ghosts deliberately never use legAnchors. CARRIER3D_VERSION bumped
+  6->12 across the whole debugging session (each iteration needed its
+  own cache-bust to actually test against a fresh browser). Full 7-crane
+  regression re-run at the end: cranes without a carrier model still
+  correctly hide the card, both 1110 and 1650 still load and render with
+  no console errors.
+
 ================================================================================

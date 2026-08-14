@@ -226,7 +226,10 @@ window.__carrier3dActivate = function (modelKey, url) {
 // methodology.txt 10.77) - that's the one thing that can't be derived from
 // the geometry alone. calibration.lateralSign flips left/right if a
 // crane's export happens to have +X reading as the opposite side from the
-// site plan's own "+X = right" convention.
+// site plan's own "+X = right" convention. xSlope/zSlope are world-metres
+// per site-plan-millimetre - always -0.001 or +0.001 here (the formula
+// trusts the CAD export's own scale exactly); refineCalibrationFromGeometry
+// below may replace them with a measured slope instead.
 function computeFormulaCalibration(root, footprint, calibration) {
   const box = new THREE.Box3().setFromObject(root);
   const groundY = box.min.y;
@@ -241,8 +244,24 @@ function computeFormulaCalibration(root, footprint, calibration) {
   // Z, matching the site plan's own "rear = positive Y" convention
   // directly); -1 when the front tip is at max Z instead.
   const dirSign = calibration.frontAtMinZ ? 1 : -1;
+  const lateralSign = calibration.lateralSign || 1;
   const slewZ = frontTipZ + dirSign * fractionFromFront * measuredLength;
-  return { groundY, lateralCenter, slewZ, dirSign, lateralSign: calibration.lateralSign || 1 };
+  return { groundY, lateralCenter, slewZ, xSlope: lateralSign / 1000, zSlope: dirSign / 1000 };
+}
+
+// Ordinary least-squares line fit, y = slope*x + intercept. Returns null
+// with fewer than 2 points (a line isn't determined) or when every x is
+// identical (vertical line, no defined slope) - refineCalibrationFromGeometry
+// falls back to the formula's own estimate for that axis in either case.
+function linearFit(pairs) {
+  if (pairs.length < 2) return null;
+  const n = pairs.length;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  pairs.forEach(([x, y]) => { sx += x; sy += y; sxy += x * y; sxx += x * x; });
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-9) return null;
+  const slope = (n * sxy - sx * sy) / denom;
+  return { slope, intercept: (sy - slope * sx) / n };
 }
 
 // The formula above gets the right general area, but a person comparing
@@ -253,37 +272,151 @@ function computeFormulaCalibration(root, footprint, calibration) {
 // (not every crane's export does - LTM 1650's is missing one of the two
 // beam pairs entirely, see 10.76/10.77), that geometry is a much better
 // anchor than the formula: it's the real, exported thing, not a derived
-// estimate. This finds each of the 4 corners' own farthest-reaching point
-// (the outrigger foot sits at the very tip of the extended beam, so "most
-// extreme point in that quadrant" finds it directly, without needing to
-// identify which named part is "the foot" - there's nothing to name it by
-// anyway, Onshape's own part names are all just "Part N") and nudges the
-// formula's lateralCenter/slewZ so its OWN prediction for each real leg's
-// CURRENT (unshifted) position lines up with that detected point exactly.
-// Falls back to the unmodified formula wherever a quadrant's geometry
-// can't be found or looks implausible (checked against that leg's own
-// known r, so a missing beam pair - like 1650's rear one - doesn't get
-// "corrected" using some unrelated far-off part instead).
+// estimate.
+//
+// For each of the 4 corners, identifies the outrigger FOOT PLATE
+// specifically (not the beam it's bolted to, not the jack cylinder above
+// it, not incidental nearby hardware) and uses its bounding-box centre as
+// the detected point, matched to its real P-id and fed into a per-axis
+// least-squares line fit (site mm -> world metres) across however many
+// legs' geometry could be confirmed - a per-axis LINE fit, not a single
+// averaged offset applied uniformly to every leg, since a uniform
+// translation can't correct a genuine per-leg/scale mismatch (only a
+// constant frame offset). Falls back to the formula's own slope/intercept
+// per-axis wherever fewer than 2 legs' geometry could be confirmed for
+// that axis (checked against each leg's own known r, so a missing beam
+// pair - like 1650's rear one - doesn't get "corrected" using some
+// unrelated far-off part instead).
+//
+// Identifying "the foot plate" took three attempts before landing on
+// something that actually works, root-caused off a person's own
+// screenshot that still showed a real, visible offset even in a straight-
+// down Top View (where camera-angle parallax can't be the explanation).
+// See methodology.txt 10.81 for the full trail:
+//   1. Farthest-reaching single VERTEX in each quadrant - wrong, because a
+//      long rectangular BEAM's own extreme corner is a real vertex too
+//      (unlike a round foot's bounding-box corner, which isn't a point on
+//      the shape at all), so this just found the beam's own tip.
+//   2. Most compact single MESH - also wrong: this Onshape export splits
+//      every real part into hundreds of tiny per-face sub-meshes
+//      (millimetre-scale bolt heads, decals, fillets - confirmed by
+//      dumping every mesh within 1.5m of one corner and finding 500+ of
+//      them), so "compact" just found some near-zero-size decal.
+//   3. What works: aggregate sub-meshes back into their own PART first
+//      (each real Onshape part occupies exactly one parent node in this
+//      export), THEN filter to parts within 15cm of the model's own
+//      lowest point (the foot plate TOUCHES THE GROUND - the cylinder
+//      above it, the beam, and nearby hardware don't), THEN take the
+//      LARGEST footprint among those ground-level survivors (the plate
+//      itself, not incidental ground-adjacent hardware).
 function refineCalibrationFromGeometry(root, cal, calibration, baseLegs) {
   if (!baseLegs || !baseLegs.length) return cal;
 
-  const corners = { '1_-1': null, '1_1': null, '-1_-1': null, '-1_1': null };
+  // Tracks each part's combined bounding box (for the ground/reach/
+  // footprint filtering below) AND its vertex centroid (sum + count) -
+  // used instead of the bounding-box centre for the part that actually
+  // wins, since a plate with any asymmetric detail (an off-centre
+  // mounting boss, a bracket on one side) pulls its own bounding-box
+  // centre away from where the part visually/physically centres, while
+  // the vertex centroid isn't thrown off by a few outlying vertices the
+  // same way.
+  const partBoxes = new Map(); // parent object -> combined Box3
+  const partCentroids = new Map(); // parent object -> { sum: Vector3, count: number }
+  const v = new THREE.Vector3();
   root.traverse((obj) => {
-    if (!obj.isMesh) return;
+    if (!obj.isMesh || !obj.parent) return;
     const box = new THREE.Box3().setFromObject(obj);
     if (!isFinite(box.min.x)) return;
-    [[box.min.x, box.min.z], [box.min.x, box.max.z], [box.max.x, box.min.z], [box.max.x, box.max.z]].forEach(([x, z]) => {
+    const existingBox = partBoxes.get(obj.parent);
+    if (existingBox) existingBox.union(box);
+    else partBoxes.set(obj.parent, box.clone());
+
+    const posAttr = obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position;
+    if (!posAttr) return;
+    obj.updateWorldMatrix(true, false);
+    const centroid = partCentroids.get(obj.parent) || { sum: new THREE.Vector3(), count: 0 };
+    for (let i = 0; i < posAttr.count; i++) {
+      v.fromBufferAttribute(posAttr, i).applyMatrix4(obj.matrixWorld);
+      centroid.sum.add(v);
+      centroid.count++;
+    }
+    partCentroids.set(obj.parent, centroid);
+  });
+
+  // "Most compact part" alone isn't a safe enough filter on its own - an
+  // Onshape assembly like this one has plenty of small hardware (brackets,
+  // pins, bolts) sitting near the beam that can be even more compact than
+  // the actual foot plate, and would win a pure compactness contest by
+  // accident. What actually, uniquely identifies the foot plate is that it
+  // TOUCHES THE GROUND - the cylinder above it and any nearby hardware
+  // don't. Filtering to parts within 15cm of the model's own lowest point
+  // (cal.groundY) first, THEN taking the largest (not smallest) footprint
+  // among survivors, reliably picks the plate over both the beam (too
+  // high off the ground to pass the filter at all) and small ground-
+  // adjacent hardware (present, but smaller than the actual plate).
+  const GROUND_TOLERANCE = 0.15;
+  const candidateReach = {}; // key -> best reach seen (bbox pass)
+  const candidateParts = {}; // key -> Set of ground-level parent objects worth comparing
+  partBoxes.forEach((box, parent) => {
+    if (box.min.y - cal.groundY > GROUND_TOLERANCE) return; // doesn't touch the ground - can't be the foot
+    [box.min.x, box.max.x].forEach((x) => {
       const qx = x >= cal.lateralCenter ? 1 : -1;
-      const qz = z >= cal.slewZ ? 1 : -1;
+      const zMid = (box.min.z + box.max.z) / 2;
+      const qz = zMid >= cal.slewZ ? 1 : -1;
       const key = `${qx}_${qz}`;
       const reach = Math.abs(x - cal.lateralCenter);
-      if (!corners[key] || reach > corners[key].reach) corners[key] = { x, z, reach };
+      if (!candidateReach[key] || reach > candidateReach[key] - 0.3) {
+        // Keep anything within 30cm of the current best, not just the
+        // single best box - there can be more than one ground-level part
+        // in the same corner (foot plate plus a mounting bracket, say).
+        candidateReach[key] = Math.max(candidateReach[key] || 0, reach);
+        (candidateParts[key] = candidateParts[key] || new Set()).add(parent);
+      }
     });
   });
 
-  let dxSum = 0, dzSum = 0, matched = 0;
+  // Among each quadrant's ground-level, reach-qualified candidates, the
+  // LARGEST footprint is the plate itself, not incidental hardware. Uses
+  // that winning part's own vertex CENTROID as the detected point, not its
+  // bounding-box centre - see the comment on partCentroids above.
+  const corners = { '1_-1': null, '1_1': null, '-1_-1': null, '-1_1': null };
+  Object.keys(candidateParts).forEach((key) => {
+    let best = null;
+    candidateParts[key].forEach((parent) => {
+      const box = partBoxes.get(parent);
+      const footprint = (box.max.x - box.min.x) * (box.max.z - box.min.z);
+      if (!best || footprint > best.footprint) best = { parent, footprint };
+    });
+    if (best) {
+      const centroid = partCentroids.get(best.parent);
+      if (centroid && centroid.count > 0) {
+        best.x = centroid.sum.x / centroid.count;
+        best.z = centroid.sum.z / centroid.count;
+      } else {
+        const box = partBoxes.get(best.parent);
+        best.x = (box.min.x + box.max.x) / 2;
+        best.z = (box.min.z + box.max.z) / 2;
+      }
+    }
+    corners[key] = best;
+  });
+
+  // legAnchors: leg.id -> its own detected point directly, for legs whose
+  // geometry was confirmed. Used to place that SPECIFIC leg's CURRENT
+  // marker/pad exactly on its own detected point (see applySync below) -
+  // a fitted line through all 4 legs is the best available estimate for
+  // extrapolating to a SHIFTED position where no real geometry exists to
+  // check against, but for a leg's own current position there's no reason
+  // to settle for "close, per the fitted line" when the exact detected
+  // point is sitting right there. A least-squares fit minimises the total
+  // error across all 4 points - it isn't expected to pass through any one
+  // of them exactly, so relying on it even for already-confirmed legs
+  // re-introduces the very error this whole detection pass exists to
+  // remove. See methodology.txt 10.81.
+  const legAnchors = {};
+  const xPairs = [], zPairs = [];
   baseLegs.forEach((leg) => {
-    const siteIsRight = cal.lateralSign === 1 ? leg.x >= 0 : leg.x < 0;
+    const siteIsRight = cal.xSlope >= 0 ? leg.x >= 0 : leg.x < 0;
     const siteIsFront = leg.y < 0; // site plan convention: front = negative Y
     const qx = siteIsRight ? 1 : -1;
     const wantMinZ = calibration.frontAtMinZ ? siteIsFront : !siteIsFront;
@@ -291,20 +424,27 @@ function refineCalibrationFromGeometry(root, cal, calibration, baseLegs) {
     const corner = corners[`${qx}_${qz}`];
     if (!corner) return;
 
-    const predicted = siteToWorld(cal, leg.x, leg.y);
     // Sanity check: a genuine match should be within the same ballpark as
     // this leg's own known reach (r), not e.g. the cab or tail block
     // standing in for a beam pair the model doesn't actually have.
     const detectedR = Math.hypot(corner.x - cal.lateralCenter, corner.z - cal.slewZ) * 1000;
     if (detectedR < leg.r * 0.5 || detectedR > leg.r * 1.5) return;
 
-    dxSum += corner.x - predicted.x;
-    dzSum += corner.z - predicted.z;
-    matched++;
+    legAnchors[leg.id] = { x: corner.x, z: corner.z };
+    xPairs.push([leg.x, corner.x]);
+    zPairs.push([leg.y, corner.z]);
   });
 
-  if (matched === 0) return cal;
-  return { ...cal, lateralCenter: cal.lateralCenter + dxSum / matched, slewZ: cal.slewZ + dzSum / matched };
+  const xFit = linearFit(xPairs);
+  const zFit = linearFit(zPairs);
+  const fittedCal = (!xFit && !zFit) ? cal : {
+    ...cal,
+    xSlope: xFit ? xFit.slope : cal.xSlope,
+    lateralCenter: xFit ? xFit.intercept : cal.lateralCenter,
+    zSlope: zFit ? zFit.slope : cal.zSlope,
+    slewZ: zFit ? zFit.intercept : cal.slewZ
+  };
+  return { ...fittedCal, legAnchors };
 }
 
 // Refinement involves a full scene traversal - worth doing once per model
@@ -320,12 +460,21 @@ function computeCalibration(modelKey, root, footprint, calibration, baseLegs) {
 }
 
 // Site plan convention (see index.html): x = lateral, +right; y =
-// longitudinal, front = negative Y, rear = positive Y. mm in, meters out.
-function siteToWorld(cal, xMm, yMm) {
+// longitudinal, front = negative Y, rear = positive Y. mm in, xSlope/
+// zSlope already carry the mm->m conversion (see computeFormulaCalibration/
+// refineCalibrationFromGeometry above), so no /1000 here.
+// legId, when given and present in cal.legAnchors, bypasses the fitted
+// line entirely and returns that leg's own directly-detected point - see
+// the comment on legAnchors in refineCalibrationFromGeometry above. Only
+// pass a legId for a leg's own CURRENT position; a shifted/ghost position
+// has no real geometry to anchor to and must use the fitted line.
+function siteToWorld(cal, xMm, yMm, legId) {
+  const anchor = legId != null && cal.legAnchors && cal.legAnchors[legId];
+  if (anchor) return new THREE.Vector3(anchor.x, cal.groundY, anchor.z);
   return new THREE.Vector3(
-    cal.lateralCenter + cal.lateralSign * (xMm / 1000),
+    cal.lateralCenter + cal.xSlope * xMm,
     cal.groundY,
-    cal.slewZ + cal.dirSign * (yMm / 1000)
+    cal.slewZ + cal.zSlope * yMm
   );
 }
 
@@ -366,7 +515,10 @@ function applySync(modelKey, root, args) {
 
   args.legs.forEach(leg => {
     const base = baseById.get(leg.id) || leg;
-    const pos = siteToWorld(cal, base.x, base.y);
+    // leg.id passed through so a confirmed leg's marker/pad lands exactly
+    // on its own detected geometry (see siteToWorld's own comment) rather
+    // than wherever the fitted line places it.
+    const pos = siteToWorld(cal, base.x, base.y, leg.id);
 
     // Flat and close to ground, deliberately not a tall pin - a raised
     // marker reads as visually offset from the real foot geometry in any
