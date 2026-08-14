@@ -58,4 +58,4 @@ To deploy a change: edit the files, bump `CACHE_VERSION` in `sw.js` if you touch
 
 ## License
 
-All rights reserved — see [`LICENSE`](./LICENSE). This code is not open source; viewing it here doesn't grant permission to copy, reuse, or redistribute it.
+[PolyForm Noncommercial License 1.0.0](./LICENSE) — free to use, copy, modify, and redistribute for any noncommercial purpose. Commercial use (including monetizing it in any form) is not permitted without separate permission.
