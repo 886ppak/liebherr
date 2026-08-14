@@ -1573,7 +1573,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 2;
+    const CARRIER3D_VERSION = 3;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
@@ -3919,12 +3919,25 @@
     // preview live) and toggleCarrier3D() (so opening it for the first
     // time doesn't wait for the next unrelated input change). See
     // methodology.txt 10.77.
+    //
+    // baseLegs: each leg's own CURRENT (unshifted) r/x/y, recomputed fresh
+    // from cadFleetData rather than reused from lastMapped - lastMapped's
+    // x/y already reflect whatever the shift inputs currently show (see
+    // calcCAD()'s own plotX/plotY logic), not necessarily the physical
+    // current position, and the 3D side needs the real current position to
+    // anchor its calibration against the model's own geometry. See
+    // methodology.txt 10.78.
     function syncCarrier3DOutriggers() {
       if (!carrier3DActive || !window.__carrier3dSyncOutriggers || !lastFp) return;
       const modelKey = document.getElementById('cad-crane').value;
       const calibration = CARRIER_CALIBRATION[modelKey];
       if (!calibration) return;
-      window.__carrier3dSyncOutriggers(modelKey, lastFp, calibration, lastMapped);
+      const craneObj = cadFleetData[modelKey];
+      const baseLegs = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL].map(item => {
+        const rad = item.angle * (Math.PI / 180);
+        return { id: item.id, r: item.r, x: item.r * Math.sin(rad), y: item.r * Math.cos(rad) };
+      });
+      window.__carrier3dSyncOutriggers(modelKey, lastFp, calibration, lastMapped, baseLegs);
     }
 
     function calcCAD() {

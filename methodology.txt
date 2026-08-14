@@ -3869,4 +3869,63 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   alignment, but still built from OEM dimension-sheet figures and a
   bounding-box fraction, not a CAD-to-CAD coordinate match.
 
+10.78 3D Carrier Preview: anchor calibration to the model's own outrigger
+      geometry instead of only the FOOTPRINTS formula
+  Person's own screenshot, on LTM 1650: the calculated pad marker and
+  the model's own real outrigger foot (visible on the CAD geometry
+  itself - a small red-marked cylinder at the end of the beam) were
+  clearly two separate points, not lined up. "can we get these two
+  points to line up thats is what all the p1/4 symbolize the outrigger
+  pos." Fair - 10.77's calibration was entirely formula-derived
+  (FOOTPRINTS' front/rear as a fraction along the model's measured
+  length), and FOOTPRINTS is itself an OEM-sheet approximation, not
+  measured off this specific CAD export - close, evidently not exact.
+  Fix: when the model actually has its own outrigger beam/foot geometry
+  (not guaranteed - LTM 1650's export is missing one whole beam pair,
+  see 10.76/10.77), treat that geometry as ground truth and nudge the
+  calibration to match it, rather than trusting the formula alone.
+  refineCalibrationFromGeometry() finds each of the 4 corners' own
+  farthest-reaching point (the foot sits at the very tip of the
+  extended beam, so "the single most extreme point in that quadrant"
+  finds it directly - no need to identify which named part is "the
+  foot," which isn't possible anyway since Onshape's own part names
+  are all just "Part N", nothing semantic to match against), matches
+  each detected point to its real P-id using the existing frontAtMinZ/
+  lateralSign flags, and shifts the WHOLE calibration's
+  lateralCenter/slewZ by the average (detected - predicted) offset
+  across whichever legs matched. A sanity check (detected distance
+  from center must be within 0.5x-1.5x that leg's own known r) stops a
+  missing leg's quadrant from grabbing some unrelated far-off part
+  (cab, tail block) as a false match - exactly the situation 1650's
+  rear pair is in.
+  Result, checked the same way as 10.77 (zoomed screenshot of the
+  actual rendered corner): LTM 1650's front-pair marker, previously
+  visibly offset from the real foot, now sits essentially coincident
+  with it. LTM 1110 - already good in 10.77 - stayed good; the
+  refinement found a genuine but small correction there too (its
+  formula estimate was close, not exact).
+  Also flattened the leg marker (cylinder height 0.35->0.05, y-offset
+  0.18->0.06): a raised marker reads as visually offset from the real
+  foot in any angled (non-top-down) view purely from camera
+  perspective, even once the underlying X/Z position is exactly
+  right - most of what was left of the visible gap after the geometry
+  fix was this, not a calibration error. Confirmed via a pure top-down
+  render (matches 10.77's own verification method) that ground-plane
+  X/Z alignment was already exact before this - the flattening is a
+  legibility fix for the default angled camera, not a second
+  correctness fix.
+  Calibration is computed once per model and cached (calibrationCache
+  keyed by modelKey) rather than redone on every calcCAD() call - the
+  geometry scan traverses every mesh in the model, worth avoiding on
+  every shift/pad keystroke. baseLegs (each leg's real CURRENT r/x/y,
+  fresh from cadFleetData) added as a new argument to
+  __carrier3dSyncOutriggers() specifically for this anchoring purpose -
+  deliberately not reused from lastMapped's own x/y, which already
+  reflect whatever the shift inputs currently show (calcCAD()'s own
+  plotX/plotY logic), not necessarily the physical current position.
+  CARRIER3D_VERSION bumped 2->3. Verified in-browser: all 5 cranes
+  without a carrier model still correctly hide the card; LTM 1110 with
+  pads + a shift still renders the ghost pad correctly (10.77's own
+  behaviour untouched by this change); no console errors.
+
 ================================================================================
