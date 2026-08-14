@@ -826,6 +826,24 @@
         figRef: 'Fig. 127611, Liebherr doc LTM 1250-5-1-001 (0213656-02) — diagram re-drawn as clean line art, not the original OEM artwork',
         manualUrl: 'https://drive.google.com/file/d/1ZHT10UONgoPWW2IK7STaAEL6Jeojd9dT/view?usp=drive_link',
         manualPage: 881,
+        // Person-supplied Onshape GLB, already positioned in their own
+        // exploded layout (preExploded: true, methodology.txt 10.67/
+        // 10.71). Direct, unambiguous partMap - every CAD body's own name
+        // matches an app component name exactly (down to "Counterweight_7"
+        // having no "Plate" in it, same as the app's own "Counterweight 7"
+        // name for p7 - the one component here that isn't itself called a
+        // "plate"). Hook_Ballast_8 is 2 CAD bodies (both plain
+        // "Hook_Ballast_8", GLTFLoader auto-renames the second to "_1"),
+        // matching p8's own separate:true side-mounted pair modeling.
+        model3d: {
+          url: './counterweight/models/ltm1250-cwt.glb?v=1',
+          preExploded: true,
+          partMap: {
+            'Receptacle_Plate_1': 'p1', 'Counterweight_Plate_2': 'p2', 'Counterweight_Plate_3': 'p3',
+            'Counterweight_Plate_4': 'p4', 'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6',
+            'Counterweight_7': 'p7', 'Hook_Ballast_8': 'p8'
+          }
+        },
         // weight in t. centerTrim: flagged by the source doc as needing
         // plates 3 AND 4 both fitted to sit centered correctly on its own.
         // separate: mounts to the SIDES of the stack, not stacked at all
@@ -1061,28 +1079,24 @@
         figRef: 'Fig. 103261, Liebherr doc LTM 1130-5-1-008 (0212849-05) — diagram re-drawn as clean line art, not the original OEM artwork',
         manualUrl: 'https://drive.google.com/file/d/1ruuyUoI51UWrUa6tCDtyt89ozDgStIeT/view?usp=drive_link',
         manualPage: 807,
-        // Onshape-exported GLB (person-supplied). Redone since the
-        // original (10.57) - that one carried only Onshape's arbitrary
-        // "Part N" numbers, so the mapping had to be inferred from
-        // geometry (thickness-vs-weight ratios) rather than confirmed.
-        // This version has parts labelled to match the app's own
-        // component names directly (same approach as LTM 1300, 10.63),
-        // so partMap below is a direct, confirmed lookup - kept as the
-        // proof of concept either way, per the person. GLTFLoader
-        // sanitizes the source labels on load (spaces -> underscores,
-        // "/" dropped rather than replaced - "Replacement Weight 7 /
-        // Winch 2*" becomes "Replacement_Weight_7__Winch_2*", note the
-        // double underscore where the slash's two flanking spaces both
-        // survived but the slash itself didn't) - partMap keys are the
-        // POST-sanitizing names, confirmed by loading the file rather
-        // than guessed. Both the replacement-weight/winch part and the
-        // auxiliary ballast pair are labelled identically on both of
-        // their physical halves (person: "labelled the replacement
-        // weight twice as it was two parts") - handled by the same
-        // shared-name matching as LTM 1300's receptacle (methodology.txt
-        // 10.63): both halves map to the one string id below, so they
-        // move and highlight as a single rigid block rather than two
-        // independent items.
+        // Onshape-exported GLB (person-supplied), parts labelled to match
+        // the app's own component names directly, so partMap below is a
+        // direct, confirmed lookup. GLTFLoader sanitizes the source labels
+        // on load (spaces -> underscores, "/" dropped rather than replaced
+        // - "Replacement Weight 7 / Winch 2*" becomes
+        // "Replacement_Weight_7__Winch_2*", note the double underscore
+        // where the slash's two flanking spaces both survived but the
+        // slash itself didn't) - partMap keys are the POST-sanitizing
+        // names, confirmed by loading the file rather than guessed. Both
+        // the replacement-weight/winch part and the auxiliary ballast pair
+        // are labelled identically on both of their physical halves -
+        // handled by the same shared-name matching as LTM 1300's
+        // receptacle (methodology.txt 10.63).
+        // Redone again by the person in their own already-exploded layout
+        // (preExploded: true, methodology.txt 10.67/10.71), superseding
+        // the auto-explode this crane needed 10.64/10.66's fixes for
+        // (aux ballast pair gluing into one block, winch hidden behind the
+        // stack) - partMap unchanged, same naming convention either way.
         model3d: {
           // ?v= is not decorative - this URL is fetched into the service
           // worker's CONTENT_CACHE (see sw.js), which is cache-first
@@ -1092,7 +1106,8 @@
           // already have the old one cached will never see the new file.
           // Same convention as vendor/cwt3d.js's own ?v=. See
           // methodology.txt 10.58/10.60.
-          url: './counterweight/models/ltm1130-cwt.glb?v=2',
+          url: './counterweight/models/ltm1130-cwt.glb?v=3',
+          preExploded: true,
           partMap: {
             'Counterweight_Plate_1': 'p1', 'Counterweight_Plate_2': 'p2',
             'Counterweight_Plate_3': 'p3', 'Counterweight_Plate_4': 'p4',
@@ -1405,31 +1420,33 @@
         figRef: 'Diagram re-drawn as clean line art from this variant’s actual counterweight stack — not OEM artwork.',
         manualUrl: 'https://drive.google.com/file/d/1fU-VjDgFGx8NcbJajghazvFk08wdlkDP/view?usp=drive_link',
         manualPage: 931,
-        // Person-supplied Onshape GLB, this time with parts already
-        // labelled to match the app's own numbering (unlike LTM 1130's
-        // model3d, 10.57, where the mapping had to be inferred from
-        // geometry) - so this partMap is a direct, confirmed lookup, not a
-        // guess. Two things the person flagged about their own labelling
-        // that this map has to account for, both handled generically in
-        // cwt3d.js rather than as one-off cases (see partMapKeyFor() and
-        // the "rigid block" explode logic, methodology.txt 10.63):
+        // Person-supplied Onshape GLB, parts labelled to match the app's
+        // own numbering directly (not inferred from geometry). Two things
+        // about the labelling this map has to account for, both handled
+        // generically in cwt3d.js rather than as one-off cases (see
+        // partMapKeyFor(), methodology.txt 10.63):
         //  - Wing weights 5/6 labelled "5L"/"5R" and "6L"/"6R" (left/right)
         //    - both sides of each pair map to the SAME id (aux5/aux6), same
         //    as the app's own "2x Auxiliary Ballast" both-or-neither
         //    modeling.
         //  - The receptacle (Plate 1) is 5 separate small CAD bodies, all
         //    labelled plain "1" - GLTFLoader auto-renames the duplicates
-        //    ("1", "1_1".."1_4"), and since all 5 map to the same single id
-        //    (p1) they move as one rigid block when exploded rather than
-        //    scattering independently.
-        //  - The one case NOT resolved by labelling alone: Plate 3 has two
-        //    identical, interchangeable physical copies, both labelled "3"
-        //    (GLTFLoader -> "3"/"3_1") - since interchangeable means there's
-        //    truly no real difference between them, `['p3a', 'p3b']` lets
-        //    cwt3d.js split the two instances by position rather than
-        //    needing a way to tell them apart by name.
+        //    ("1", "1_1".."1_4").
+        //  - Plate 3 has two identical, interchangeable physical copies,
+        //    both labelled "3" (GLTFLoader -> "3"/"3_1") - since
+        //    interchangeable means there's truly no real difference between
+        //    them, `['p3a', 'p3b']` lets cwt3d.js split the two instances
+        //    by position rather than needing a way to tell them apart by
+        //    name.
+        // Redone by the person in their own already-exploded layout
+        // (preExploded: true, methodology.txt 10.67/10.71) - superseding
+        // the original auto-explode this crane needed 10.63-10.65's
+        // fixes for (bottom-edge stack sort, extra L/R pair clearance).
+        // partMap unchanged from the original - same node-naming
+        // convention, still a direct confirmed lookup either way.
         model3d: {
-          url: './counterweight/models/ltm1300-cwt.glb?v=1',
+          url: './counterweight/models/ltm1300-cwt.glb?v=2',
+          preExploded: true,
           partMap: {
             '1': 'p1', '2': 'p2', '3': ['p3a', 'p3b'], '4': 'p4', '5': 'p5',
             '5L': 'aux5', '5R': 'aux5', '6L': 'aux6', '6R': 'aux6'
@@ -1538,6 +1555,34 @@
         figRef: 'Diagram traced directly from the OEM combination chart’s own artwork, not a freehand redraw.',
         manualUrl: 'https://drive.google.com/file/d/14UaQ6QYTUQC5q4I2OilH1sWB42K_Lgie/view?usp=drive_link',
         manualPage: 819,
+        // Person-supplied Onshape GLB, already positioned in their own
+        // exploded layout (preExploded: true, methodology.txt 10.67/
+        // 10.71). Plate 2/3 are 3 side-by-side pairs (not stacked - each
+        // pair sits at its own tier, tiers stacked on top of each other),
+        // all 6 CAD bodies labelled just "Counterweight_plate_2"/"_3"
+        // with no a/b/c suffix distinguishing which tier is which - the
+        // app's own a/b/c ids had to be inferred from Y position rather
+        // than read off a label. Matched to the SAME bottom-to-top order
+        // already established by this crane's own combos (a added first,
+        // then b, then c - each a strict superset of the last) and cross-
+        // checked against the 2D hotspot coordinates (p2c/p3c's hotspot
+        // sits at the smallest Y in the source image, i.e. highest up,
+        // consistent with being the topmost tier) - not a guess, but not
+        // a direct CAD label either, so worth the person double-checking
+        // the rendered result once. Receptacle is a single CAD body, no
+        // shared-name ambiguity despite separate:true above (that flag's
+        // for the 2D hotspot system's two-region drawing, not a multi-
+        // location mount - doesn't affect the 3D lookup either way).
+        model3d: {
+          url: './counterweight/models/ltr1220-cwt.glb?v=1',
+          preExploded: true,
+          partMap: {
+            'Receptacle_plate_1': 'p1',
+            'Counterweight_plate_3_1': 'p3a', 'Counterweight_plate_2_2': 'p2a',
+            'Counterweight_plate_3_2': 'p3b', 'Counterweight_plate_2': 'p2b',
+            'Counterweight_plate_3': 'p3c', 'Counterweight_plate_2_1': 'p2c'
+          }
+        },
         components: [
           { id: 'p1', name: 'Receptacle plate 1', weight: 10.0, separate: true, shortLabel: '1',
             hotspots: [

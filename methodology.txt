@@ -3553,3 +3553,51 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   as before - clicking past it just deselects, no error).
 
 ================================================================================
+
+10.71 CWT Combinations: LTM 1300/1130 redone with preExploded; added LTR
+      1220 and LTM 1250 - first two cranes with 3D models built entirely
+      around a preExploded file, no auto-explode debugging at all
+  Person redid LTM 1300 and LTM 1130's models in their own already-
+  exploded layout (same as LTM 1110, 10.67/10.69) and sent LTR 1220 and
+  LTM 1250 as new cranes, all four in the same batch, all Draco-
+  compressed (10.70 shipped same day, otherwise none of these four would
+  have loaded at all).
+  LTM 1300/1130: partMap unchanged for both - same node-naming convention
+  as the originals, still a direct lookup. Just preExploded: true added
+  and the old explain-the-auto-explode-heuristics comments trimmed down
+  (10.63-10.66's rigid-block/bottom-edge-sort/pair-clearance/explodeTop
+  fixes no longer apply to either crane now, though the code itself stays
+  in cwt3d.js - still real, working infrastructure for whichever future
+  crane's export isn't pre-exploded).
+  LTR 1220: partMap is NOT a direct lookup here - plate 2/3 are 3 side-by-
+  side pairs (not a vertical stack; each pair sits at its own tier,
+  tiers stacked on each other), and all 6 CAD bodies are labelled just
+  "Counterweight_plate_2"/"_3" with no a/b/c suffix telling which tier is
+  which. Inferred the app's own a/b/c ids from Y position instead,
+  cross-checked two ways before shipping: (1) matched against this
+  crane's own combo progression, where tier a is added first, b second, c
+  third, each combo a strict superset of the last - so bottom-to-top by Y
+  should read a/b/c in that order if the physical build-up matches the
+  combo order, which it should since combos are cumulative; (2) checked
+  against the 2D hotspot's own SVG Y-coordinates, where p2c/p3c's hotspot
+  sits at the smallest image-Y (= highest up on the page = physically
+  topmost), consistent with (1). Verified a third way, empirically, after
+  shipping the inferred map: selected tier a alone in the live 3D view -
+  highlighted directly above the receptacle, at the bottom. Selected tier
+  c alone - highlighted the very top of the stack. Both matched the
+  inference exactly.
+  LTM 1250: fully direct, unambiguous partMap - every CAD body's name
+  matches an app component name exactly, including "Counterweight_7"
+  having no "Plate" in it same as the app's own "Counterweight 7" name
+  for p7 (the one component on this crane that isn't itself called a
+  "plate"). Hook_Ballast_8 is 2 CAD bodies sharing one name (GLTFLoader
+  auto-renames the second to "_1"), matching p8's separate:true side-
+  mounted pair.
+  Verified in-browser for all four: every component id resolves to its
+  correct real weight and highlights the correct mesh, receptacle sits at
+  the bottom on both redone cranes and both new ones, LTM 1130's winch
+  still on top post-redo, LTM 1250's Hook Ballast pair highlights both
+  sides together. Full 7-crane sweep clean, no console errors - 5 of 7
+  cranes now have 3D models (1110, 1130, 1220, 1250, 1300).
+
+================================================================================
