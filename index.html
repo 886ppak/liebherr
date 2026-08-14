@@ -975,20 +975,28 @@
         // all - it lived in an Onshape Composite Part, which the
         // assembly-level GLB exporter silently dropped (methodology.txt
         // 10.69's extraParts workaround, exporting it as its own
-        // supplementary GLB). Person swapped it into the main assembly
-        // directly instead (as "Part_1") and re-exported - back to being
-        // a normal partMap entry like every other plate, no separate file
-        // or rotation override needed anymore. Replacement Ballast (p8b,
-        // the OTHER thing that can occupy this same slot) still has no
-        // geometry anywhere - the 2D diagram covers it fully regardless.
+        // supplementary GLB). First swapped in a substitute pulled from
+        // LTM 1130's own document (as "Part_1") since Onshape allows
+        // pulling parts across documents - functional but not this
+        // crane's own actual geometry. Superseded by the proper fix:
+        // export the composite part to STEP, reimport as a plain solid,
+        // swap that into the assembly in place of the old composite-
+        // linked instance, re-export - now "Replacement_Ballast_<1>",
+        // the crane's own real slab. This node landed as an Object3D
+        // (STEP-reimport artifact), not the Group type every other
+        // matched node in this app has been - see the type-filter
+        // loosening on the groupsByKey traversal above, methodology.txt
+        // 10.75. Replacement Ballast (p8b, the OTHER thing that can
+        // occupy this same slot) still has no geometry anywhere - the 2D
+        // diagram covers it fully regardless.
         model3d: {
-          url: './counterweight/models/ltm1110-cwt.glb?v=2',
+          url: './counterweight/models/ltm1110-cwt.glb?v=3',
           preExploded: true,
           partMap: {
             'Receptacle_Plate_1left': 'p1', 'Receptacle_Plate_1base': 'p1', 'Receptacle_Plate_1right': 'p1',
             'Counterweight_Plate_2': 'p2', 'Counterweight_Plate_3': 'p3', 'Counterweight_Plate_4': 'p4',
             'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6', 'Counterweight_Plate_7_1': 'p7',
-            'Part_1': 'p8w'
+            'Replacement_Ballast_<1>': 'p8w'
           }
         },
         // p3/p4 are ALWAYS present together in every published combo (never
@@ -1650,7 +1658,7 @@
     // the dynamic import in setCwtView() and by cacheAllOfflineContent()'s
     // file list, so the two can't drift apart and start caching different
     // versions of the same file.
-    const CWT3D_VERSION = 10;
+    const CWT3D_VERSION = 11;
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this

@@ -3707,3 +3707,48 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   pre-10.73 baseline). No console errors.
 
 ================================================================================
+
+10.75 LTM 1110's winch (p8w) swapped for its own real geometry via STEP
+      reimport; discovered and fixed a real Group-vs-Object3D gap in
+      cwt3d.js's node matching along the way
+  10.69's "Part_1" was a working substitute (person pulled a part from
+  LTM 1130's own document, since Onshape allows cross-document part
+  reuse) - functional, but not this crane's own actual winch geometry.
+  Person went back and did the proper fix on the source Composite Part
+  itself: export it to STEP, reimport as a plain solid, swap that into
+  the assembly in place of the old composite-linked instance, re-export.
+  Confirmed by loading the new file directly: the composite's own
+  geometry is now really there, landing as "Replacement_Ballast_<1>",
+  visibly more detailed than the substitute (real housing/bolt-hole
+  geometry, not a stand-in slab).
+  What DIDN'T just work: this node came in as an Object3D, not the Group
+  type every other matched node in every crane so far has been - the
+  groupsByKey traversal only ever checked `obj.type === 'Group'`, so it
+  silently skipped this node entirely (found by broadening a diagnostic
+  dump to include Object3D types too, after the Group-only dump came up
+  empty for anything winch-sized). Root cause is a structural
+  difference in how a STEP-reimported node comes into the scene graph
+  vs. a native Onshape occurrence, not a naming quirk - so the fix is
+  generic, not a one-off: groupsByKey's traversal now accepts Object3D
+  nodes alongside Group, still filtered by name via partMapKeyFor()
+  exactly as before. Confirmed this can't misfire for any existing
+  crane: the auto-generated "occurrence_of_X" wrapper nodes (Object3D
+  type everywhere already, present in every crane's export) never
+  coincidentally share a name with a real partMap key - partMap only
+  ever lists a part's own name, never its wrapper's - so loosening the
+  filter only ever adds a match, never creates a false one.
+  partMap updated to 'Replacement_Ballast_<1>': 'p8w' (was 'Part_1').
+  Verified in-browser: all 8 of LTM 1110's own ids resolve to correct
+  weights, p8w highlights the new, more detailed winch mesh correctly
+  positioned on top of the stack. Full 7-crane sweep plus a dedicated
+  re-check of every other crane's own component ids (1130, 1220, 1250)
+  confirms the loosened type filter didn't disturb anything - identical
+  results to before this change. No console errors.
+  Also downloaded, this same session: the LTM 1650 carrier (46MB) and
+  LTM 1110 carrier (32MB) GLBs, via direct-download Nextcloud links
+  (curl straight to disk, bypassing the chat upload size limit) -
+  received and validated (real glTF binary headers, not error pages),
+  not yet inspected/wired up - that's the next mission's work, not part
+  of this fix.
+
+================================================================================
