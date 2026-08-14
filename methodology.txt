@@ -3626,3 +3626,51 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   back to none (grey). Full crane sweep clean, no console errors.
 
 ================================================================================
+
+10.73 Outrigger Support Positioning: added ground bearing pads (bog mats),
+      with real rectangle-vs-chassis collision detection, not just the
+      leg's own point
+  Person places 3.5m x 2.4m mats under P1-P4 sometimes to improve ground
+  bearing pressure, and wants the MUST MOVE / clash logic to account for
+  the mat's own footprint - "the real thing that needs collision
+  detection" - not just the leg's single contact point, which is all
+  clashesWithFootprint() ever checked. Confirmed before writing any math:
+  the mat is centered on the leg's own contact point (not offset to one
+  edge), and its 3.5m length always runs inline with the carrier's own
+  length axis regardless of which corner it's under (never rotated per-
+  leg - it's a physical mat sitting on the ground, not a rotated marker).
+  Person also asked for a PER-LEG toggle, not one global on/off - mats go
+  down one at a time as they're actually placed on site, not all four at
+  once.
+  Added padClashesWithFootprint(): a straightforward axis-aligned
+  rectangle-vs-rectangle overlap test between the pad (centered at the
+  leg's plotted x/y, half-width/half-length from the two new Pad Length/
+  Pad Width inputs) and the chassis footprint rectangle - both already
+  expressed in the same un-rotated local frame FOOTPRINTS/calcCAD() use
+  for everything else, so no new coordinate math needed, just a proper
+  AABB test instead of a point-in-box test. checkClash() is the single
+  entry point calcCAD() calls for both the "if moved" and "if left in
+  place" checks - transparently swaps to the pad-aware test only for
+  legs with their own checkbox on (cad-pad-1..4), point-only test
+  unchanged for every other leg, so default behavior (all four off) is
+  byte-for-byte the same as before this change.
+  Drawn on the site plan as a translucent violet rectangle at the leg's
+  own final position (drawPadBox(), same rotated-polygon approach as the
+  existing chassis footprint box), plus a lighter dashed ghost pad at an
+  optional leg's "if moved" target spot so the footprint that WOULD be
+  needed there is visible before deciding to relocate it.
+  Verified with real numbers before screenshotting anything (LTM 1130,
+  1.8m lateral shift): P1's own point sits at relX=1967mm, outside the
+  chassis's 1425mm half-width - point-only check correctly says
+  "optional." Its 2.4m-wide pad's near edge sits at 1967-1200=767mm,
+  well inside that same 1425mm boundary - pad-aware check correctly
+  flips it to "MUST MOVE" once P1's pad checkbox is on. Confirmed live in
+  the browser: exact same flip, and the screenshot shows the pad
+  rectangle visibly overlapping the dashed chassis footprint outline,
+  matching the math. Regression-swept the outrigger tab across all 7
+  cranes with every pad checkbox off (a real shift applied on each,
+  not just the zero-shift case) - identical "optional" results to
+  pre-change behavior, confirming the default path is untouched. No
+  console errors.
+
+================================================================================
