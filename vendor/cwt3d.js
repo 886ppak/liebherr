@@ -14,7 +14,21 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from './three/GLTFLoader.js';
+import { DRACOLoader } from './three/DRACOLoader.js';
 import { OrbitControls } from './three/OrbitControls.js';
+
+// Onshape's GLB export defaults to Draco-compressed geometry (confirmed
+// after a person's standalone single-part export failed to load with
+// "No DRACOLoader instance provided" - re-exporting without compression
+// worked, but every crane's export defaults to compression on, so
+// wiring up the decoder once here avoids relying on remembering to
+// toggle it off on every future export). One shared decoder instance,
+// reused across every GLTFLoader rather than spun up per load - it
+// launches its own worker/wasm module, not free to recreate. Decoder
+// files vendored locally (same as everything else this app loads - see
+// methodology.txt 10.70), not fetched from Google's CDN.
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('./vendor/three/draco/');
 
 let renderer = null, scene = null, camera = null, controls = null;
 let raycaster = null, mouse = null;
@@ -305,7 +319,9 @@ function partMapKeyFor(name, partMap) {
 
 function loadGLTFAsync(url) {
   return new Promise((resolve, reject) => {
-    new GLTFLoader().load(url, (gltf) => resolve(gltf.scene), undefined, reject);
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(dracoLoader);
+    loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
   });
 }
 
@@ -330,6 +346,14 @@ async function loadModel(modelKey, data, onDone) {
     // (e.g. LTM 1130's winch/replacement-weight) - see placeAtStackTop()
     // and methodology.txt 10.66.
     const stackTopIds = new Set(data.components.filter(c => c.explodeTop).map(c => c.id));
+    // Mutually-exclusive slot components (e.g. LTM 1110's Winch 2*/
+    // Replacement Ballast, both mounted in the same physical position -
+    // methodology.txt 10.7) need a click to CYCLE through the slot's
+    // members, same as the 2D hotspot already does, rather than plain
+    // toggle the one id whose mesh happens to be modeled. Looked up by
+    // appId here so onCanvasClick() can tell the two cases apart without
+    // needing its own copy of the app's component data.
+    const slotGroupById = new Map(data.components.map(c => [c.id, c.slotGroup]));
     const namedParts = [];
 
     // A partMap entry is either a plain app id string (every matching-
@@ -370,7 +394,7 @@ async function loadModel(modelKey, data, onDone) {
         group.traverse((child) => {
           if (child.isMesh) {
             child.material = child.material.clone();
-            namedParts.push({ appId, glbName: group.name, mesh: child, group, baseColor: child.material.color.clone() });
+            namedParts.push({ appId, slotGroup: slotGroupById.get(appId), glbName: group.name, mesh: child, group, baseColor: child.material.color.clone() });
           }
         });
       });
@@ -412,7 +436,7 @@ async function loadModel(modelKey, data, onDone) {
         extraRoot.traverse((child) => {
           if (child.isMesh) {
             child.material = child.material.clone();
-            namedParts.push({ appId: extra.appId, glbName: child.name, mesh: child, group: extraRoot, baseColor: child.material.color.clone() });
+            namedParts.push({ appId: extra.appId, slotGroup: slotGroupById.get(extra.appId), glbName: child.name, mesh: child, group: extraRoot, baseColor: child.material.color.clone() });
           }
         });
         container.add(extraRoot);
@@ -477,9 +501,13 @@ function frameCamera(root) {
 }
 
 // Ambiguous-slot components (e.g. LTM 1110's Winch 2*/Replacement Ballast
-// slotGroup pair) aren't addressed by this - LTM 1130 has none. If a future
-// crane's model3d covers one, clicking its mesh should call
-// window.cycleCwtSlotGroup(groupName) instead; not needed yet.
+// slotGroup pair, methodology.txt 10.7/10.70) need the same cycling
+// behavior the 2D hotspot already has - clicking cycles none -> first
+// member -> second member -> none, rather than a plain toggle of
+// whichever one happens to have a 3D mesh. slotGroup is looked up per
+// namedPart at load time (see loadModel()) so this only needs to check
+// which case applies, not know anything about the app's own component
+// data itself.
 function onCanvasClick(ev) {
   if (!currentModelKey) return;
   const entry = modelCache[currentModelKey];
@@ -491,7 +519,9 @@ function onCanvasClick(ev) {
   const hits = raycaster.intersectObjects(entry.namedParts.map(p => p.mesh), false);
   if (!hits.length) return;
   const hit = entry.namedParts.find(p => p.mesh === hits[0].object);
-  if (hit && window.toggleCwtPlate) window.toggleCwtPlate(hit.appId);
+  if (!hit) return;
+  if (hit.slotGroup && window.cycleCwtSlotGroup) window.cycleCwtSlotGroup(hit.slotGroup);
+  else if (window.toggleCwtPlate) window.toggleCwtPlate(hit.appId);
 }
 
 const SELECTED_COLOR = new THREE.Color(0x10b981);

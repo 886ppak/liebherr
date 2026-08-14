@@ -3519,3 +3519,37 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   own layout, no console errors. Full crane sweep clean.
 
 ================================================================================
+
+10.70 Added Draco decoder support; wired 3D clicks into the existing
+      slotGroup cycling behavior
+  Draco: the person's next batch of GLBs (LTM 1300/1130 redo, LTR 1220,
+  LTM 1250 - new, worked on separately) all failed to load with "No
+  DRACOLoader instance provided." Rather than ask for four re-exports
+  with compression toggled off (and every future one after that, since
+  it's apparently Onshape's default GLB export setting), vendored a
+  matching DRACOLoader.js + decoder (JS/WASM) from the same three.js
+  release already in use (r185, confirmed against the vendored
+  three.core.min.js's own REVISION string) and wired one shared decoder
+  instance into loadGLTFAsync()'s GLTFLoader. Decoder files vendored
+  locally under vendor/three/draco/, not fetched from Google's CDN (same
+  reasoning as every other vendored dependency this app uses - see
+  vendor/three's own original header). Added to allOfflineContentUrls()
+  alongside the rest of the 3D viewer's own files. Verified: all four
+  pending files decode and traverse cleanly now: 15/8/11/10 group nodes
+  respectively - full crane sweep re-run clean, no regression on the
+  already-shipped (non-Draco) LTM 1130/1300/1110 files either.
+  Slot cycling: separately, the person noticed LTM 1110's Winch 2*/
+  Replacement Ballast slot (methodology.txt 10.7) didn't cycle in 3D the
+  way its 2D hotspot already does, now that Winch 2* has real geometry
+  (10.69/10.70's Part_1 swap) to click on. onCanvasClick() previously
+  only ever called window.toggleCwtPlate() - added a slotGroup lookup
+  per namedPart (built once per load from the app's own component data,
+  same reused-signal pattern as `separate`/`explodeTop`) so a click on a
+  slot member's mesh now calls the SAME window.cycleCwtSlotGroup()
+  already used by the 2D view, instead of a plain toggle. Verified both
+  via direct cycleCwtSlotGroup() calls and real canvas clicks on the
+  winch mesh - cycles none -> Winch 2* -> Replacement Ballast -> none
+  correctly (Replacement Ballast itself still has no 3D geometry, same
+  as before - clicking past it just deselects, no error).
+
+================================================================================
