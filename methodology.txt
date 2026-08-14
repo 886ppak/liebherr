@@ -3928,4 +3928,69 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   pads + a shift still renders the ghost pad correctly (10.77's own
   behaviour untouched by this change); no console errors.
 
+10.79 3D Carrier Preview: whole-chassis ghost footprint, gated behind
+      Compare mode; Fit View / Top View camera controls
+  Person's own request after seeing the per-leg ghost pads working:
+  "can we get a ghosting box where the next cranes pos is going to be
+  on the 3d model... doesnt need to be the carrier 3d model could be
+  something like use used to repersent the bog mats ? just transperent
+  dashed line version?" - i.e. don't re-render a whole second carrier
+  model at the shifted spot, just reuse the same flat, dashed, ghost-
+  pad visual language already built for the per-leg pads, sized to the
+  whole chassis footprint instead of one pad.
+  Sized/positioned using FOOTPRINTS (the same width/front/rear figures
+  the 2D canvas's own drawFootprintBox() rectangle uses), offset by the
+  current shift, through the same siteToWorld() calibration transform
+  already used for everything else in this feature - no new
+  coordinate math needed, just a bigger box.
+  Person's own follow-up question caught something the first pass
+  missed: "should we have that on a toggle aswell like the 2d version
+  show old ver new pos?" - checked the 2D canvas's own logic and
+  confirmed: its ghost FOOTPRINT rectangle only draws when
+  compareMode is true (see its own `if (fp && compareMode && hasShift)
+  drawFootprintBox(...)` call), while the per-leg ghost PADS are
+  unconditional (drawn whenever a leg's position differs, regardless
+  of compareMode). The 3D side had gotten this wrong - the new
+  whole-chassis ghost was unconditional on any shift, not gated by
+  compareMode like its 2D counterpart. Fixed: __carrier3dSyncOutriggers
+  now also takes compareMode, and the whole-chassis ghost box checks it
+  alongside shiftX/shiftY - per-leg ghost pads correctly left
+  unconditional, matching 2D exactly in both cases now, not just one.
+  compareMode threaded through from index.html's own `compareMode`
+  variable (set by toggleCompareMode(), which already calls calcCAD()
+  itself, so no extra wiring needed to keep it live).
+  Extracted the shared ghost-box building (transparent fill + wireframe
+  outline) into addGhostBox(), used by both the per-leg pad ghosts and
+  the new whole-chassis one - and upgraded the wireframe from a plain
+  solid LineBasicMaterial to an actual LineDashedMaterial (dashSize
+  0.15, gapSize 0.1, wire.computeLineDistances() called after
+  construction - required or a "dashed" material renders solid) since
+  the person specifically asked for "dashed line" and the 2D plan's own
+  ghost convention is dashed too - the per-leg ghosts got this upgrade
+  for free along with the new footprint ghost, not just the new one.
+  Also added, unprompted but a natural fit given how much this session
+  has leaned on comparing the 3D view against the model's own geometry
+  by eye: Fit View and Top View buttons (a small toolbar row, shown
+  alongside the canvas). Fit View just re-runs the existing
+  frameCamera(). Top View is new - deliberately NOT a literal straight-
+  down camera (0.5° off vertical instead): true vertical is a
+  degenerate case for OrbitControls, whose internal orientation math
+  breaks when camera "up" and "forward" become parallel. An early
+  version of this (used only for this session's own debugging
+  screenshots, never shipped) changed camera.up itself to work around
+  that, which left dragging behaved oddly afterwards - OrbitControls
+  caches object.up at construction time and doesn't notice it changing
+  later. The 0.5°-off-vertical approach avoids the degenerate case
+  without ever touching camera.up, so drag-to-rotate afterwards behaves
+  completely normally - confirmed by scripting a drag right after
+  clicking Top View and checking the model actually rotated, not some
+  broken/inverted state.
+  CARRIER3D_VERSION bumped 3->5 (one bump for the ghost footprint work,
+  one for Fit/Top View). Verified in-browser: shift without compare
+  mode shows per-leg ghosts only; enabling compare mode adds the
+  whole-chassis dashed ghost; Top View gives a clean straight-down
+  render (useful for exactly the kind of alignment checking this
+  session has been doing manually); drag-to-rotate and Fit View both
+  work normally afterwards; no console errors.
+
 ================================================================================
