@@ -425,6 +425,32 @@
             <input type="number" id="cad-shifty" value="0" step="0.1" oninput="calcCAD()">
           </div>
           <button class="toolbar-btn" style="margin-top:10px; width:100%;" onclick="resetShift()">Reset Shift to 0/0</button>
+
+          <div class="form-group" style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px;">
+            <label>Ground Bearing Pads — toggle per leg as placed</label>
+            <div style="display:flex; gap:14px; margin-top:6px; flex-wrap:wrap;">
+              <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
+                <input type="checkbox" id="cad-pad-1" onchange="calcCAD()" style="width:auto; cursor:pointer;"> P1
+              </label>
+              <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
+                <input type="checkbox" id="cad-pad-2" onchange="calcCAD()" style="width:auto; cursor:pointer;"> P2
+              </label>
+              <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
+                <input type="checkbox" id="cad-pad-3" onchange="calcCAD()" style="width:auto; cursor:pointer;"> P3
+              </label>
+              <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
+                <input type="checkbox" id="cad-pad-4" onchange="calcCAD()" style="width:auto; cursor:pointer;"> P4
+              </label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Pad Length (m) — runs inline with carrier length</label>
+            <input type="number" id="cad-pad-length" value="3.5" step="0.1" min="0.1" oninput="calcCAD()">
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Pad Width (m)</label>
+            <input type="number" id="cad-pad-width" value="2.4" step="0.1" min="0.1" oninput="calcCAD()">
+          </div>
         </div>
 
         <div class="card">
@@ -458,6 +484,7 @@
             <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#ef4444;"></span>clash</span>
             <span class="legend-item"><span class="legend-swatch-dashed"></span>footprint</span>
             <span class="legend-item"><span class="legend-swatch-arrow"></span>front</span>
+            <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(167,139,250,0.35); border:1.5px solid #a78bfa;"></span>ground pad</span>
           </div>
         </div>
       </div>
@@ -3707,6 +3734,59 @@
       return Math.abs(x) <= fp.width / 2 && y >= -fp.front && y <= fp.rear;
     }
 
+    // Ground bearing pad (bog mat) size, in mm, shared by whichever legs
+    // currently have one toggled on - centered on the leg's own contact
+    // point (confirmed with the person, not assumed), length always
+    // inline with the carrier's own length axis regardless of which
+    // corner it's under (never rotated per-leg, since the mats
+    // themselves aren't rotated on site relative to the carrier). Read
+    // fresh each call rather than cached, since the person can change
+    // pad size live while testing.
+    function sharedPadDims() {
+      const length = (parseFloat(document.getElementById('cad-pad-length').value) || 0) * 1000;
+      const width = (parseFloat(document.getElementById('cad-pad-width').value) || 0) * 1000;
+      if (length <= 0 || width <= 0) return null;
+      return { length, width };
+    }
+
+    // Per-leg toggle - pads go down one at a time as they're actually
+    // placed on site, not all four at once, so this is deliberately NOT
+    // a single global on/off (see the person's own request).
+    function padEnabledFor(legId) {
+      const el = document.getElementById(`cad-pad-${legId}`);
+      return !!(el && el.checked);
+    }
+
+    // Does a pad of the given size, centered at (px,py), overlap the
+    // crane's chassis footprint? Real rectangle-vs-rectangle overlap, not
+    // just the leg's own point - this is "the real thing that needs
+    // collision detection," since the pad is what's actually sitting on
+    // the ground, not the single contact point clashesWithFootprint()
+    // above checks. Both rectangles are axis-aligned in this same
+    // un-rotated local frame (chassis about the origin, pad about its own
+    // center), so a standard AABB overlap test applies directly - no
+    // rotation math needed even though the pad can sit anywhere on the
+    // canvas, because "anywhere" here is still expressed in the crane's
+    // own un-rotated coordinate system, same as everything else calcCAD()
+    // computes; view rotation is a pure display transform applied later
+    // in toScreen(), never touching this math.
+    function padClashesWithFootprint(px, py, pad, fp) {
+      const padXmin = px - pad.width / 2, padXmax = px + pad.width / 2;
+      const padYmin = py - pad.length / 2, padYmax = py + pad.length / 2;
+      const fpXmin = -fp.width / 2, fpXmax = fp.width / 2;
+      const fpYmin = -fp.front, fpYmax = fp.rear;
+      return padXmin <= fpXmax && padXmax >= fpXmin && padYmin <= fpYmax && padYmax >= fpYmin;
+    }
+
+    // Single entry point calcCAD() uses for both the "if moved" and "if
+    // left in place" clash checks - transparently swaps to the pad-based
+    // rectangle test when pads are enabled, falls back to the original
+    // point-only test otherwise, so every existing point-based behavior
+    // is untouched when the person isn't using ground pads.
+    function checkClash(x, y, fp, pad) {
+      return pad ? padClashesWithFootprint(x, y, pad, fp) : clashesWithFootprint(x, y, fp);
+    }
+
     // Map view state — rotation (radians), zoom multiplier, and pan focal
     // point (rotated-space mm). Purely a display transform layered on top of
     // the leg math above; never touches the underlying positions or table.
@@ -3755,6 +3835,7 @@
       // outrigger diagram: P2/P3 near the boom = front; P1/P4 near the rear).
       // A "+forward" user input must DECREASE the internal Y value.
       const shiftY = -shiftYinput;
+      const sharedPad = sharedPadDims();
 
       let resultsHtml = '';
       let mappedOutriggers = [];
@@ -3763,9 +3844,10 @@
         const rad = item.angle * (Math.PI / 180);
         const baseX = item.r * Math.sin(rad);
         const baseY = item.r * Math.cos(rad);
+        const legPad = padEnabledFor(item.id) ? sharedPad : null;
 
         if (shiftX === 0 && shiftYinput === 0) {
-          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, clash: false,
+          mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, clash: false, pad: legPad,
             x: baseX, y: baseY, movedX: baseX, movedY: baseY,
             r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
@@ -3784,7 +3866,7 @@
         const movedRawAngle = toDegrees(Math.atan2(newX, newY));
         const movedDir = dirFor(movedRawAngle);
         const movedAngle = Math.round(Math.abs(movedRawAngle) * 10) / 10;
-        const clash = clashesWithFootprint(newX, newY, fp);
+        const clash = checkClash(newX, newY, fp, legPad);
 
         // If left in place: its position measured from the crane's NEW center.
         const relX = baseX - shiftX, relY = baseY - shiftY;
@@ -3801,12 +3883,12 @@
         // check above. Checked per pad, per crane, per shift - not a
         // left/right-of-travel heuristic, so a diagonal shift can require
         // a front or rear pad to move too, not just a lateral one.
-        const isRequired = clashesWithFootprint(relX, relY, fp);
+        const isRequired = checkClash(relX, relY, fp, legPad);
         const plotX = isRequired ? newX : baseX;
         const plotY = isRequired ? newY : baseY;
 
         mappedOutriggers.push({
-          id: item.id, quadrant: item.quadrant, required: isRequired, clash,
+          id: item.id, quadrant: item.quadrant, required: isRequired, clash, pad: legPad,
           x: plotX, y: plotY, movedX: newX, movedY: newY,
           r: isRequired ? movedR : stayR, dir: isRequired ? movedDir : stayDir, relAngle: isRequired ? movedAngle : stayAngle,
           posX: Math.round(plotX), posY: Math.round(plotY)
@@ -3880,6 +3962,25 @@
         ctx.stroke();
       }
 
+      // Ground bearing pad rectangle centered at (cx,cy) - same rotated-
+      // polygon approach as drawFootprintBox, just centered on a point
+      // rather than expressed as front/rear/width offsets from it, since
+      // a pad is symmetric around the leg's own contact point.
+      function drawPadBox(cx, cy, pad, strokeColor, fillColor, dash) {
+        const halfW = pad.width / 2, halfL = pad.length / 2;
+        const corners = [
+          S(cx - halfW, cy - halfL), S(cx + halfW, cy - halfL),
+          S(cx + halfW, cy + halfL), S(cx - halfW, cy + halfL)
+        ];
+        ctx.strokeStyle = strokeColor; ctx.setLineDash(dash); ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath();
+        ctx.fillStyle = fillColor; ctx.fill();
+        ctx.stroke();
+      }
+
       const hasShift = shiftX !== 0 || shiftY !== 0;
 
       if (fp) drawFootprintBox(0, 0, '#4b5563', 'rgba(75,85,99,0.15)');
@@ -3919,6 +4020,12 @@
       outriggers.forEach(o => {
         const pt = S(o.x, o.y);
 
+        // Ground bearing pad at this leg's own final position (already
+        // whichever of "moved" or "stayed" plotX/plotY calcCAD() decided
+        // on) - drawn under the dot/label so the pad reads as the thing
+        // the leg sits on, not a decoration on top of it.
+        if (o.pad) drawPadBox(o.x, o.y, o.pad, '#a78bfa', 'rgba(167,139,250,0.22)', []);
+
         if (o.required) {
           clickableTargets.push({ id: `P${o.id}`, type: 'Must-Move Setup Pad', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
@@ -3946,6 +4053,11 @@
           // go if you chose to move it — separate from the current dot above.
           if (o.movedX !== o.x || o.movedY !== o.y) {
             const tpt = S(o.movedX, o.movedY);
+
+            // Ghost pad at the "if moved" target spot too, so the pad
+            // footprint that would be needed there is visible before
+            // actually deciding to relocate this leg.
+            if (o.pad) drawPadBox(o.movedX, o.movedY, o.pad, '#a78bfa', 'rgba(167,139,250,0.10)', [4, 4]);
 
             ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(tpt.x, tpt.y); ctx.stroke();
