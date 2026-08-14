@@ -1679,13 +1679,17 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 12;
+    const CARRIER3D_VERSION = 15;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
-    // same as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
-    // cranes have an exported model so far - see methodology.txt 10.76.
+    // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
+    // (1110/1650) and 10.82 (1130/1160/1250/1300).
     const CARRIER_MODELS = {
       '1110': './outrigger/models/ltm1110-carrier.glb',
+      '1130': './outrigger/models/ltm1130-carrier.glb',
+      '1160': './outrigger/models/ltm1160-carrier.glb',
+      '1250': './outrigger/models/ltm1250-carrier.glb',
+      '1300': './outrigger/models/ltm1300-carrier.glb',
       '1650': './outrigger/models/ltm1650-carrier.glb'
     };
 
@@ -1700,9 +1704,13 @@
     // this is a best-effort guess using the same front/rear-fraction logic
     // rather than a visually confirmed one - flagged uncertain so it's
     // easy to find and flip if it turns out backwards. See methodology.txt
-    // 10.77.
+    // 10.77 and 10.82.
     const CARRIER_CALIBRATION = {
       '1110': { frontAtMinZ: true, lateralSign: 1 },
+      '1130': { frontAtMinZ: true, lateralSign: 1 },
+      '1160': { frontAtMinZ: true, lateralSign: 1 },
+      '1250': { frontAtMinZ: true, lateralSign: 1 },
+      '1300': { frontAtMinZ: true, lateralSign: 1 },
       '1650': { frontAtMinZ: true, lateralSign: 1, uncertain: true }
     };
 
