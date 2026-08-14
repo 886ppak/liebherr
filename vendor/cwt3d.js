@@ -366,9 +366,20 @@ async function loadModel(modelKey, data, onDone) {
     // has the most spread between that specific name-group's members -
     // not assumed to be Y, in case some future crane's pair sits side by
     // side instead of stacked.
+    // Matched nodes are normally GLTFLoader "Group" type, but a part
+    // that started life as a STEP reimport (see methodology.txt - the
+    // fix for a composite part Onshape's assembly exporter otherwise
+    // drops entirely) can land as plain "Object3D" instead - a real,
+    // structural difference in how that one node came in, not a naming
+    // quirk. Matching by name regardless of Group vs Object3D is safe
+    // generally: the auto-generated "occurrence_of_X" wrapper nodes that
+    // ARE Object3D everywhere else never coincidentally share a name
+    // with a real partMap key (partMap only ever lists the part's own
+    // name, never its occurrence wrapper's), so loosening this filter
+    // doesn't risk matching the wrong node for any existing crane.
     const groupsByKey = new Map();
     root.traverse((obj) => {
-      if (obj.type !== 'Group') return;
+      if (obj.type !== 'Group' && obj.type !== 'Object3D') return;
       const key = partMapKeyFor(obj.name, partMap);
       if (!key) return; // unmapped part - shown but not selectable
       if (!groupsByKey.has(key)) groupsByKey.set(key, []);
