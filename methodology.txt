@@ -4106,4 +4106,63 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   correctly hide the card, both 1110 and 1650 still load and render with
   no console errors.
 
+10.82 3D Carrier Preview: added LTM 1130/1160/1250/1300, and a new 1650
+      CWT model - person's own overnight batch
+  Person sent the rest of their carrier exports (Nextcloud folder share,
+  Myslewer/Carrier/*) plus a new low-poly LTM 1650 counterweight model
+  (Myslewer/Counterweight/LTM1650CWT-low.glb) and said to take the time
+  overnight to work through them. Folder share downloaded as a single
+  zip via .../download (redirects to the WebDAV ?accept=zip endpoint,
+  confirmed with curl -sIL before committing to the full download) -
+  ~200MB total, but that's the person's whole working folder (source
+  .dwg/.dxf/.pdf files, CWT models for cranes already wired up). Only
+  extracted the specific files actually needed
+  (Carrier/LTM{1130,1160,1250,1300}CARRIER.glb,
+  Counterweight/LTM1650CWT-low.glb) rather than the whole archive -
+  no reason to touch already-integrated CWT models that weren't asked
+  for.
+  Carrier models: added to CARRIER_MODELS/CARRIER_CALIBRATION following
+  the exact same process as 1110/1650 - rendered each in Top View,
+  confirmed frontAtMinZ by identifying the driving cab (all four show it
+  at the same end/side as 1110's own confirmed orientation, so
+  frontAtMinZ: true, lateralSign: 1 for all - not assumed, checked per
+  crane). Then ran the SAME per-leg geometry confirmation now used for
+  1110/1650 (10.81's fix) against each: 1160, 1250, and 1300 all
+  achieved full 4/4 leg confirmation (legAnchors has an entry for every
+  leg - checked directly, not inferred from the render alone). 1130 only
+  got 2/4 (P1/P3 confirmed; P2/P4's own detected candidate for those two
+  legs came out far too close to the chassis centreline to be a real
+  outrigger foot - the sanity check correctly
+  rejected it rather than anchoring to a wrong point, so those two legs
+  fall back to the fitted line, same graceful degradation 1650's missing
+  rear pair already relies on. Not a bug - the detection heuristic
+  earning less confidence on a differently-structured export is exactly
+  what the sanity check exists to catch safely rather than silently
+  accept.
+  New LTM 1650 CWT model: NOT wired up in this pass. Inspecting it
+  (1771 nodes, 882 meshes, 44 top-level "Part N" bodies with no semantic
+  naming beyond "winch 2" and two winch-related assembly nodes) made
+  clear this needs a real partMap - every other crane's partMap so far
+  has had either semantic part names or a small enough part count to
+  map by direct visual/positional inspection with reasonable confidence.
+  44 anonymous bodies for a crane with 12 real components (1 receptacle
+  pair + linked center section, 1 five-tonne pair, 7 interchangeable
+  ten-tonne pairs, 2 winches) - roughly 2-4 CAD bodies per real
+  component - is a real mapping task, and getting it wrong would show a
+  crew INCORRECT weight/composition data, not just a slightly-off pad
+  render. That's a different risk category to the carrier work above,
+  which is look-and-see plus an approximate pad position - worth being
+  honest that this wasn't rushed through overnight alongside the lower-
+  stakes carrier work. File is staged at
+  counterweight/models/ltm1650-cwt-staging.glb (not referenced by
+  anything yet) for the next session to pick up, ideally with the
+  person's own input on which part numbers correspond to which
+  positions rather than pure geometric inference.
+  Verified in-browser: all four new carriers show correctly for their
+  own crane and stay hidden for every other crane; full cycle (toggle
+  3D, all 4 pads on, Compare mode on, shift applied, reset, pads off,
+  3D off) run against all 6 cranes with a carrier model plus 1100 (no
+  model) - no console errors anywhere. CARRIER3D_VERSION bumped to 15
+  across this investigation.
+
 ================================================================================
