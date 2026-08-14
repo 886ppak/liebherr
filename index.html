@@ -826,32 +826,25 @@
         // decal on the back of the slab, not a component - left
         // deliberately unmapped (shown but not selectable) rather than
         // guessed into either p7 or the slot-8 item.
-        // Winch 2* (p8w) isn't in the main assembly export at all - it
-        // lives in an Onshape Composite Part, which the assembly-level
-        // GLB exporter silently drops (confirmed by comparing instance
-        // counts against the person's own Onshape tree, not guessed).
-        // Exported separately as its own small GLB instead and wired in
-        // via extraParts - see loadModel()/placeAboveWholeModel() and
-        // methodology.txt 10.69. Replacement Ballast (p8b, the OTHER
-        // thing that can occupy this same slot) still has no geometry
-        // anywhere - the 2D diagram covers it fully regardless.
+        // Winch 2* (p8w) originally wasn't in the main assembly export at
+        // all - it lived in an Onshape Composite Part, which the
+        // assembly-level GLB exporter silently dropped (methodology.txt
+        // 10.69's extraParts workaround, exporting it as its own
+        // supplementary GLB). Person swapped it into the main assembly
+        // directly instead (as "Part_1") and re-exported - back to being
+        // a normal partMap entry like every other plate, no separate file
+        // or rotation override needed anymore. Replacement Ballast (p8b,
+        // the OTHER thing that can occupy this same slot) still has no
+        // geometry anywhere - the 2D diagram covers it fully regardless.
         model3d: {
-          url: './counterweight/models/ltm1110-cwt.glb?v=1',
+          url: './counterweight/models/ltm1110-cwt.glb?v=2',
           preExploded: true,
           partMap: {
             'Receptacle_Plate_1left': 'p1', 'Receptacle_Plate_1base': 'p1', 'Receptacle_Plate_1right': 'p1',
             'Counterweight_Plate_2': 'p2', 'Counterweight_Plate_3': 'p3', 'Counterweight_Plate_4': 'p4',
-            'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6', 'Counterweight_Plate_7_1': 'p7'
-          },
-          extraParts: [
-            // rotationX still pending - the person is dialing in the exact
-            // "lying flat" orientation directly in Onshape's rotate tool
-            // and will re-export with it baked in, rather than more
-            // guess-and-check rotationX values from here. rotationY: 90
-            // (the yaw) is the one part of this confirmed reasonable so
-            // far - kept as-is until the new export arrives.
-            { url: './counterweight/models/ltm1110-winch2-cwt.glb?v=1', appId: 'p8w', rotationY: 90 }
-          ]
+            'Counterweight_Plate_5': 'p5', 'Counterweight_Plate_6': 'p6', 'Counterweight_Plate_7_1': 'p7',
+            'Part_1': 'p8w'
+          }
         },
         // p3/p4 are ALWAYS present together in every published combo (never
         // one without the other) - unlike the old extracted-photo diagram
