@@ -484,7 +484,8 @@
             <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#ef4444;"></span>clash</span>
             <span class="legend-item"><span class="legend-swatch-dashed"></span>footprint</span>
             <span class="legend-item"><span class="legend-swatch-arrow"></span>front</span>
-            <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(167,139,250,0.35); border:1.5px solid #a78bfa;"></span>ground pad</span>
+            <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(229,169,0,0.25); border:1.5px solid #e5a900;"></span>pad (current)</span>
+            <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(56,189,248,0.15); border:1.5px dashed #38bdf8;"></span>pad (if moved)</span>
           </div>
         </div>
       </div>
@@ -4023,14 +4024,21 @@
         // Ground bearing pad at this leg's own final position (already
         // whichever of "moved" or "stayed" plotX/plotY calcCAD() decided
         // on) - drawn under the dot/label so the pad reads as the thing
-        // the leg sits on, not a decoration on top of it.
-        if (o.pad) drawPadBox(o.x, o.y, o.pad, '#a78bfa', 'rgba(167,139,250,0.22)', []);
+        // the leg sits on, not a decoration on top of it. Solid yellow
+        // outline, same "current/now" yellow already used for the old-
+        // center dot in compare mode - not the must-move/optional
+        // green/amber, since that status is still fully conveyed by the
+        // connecting line's own color/dash and the P-label, so the pad's
+        // own dot is free to mark "this is where the mat IS right now"
+        // instead of duplicating status the line already shows.
+        if (o.pad) drawPadBox(o.x, o.y, o.pad, '#e5a900', 'rgba(229,169,0,0.18)', []);
 
         if (o.required) {
           clickableTargets.push({ id: `P${o.id}`, type: 'Must-Move Setup Pad', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
-          ctx.fillStyle = '#10b981'; ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
+          ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
           ctx.beginPath(); ctx.moveTo(crane.x, crane.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+          ctx.fillStyle = o.pad ? '#e5a900' : '#10b981';
           ctx.beginPath(); ctx.arc(pt.x, pt.y, 7, 0, 2 * Math.PI); ctx.fill();
 
           ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 13px sans-serif';
@@ -4043,7 +4051,7 @@
         } else {
           clickableTargets.push({ id: `P${o.id}`, type: 'Optional / Left in Place', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
-          ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#f59e0b';
+          ctx.fillStyle = o.pad ? '#e5a900' : '#f59e0b'; ctx.strokeStyle = '#f59e0b';
           ctx.beginPath(); ctx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI); ctx.fill();
           ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(crane.x, crane.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
           ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
@@ -4056,8 +4064,10 @@
 
             // Ghost pad at the "if moved" target spot too, so the pad
             // footprint that would be needed there is visible before
-            // actually deciding to relocate this leg.
-            if (o.pad) drawPadBox(o.movedX, o.movedY, o.pad, '#a78bfa', 'rgba(167,139,250,0.10)', [4, 4]);
+            // actually deciding to relocate this leg. Dashed blue,
+            // matching the existing ghost target dot's own blue - same
+            // "future/if moved" blue used everywhere else on this tab.
+            if (o.pad) drawPadBox(o.movedX, o.movedY, o.pad, '#38bdf8', 'rgba(56,189,248,0.12)', [4, 4]);
 
             ctx.strokeStyle = '#38bdf8'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(tpt.x, tpt.y); ctx.stroke();
