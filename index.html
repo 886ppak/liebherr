@@ -592,6 +592,10 @@
       <div class="card" id="carrier-3d-card" style="display:none;">
         <div class="card-title">3D Carrier Preview <span style="font-size:0.75rem; color:var(--text-muted); text-transform:none; font-weight:400;">(outrigger pad positions are approximate — see note below)</span></div>
         <button class="toolbar-btn" id="carrier-3d-toggle-btn" style="width:100%;" onclick="toggleCarrier3D()">Show 3D Carrier Model</button>
+        <div class="toolbar-row" id="carrier-3d-toolbar" style="display:none; margin-top:10px;">
+          <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
+          <button class="toolbar-btn" onclick="window.__carrier3dTopView && window.__carrier3dTopView()">Top View</button>
+        </div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
           <div id="carrier-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
@@ -1672,7 +1676,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 3;
+    const CARRIER3D_VERSION = 5;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
@@ -3991,6 +3995,7 @@
       document.getElementById('carrier-3d-toggle-btn').textContent = 'Show 3D Carrier Model';
       document.getElementById('carrier-3d-wrap').style.display = 'none';
       document.getElementById('carrier-3d-hint').style.display = 'none';
+      document.getElementById('carrier-3d-toolbar').style.display = 'none';
     }
 
     function toggleCarrier3D() {
@@ -4001,6 +4006,7 @@
       document.getElementById('carrier-3d-toggle-btn').textContent = carrier3DActive ? 'Hide 3D Carrier Model' : 'Show 3D Carrier Model';
       document.getElementById('carrier-3d-wrap').style.display = carrier3DActive ? '' : 'none';
       document.getElementById('carrier-3d-hint').style.display = carrier3DActive ? '' : 'none';
+      document.getElementById('carrier-3d-toolbar').style.display = carrier3DActive ? '' : 'none';
       if (carrier3DActive) {
         // Three.js + the viewer module are never fetched until this first
         // toggle - dynamic import(), same reasoning as CWT's 3D view (see
@@ -4036,7 +4042,16 @@
         const rad = item.angle * (Math.PI / 180);
         return { id: item.id, r: item.r, x: item.r * Math.sin(rad), y: item.r * Math.cos(rad) };
       });
-      window.__carrier3dSyncOutriggers(modelKey, lastFp, calibration, lastMapped, baseLegs);
+      // lastShiftY is stored in raw input convention (see its own
+      // assignment in calcCAD()) - negate back to the internal "front =
+      // negative Y" convention here, same as rotatePoint(lastShiftX,
+      // -lastShiftY) already does elsewhere on this tab. compareMode is
+      // passed through so the 3D whole-chassis ghost only shows when the
+      // 2D plan's own "Compare old/new position" toggle is on too - the
+      // 2D plan's ghost FOOTPRINT (not the per-leg ghost pads, which are
+      // unconditional there) is gated the same way, see its own
+      // drawFootprintBox() call. See methodology.txt 10.79.
+      window.__carrier3dSyncOutriggers(modelKey, lastFp, calibration, lastMapped, baseLegs, lastShiftX, -lastShiftY, compareMode);
     }
 
     function calcCAD() {

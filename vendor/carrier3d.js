@@ -134,6 +134,39 @@ function frameCamera(root) {
   controls.update();
 }
 
+// Nearly-but-not-quite straight down (0.5° off vertical) - true vertical is
+// a degenerate case for OrbitControls (camera "up" and "forward" become
+// parallel, its internal orientation math breaks), so this reads as a top
+// view while staying fully compatible with drag-to-rotate afterwards.
+// Doesn't touch camera.up at all, unlike an early debug-only version of
+// this did - OrbitControls caches object.up at construction time and
+// doesn't notice it changing later, which made dragging behave oddly
+// after switching views. See methodology.txt 10.79.
+function topView(root) {
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.z) || 1;
+  const dist = maxDim * 1.3;
+  const tiltRad = THREE.MathUtils.degToRad(0.5);
+  camera.position.set(center.x, center.y + dist, center.z + dist * Math.sin(tiltRad));
+  camera.near = dist / 100;
+  camera.far = dist * 20;
+  camera.updateProjectionMatrix();
+  controls.target.copy(center);
+  controls.update();
+}
+
+window.__carrier3dFitView = function () {
+  const root = modelCache[currentModelKey];
+  if (root) frameCamera(root);
+};
+
+window.__carrier3dTopView = function () {
+  const root = modelCache[currentModelKey];
+  if (root) topView(root);
+};
+
 async function loadModel(modelKey, url, onDone) {
   if (modelCache[modelKey]) { onDone(modelCache[modelKey]); return; }
   if (loadingInProgress[modelKey]) return;
@@ -300,6 +333,22 @@ const PAD_CURRENT_COLOR = 0xe5a900; // matches the 2D plan's solid "current" pad
 const PAD_GHOST_COLOR = 0x38bdf8;   // matches the 2D plan's dashed "if moved" pad
 const LEG_MARKER_COLOR = 0xf8fafc;
 
+// Transparent fill + dashed wireframe outline for a "this is where it'd be
+// if moved" ghost - same visual language everywhere it's used (per-leg pad
+// ghost, whole-chassis footprint ghost), matching the 2D plan's own dashed
+// blue ghost styling rather than inventing a separate 3D convention.
+function addGhostBox(group, sizeX, sizeY, sizeZ, position) {
+  const geo = new THREE.BoxGeometry(sizeX, sizeY, sizeZ);
+  const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: PAD_GHOST_COLOR, transparent: true, opacity: 0.15 }));
+  fill.position.copy(position);
+  group.add(fill);
+
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineDashedMaterial({ color: PAD_GHOST_COLOR, dashSize: 0.15, gapSize: 0.1 }));
+  wire.position.copy(position);
+  wire.computeLineDistances();
+  group.add(wire);
+}
+
 function applySync(modelKey, root, args) {
   clearOutriggers();
   const cal = computeCalibration(modelKey, root, args.footprint, args.calibration, args.baseLegs);
@@ -331,16 +380,30 @@ function applySync(modelKey, root, args) {
     // drawn when it actually differs from the current spot).
     if (leg.movedX !== leg.x || leg.movedY !== leg.y) {
       const movedPos = siteToWorld(cal, leg.movedX, leg.movedY);
-      const ghostGeo = new THREE.BoxGeometry(leg.pad.width / 1000, 0.08, leg.pad.length / 1000);
-      const ghostFill = new THREE.Mesh(ghostGeo, new THREE.MeshBasicMaterial({ color: PAD_GHOST_COLOR, transparent: true, opacity: 0.18 }));
-      ghostFill.position.set(movedPos.x, movedPos.y + 0.04, movedPos.z);
-      outriggerGroup.add(ghostFill);
-
-      const wire = new THREE.LineSegments(new THREE.EdgesGeometry(ghostGeo), new THREE.LineBasicMaterial({ color: PAD_GHOST_COLOR }));
-      wire.position.copy(ghostFill.position);
-      outriggerGroup.add(wire);
+      addGhostBox(outriggerGroup, leg.pad.width / 1000, 0.08, leg.pad.length / 1000, new THREE.Vector3(movedPos.x, movedPos.y + 0.04, movedPos.z));
     }
   });
+
+  // Whole-chassis "if moved" ghost - person's own request after seeing the
+  // per-leg pad ghosts (methodology.txt 10.79): a dashed, transparent box
+  // showing where the CRANE ITSELF will sit after the shift, not another
+  // full carrier model re-rendered at the new spot - same flat pad-style
+  // box as the per-leg ghosts, just sized to the whole chassis footprint
+  // (FOOTPRINTS, the same figures the 2D plan's own footprint rectangle
+  // uses) rather than one pad. Gated behind compareMode, matching the 2D
+  // plan's own drawFootprintBox() call exactly - only the per-leg ghost
+  // pads are unconditional there, the whole-chassis ghost footprint
+  // itself only shows once "Compare old/new position" is on.
+  if (args.compareMode && (args.shiftX || args.shiftY)) {
+    const fp = args.footprint;
+    // The footprint rectangle isn't centered on the slew center in Y
+    // (front/rear overhangs are asymmetric) - its own center sits
+    // (rear-front)/2 behind the slew center, same rectangle the 2D
+    // canvas's own drawFootprintBox() draws.
+    const centerY = (fp.rear - fp.front) / 2;
+    const newCenter = siteToWorld(cal, args.shiftX, centerY + args.shiftY);
+    addGhostBox(outriggerGroup, fp.width / 1000, 0.1, (fp.front + fp.rear) / 1000, new THREE.Vector3(newCenter.x, newCenter.y + 0.05, newCenter.z));
+  }
 
   scene.add(outriggerGroup);
 }
@@ -354,9 +417,11 @@ function applySync(modelKey, root, args) {
 // cadFleetData - used only once, to anchor the calibration against the
 // model's real geometry (see refineCalibrationFromGeometry above); kept
 // separate from `legs` since those reflect whatever the shift/pad inputs
-// currently show, not necessarily the physical current position.
-window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, legs, baseLegs) {
-  pendingSync[modelKey] = { footprint, calibration, legs, baseLegs };
+// currently show, not necessarily the physical current position. shiftX/
+// shiftY (mm, site plan's internal convention) and compareMode together
+// drive the whole-chassis ghost footprint box - see methodology.txt 10.79.
+window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, legs, baseLegs, shiftX, shiftY, compareMode) {
+  pendingSync[modelKey] = { footprint, calibration, legs, baseLegs, shiftX, shiftY, compareMode };
   if (currentModelKey !== modelKey || !scene) return;
   const root = modelCache[modelKey];
   if (!root) return; // still loading - applySync() replays this once it's in
