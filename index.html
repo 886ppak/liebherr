@@ -456,7 +456,7 @@
         <div class="card">
           <div class="card-title">Visual Site Plan <span style="font-size:0.75rem; color:var(--text-muted);">(Tap points for info)</span>
             <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none;">
-              <input type="checkbox" id="cad-compare-toggle" onchange="toggleCompareMode()" style="width:auto; cursor:pointer;">
+              <input type="checkbox" id="cad-compare-toggle" onchange="toggleCompareMode(this)" style="width:auto; cursor:pointer;">
               Compare old/new position
             </label>
           </div>
@@ -496,6 +496,9 @@
         <div class="toolbar-row" id="carrier-3d-toolbar" style="display:none; margin-top:10px;">
           <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
           <button class="toolbar-btn" onclick="window.__carrier3dTopView && window.__carrier3dTopView()">Top View</button>
+          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none; margin-left:4px;">
+            <input type="checkbox" id="carrier-3d-compare-toggle" onchange="toggleCompareMode(this)" style="width:auto; cursor:pointer;"> Compare old/new position
+          </label>
         </div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
@@ -1577,7 +1580,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 5;
+    const CARRIER3D_VERSION = 6;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. Only 2 of the 7 outrigger-tab
@@ -3853,8 +3856,15 @@
     // position (blue) so both positions are fully visible at once - useful
     // when checking a shift, but busier, so it's opt-in rather than always on.
     let compareMode = false;
-    function toggleCompareMode() {
-      compareMode = document.getElementById('cad-compare-toggle').checked;
+    // Two checkboxes drive the one compareMode flag - the original one atop
+    // the 2D plan, and a second one on the 3D toolbar (added so a person
+    // looking at the 3D view doesn't have to scroll back up just to flip
+    // it - see methodology.txt 10.80). Whichever one fired the change
+    // event is passed in so its counterpart can be kept in sync too.
+    function toggleCompareMode(sourceEl) {
+      compareMode = sourceEl ? sourceEl.checked : document.getElementById('cad-compare-toggle').checked;
+      document.getElementById('cad-compare-toggle').checked = compareMode;
+      document.getElementById('carrier-3d-compare-toggle').checked = compareMode;
       calcCAD();
     }
 
