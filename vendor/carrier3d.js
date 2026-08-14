@@ -354,8 +354,19 @@ function applySync(modelKey, root, args) {
   const cal = computeCalibration(modelKey, root, args.footprint, args.calibration, args.baseLegs);
   outriggerGroup = new THREE.Group();
 
+  // baseLegs (each leg's real CURRENT, unshifted x/y) rather than `leg`'s
+  // own x/y - the 2D canvas's plotX/plotY already jumps a "must move" leg's
+  // solid marker straight to its target spot (see calcCAD()'s own comment
+  // on isRequired/plotX/plotY), which reads fine on the 2D plan itself but
+  // isn't what's wanted here: the person wants the CURRENT bog mat left
+  // exactly where it physically is, for every leg, so a shifted-in mat and
+  // an unmoved one can be checked against each other for clashes at a
+  // glance. See methodology.txt 10.80.
+  const baseById = new Map((args.baseLegs || []).map(b => [b.id, b]));
+
   args.legs.forEach(leg => {
-    const pos = siteToWorld(cal, leg.x, leg.y);
+    const base = baseById.get(leg.id) || leg;
+    const pos = siteToWorld(cal, base.x, base.y);
 
     // Flat and close to ground, deliberately not a tall pin - a raised
     // marker reads as visually offset from the real foot geometry in any
@@ -376,9 +387,14 @@ function applySync(modelKey, root, args) {
     padMesh.position.set(pos.x, pos.y + 0.04, pos.z);
     outriggerGroup.add(padMesh);
 
-    // Ghost "if moved" pad - same condition the 2D plan itself uses (only
-    // drawn when it actually differs from the current spot).
-    if (leg.movedX !== leg.x || leg.movedY !== leg.y) {
+    // Ghost "if moved" pad, for every leg - not just the ones the 2D
+    // canvas itself happens to ghost (it only ghosts "optional" legs,
+    // since "must move" ones already show their solid marker at the
+    // target spot there). leg.movedX/movedY is always the real fully-
+    // shifted target regardless of required/optional (calcCAD() sets it
+    // unconditionally), so this is correct for all four legs. Gated
+    // behind compareMode, same as the whole-chassis ghost footprint.
+    if (args.compareMode && (leg.movedX !== base.x || leg.movedY !== base.y)) {
       const movedPos = siteToWorld(cal, leg.movedX, leg.movedY);
       addGhostBox(outriggerGroup, leg.pad.width / 1000, 0.08, leg.pad.length / 1000, new THREE.Vector3(movedPos.x, movedPos.y + 0.04, movedPos.z));
     }

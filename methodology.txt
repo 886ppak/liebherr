@@ -3993,4 +3993,45 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   session has been doing manually); drag-to-rotate and Fit View both
   work normally afterwards; no console errors.
 
+10.80 3D Carrier Preview: current pads stay put, ALL legs ghost, linked
+      Compare toggle on the 3D panel itself
+  Person's own follow-up after 10.79: "can we have all future
+  positions ghosted to there they will lay and leave the current bog
+  mag pos the yellow ones were they are so i can visually see the
+  confilicts." Real bug, not a preference: the solid "current" pad's
+  position came from `leg.x/leg.y`, which is calcCAD()'s own plotX/
+  plotY - and for a "must move" leg, plotX/plotY is ALREADY the moved
+  target, not the true current spot (see calcCAD()'s own isRequired
+  logic). That's the right call for the 2D canvas (a "must move" leg
+  reads better shown at where it's going), but wrong for this: the
+  person's whole point of the 3D ghosting is comparing a mat's TRUE
+  current position against ALL the shifted targets at once, and a
+  "must move" leg's solid pad silently jumping to its target - with no
+  ghost at all, since x already equalled movedX there - hid exactly
+  the comparison they were trying to make for those legs.
+  Fixed by using baseLegs (already being computed and passed in for
+  10.78's calibration anchoring, now used for BOTH purposes) as the
+  source of truth for the solid marker/pad position instead of leg.x/
+  leg.y - true current position, every leg, unconditionally. Ghost pads
+  now key off leg.movedX/movedY instead of the old "only if it differs
+  from leg.x" check - movedX/movedY is always the real fully-shifted
+  target regardless of required/optional (calcCAD() sets it
+  unconditionally, unlike plotX/plotY), so this correctly ghosts all
+  four legs now, not just the ones the 2D canvas happens to ghost.
+  Second part of the same message: "can we also have a small Compare
+  old/new position check box linked to the top 2d one but also on the
+  3d panel bar." Added a second checkbox to the 3D toolbar row,
+  wired to the exact same `compareMode` flag as the original one atop
+  the 2D plan - toggleCompareMode(sourceEl) now syncs BOTH checkboxes'
+  checked state to whichever one fired the change event, so they can
+  never show a different state from each other. Saves scrolling back
+  up to the 2D card just to flip it while looking at the 3D view.
+  CARRIER3D_VERSION bumped 5->6. Verified in-browser: solid pads for
+  "must move" legs now stay at their real current spot instead of
+  jumping (checked directly against the pre-fix screenshot); enabling
+  compare mode via the NEW 3D checkbox ghosts all 4 legs and syncs the
+  2D checkbox's own checked state too (and vice versa, same code path);
+  cranes without a carrier model still correctly hide the card; no
+  console errors.
+
 ================================================================================
