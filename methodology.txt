@@ -3601,3 +3601,28 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   cranes now have 3D models (1110, 1130, 1220, 1250, 1300).
 
 ================================================================================
+
+10.72 Fixed LTM 1110's slot-cycling color: picking the slot member with no
+      3D geometry looked identical to nothing being selected
+  Reported: cycling LTM 1110's Winch 2*/Replacement Ballast slot (10.70)
+  from Winch 2* to Replacement Ballast turned the mesh back to its
+  baseColor - visually indistinguishable from the slot being empty, even
+  though it's genuinely occupied (just by the member with no exported
+  geometry, per 10.69/10.70's confirmed-absent Replacement Ballast body).
+  syncHighlight() only ever checked `selectedSet.has(p.appId)` - had no
+  way to know a DIFFERENT id from the same slotGroup was the one actually
+  selected. Added ALT_SELECTED_COLOR (pink, 0xec4899) and a slotGroup
+  cross-check: for a namedPart whose own appId isn't selected but shares
+  a slotGroup with whichever id IS selected, show pink instead of falling
+  through to baseColor. Needed `data.components` inside syncHighlight()
+  to look up slotGroup siblings, so its signature gained a data
+  parameter, threaded through from window.__cwt3dActivate/__cwt3dOnRender
+  (both already receive it) at all three call sites.
+  Generic, not 1110-specific - applies to any future crane with the same
+  "slot has two possible members, only one physically exists in the
+  export" situation. Verified in-browser through the full cycle: none
+  (grey) -> Winch 2* (green, has real geometry) -> Replacement Ballast
+  (pink, no geometry of its own - color carried by Winch 2*'s mesh) ->
+  back to none (grey). Full crane sweep clean, no console errors.
+
+================================================================================
