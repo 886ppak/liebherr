@@ -382,7 +382,7 @@ async function loadModel(modelKey, data, onDone) {
     // against LTM 1650's winch 3 sub-assembly, 4 of its 6 bodies each
     // have a single-primitive mesh and were silently invisible to this
     // traversal (obj.isMesh, not Group/Object3D) until this was added -
-    // see methodology.txt 10.89.
+    // see methodology.txt 10.90.
     const groupsByKey = new Map();
     root.traverse((obj) => {
       if (obj.type !== 'Group' && obj.type !== 'Object3D' && !obj.isMesh) return;
