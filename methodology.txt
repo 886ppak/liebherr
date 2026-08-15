@@ -5128,4 +5128,54 @@ out to be enormous.
   data via a separate script and confirmed it matched the app's own
   "Option 1" result (16.9t) exactly before considering this done.
 
+14.7 Site capacity rule (90%) and rigging weight deduction
+  Two follow-up requests, both about NOT taking the printed chart figure
+  at face value:
+  1. Mine sites the person works on commonly cap usable capacity at 90%
+     of the chart rating, not 100% (100% is where the LICCON overload
+     alarms trigger). Person's own worked example, checked before
+     building: chart says 2.4t at some radius, need to lift 2t, 90% of
+     2.4t = 2.16t, which still clears 2t - math confirmed correct
+     (2.4 x 0.9 = 2.16) before implementing. "Site Capacity Rule" toggle
+     (100%/90%) multiplies the raw chart capacity before it's compared
+     against the target - never interpolated or hidden, both the raw
+     chart figure AND the derated "usable capacity" are shown in each
+     result when the 90% rule is on, so the OEM number stays visible
+     for cross-checking alongside the derated one actually being used.
+  2. Rigging weight: a hook block (and a second block if winch 2 is
+     rigged) hangs static off the boom tip before the actual load is
+     even attached, and that weight counts against the chart's capacity
+     too. This isn't just site practice - the OEM load chart manual's
+     own "40.02 Basic information" section states it explicitly ("The
+     weights of the load lifting equipment and the fastening equipment
+     must be deducted"), confirmed by re-reading that exact section
+     before telling the person this was correct. Implemented as:
+     target load + block weight(s) = "effective target" the crane must
+     actually clear, checked against the (possibly-derated) chart
+     capacity. Mathematically identical to "deduct rigging weight from
+     capacity instead" - this framing was chosen so the number the
+     person types into "Target Load" always means exactly what they
+     typed, with the rigging math shown as an explicit, separate line
+     above the results rather than silently folded into either number.
+  Block weights are NOT a new hardcoded list - reused FLEET_BLOCK_SPEC
+  (same fleet block catalog the Minimum Hook Block Weights tab already
+  draws its recommendations from), so there's one source of truth for
+  this crane's actual block fleet rather than a second, potentially
+  drifting copy. Base block weight only (no auxiliary ballast sub-
+  selection, unlike that tab's own aux weight lists) - this is about
+  static rigging weight, not hook-block sizing.
+  Winch 2's block is a second, independently-selected block from the
+  same fleet list, shown only when the "Winch 2 fitted" checkbox is on,
+  and its weight is simply added to the primary block's - both blocks
+  are static weight on the boom tip if both are rigged, regardless of
+  which one is actively hoisting.
+  Verified every combination by hand before shipping: baseline (no
+  derate, no rigging) 16.90t capacity / 11.24t effective target (10t +
+  1.24t block) = 5.66t margin; with 90% derate, usable capacity
+  16.90 x 0.9 = 15.21t, margin 15.21 - 11.24 = 3.97t; swapping to a
+  lighter 0.90t block dropped the effective target to 10.90t, margin
+  6.00t; adding winch 2 + a 0.45t second block brought rigging to
+  1.35t, effective target 11.35t, margin 5.55t - all four recomputed by
+  hand and matched the rendered UI exactly, zero console errors.
+
 ================================================================================
