@@ -4887,4 +4887,22 @@ own confirmed domain fact, not an assumption).
   splits front/rear at all (13.3) - every other crane in the fleet
   keeps the plain single-percentage line.
 
+13.6 Follow-up: 13.4's P->C rename missed the Visual Site Plan canvas +
+     its results table
+  13.4 renamed the underlying data (cadFleetData keys, checkbox labels)
+  but missed two places that build their OWN "P${...}" label text from
+  the numeric item.id rather than reading the renamed object keys: the
+  Visual Site Plan canvas (drawCADCanvas - the on-canvas leg labels,
+  the tap-for-info box's id/type strings, and the dashed "if moved"
+  ghost target label) and the "All Four Legs - Reference Frames" table
+  underneath it (both its zero-shift and shifted-state row templates).
+  Person caught this directly ("the remaining p1-p4 being used to
+  label the out riggers"). Fixed all 8 sites (7 in drawCADCanvas/
+  clickableTargets, 1 in the results table). Lesson: a rename pass
+  needs to search for the LITERAL STRING PATTERN the display code
+  builds from (here, the template `P${o.id}` / `P${item.id}`), not just
+  the data structure's own field/key names - display code that
+  reconstructs a label from a raw id rather than reading a stored name
+  string won't show up in a search for the old key names.
+
 ================================================================================
