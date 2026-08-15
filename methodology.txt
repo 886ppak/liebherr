@@ -4228,3 +4228,34 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   no wrapping or overlap with the update-check button.
 
 ================================================================================
+
+10.85 3D Carrier Preview: dropped Top View, made Fit View bird's-eye and
+      fit everything drawn, not just the model
+  Person asked to get rid of the separate Top View button and have Fit
+  View do the bird's-eye framing itself, AND zoom out to fit everything
+  currently on screen - not just the carrier model. The old Fit View
+  (an angled 3/4 view) only ever measured the model's own bounding box
+  (frameCamera(root)), so a ghost pad or the whole-chassis ghost
+  footprint (both drawn well outside the model itself once a shift is
+  applied - see 10.79/10.80) could sit off-screen entirely with no way
+  to bring it into frame besides manually dragging/zooming.
+  Removed the Top View button and its window.__carrier3dTopView
+  entirely. Fit View now calls a new fitView() that: (1) unions the
+  model's own bounding box with outriggerGroup's (the markers/pads/
+  ghost boxes built by applySync - see sceneBox()), so anything
+  currently drawn is included; (2) uses the same near-vertical (0.5°
+  tilt) bird's-eye angle Top View used to, for the same OrbitControls-
+  degenerate-case reason (10.79's own explanation still applies
+  unchanged); (3) derives camera distance from the camera's actual
+  vertical FOV and current aspect ratio, fit against whichever
+  horizontal axis (lateral X or longitudinal Z) actually constrains the
+  canvas's own shape, rather than the old fixed 1.3x-of-larger-
+  dimension guess, which could crop the narrower axis on a canvas
+  that isn't roughly square.
+  Verified with a big compare-mode shift applied (so the ghost
+  footprint sits well outside the model) at both a narrow mobile
+  width and a wide desktop width - the whole chassis, current pads,
+  AND the shifted ghost footprint all land fully inside frame at both
+  aspect ratios, nothing clipped. CARRIER3D_VERSION bumped to 20.
+
+================================================================================
