@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.10</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.11</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -899,6 +899,18 @@
         <div id="lc-results"></div>
         <div class="disclaimer">Scope: T-boom only (no lattice/folding jib), outriggers fully deployed (7.9m x 8.3m rear / 7.0m front), 360° slewing range. Radius is rounded up to the nearest tabulated chart row — see the notice above when that happens. Reference tool only — cross-check the shown chart code/reference against the current OEM load chart before lifting.</div>
       </div>
+
+      <div class="card">
+        <div class="card-title">Offline Availability <span class="cache-all-status" style="font-size:0.8rem; text-transform:none; font-weight:400;"></span></div>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Each crane's load chart data is cached automatically the first time you select it above. To make every crane available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
+        <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
+        <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
+          <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
+            <div class="cache-all-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div class="cache-all-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -919,7 +931,7 @@
       // Re-checked on every visit, not just after the button runs - content
       // also gets cached one file at a time just by viewing it, so the
       // tick/cross needs to reflect that too, not only a full-download run.
-      if (['reeve-tab', 'cwt-tab', 'driveeq-tab'].includes(tabId)) checkOfflineContentStatus();
+      if (['reeve-tab', 'cwt-tab', 'driveeq-tab', 'loadchart-tab'].includes(tabId)) checkOfflineContentStatus();
     }
 
     // Shared helper: fill a <select> from an array, options built via textFn/valueFn.
@@ -5593,9 +5605,16 @@
         './vendor/three/utils/SkeletonUtils.js'
       ] : [];
 
+      // Every crane's load chart JSON (Load Chart Finder tab) - same
+      // fetch-once-cache-forever CONTENT_CACHE treatment as everything
+      // else here, just listed explicitly so "Cache All" and the offline
+      // status check cover cranes the person hasn't opened yet too, not
+      // only ones already viewed this session.
+      const loadChartUrls = Object.values(LOAD_CHART_FILES);
+
       // Deduped: cwt3d.js and carrier3d.js share the same vendor/three/*
       // files, listed by both viewerUrls and carrierViewerUrls above.
-      return [...new Set([...reeveUrls, ...viewerUrls, ...modelUrls, ...carrierViewerUrls, ...carrierModelUrls])];
+      return [...new Set([...reeveUrls, ...viewerUrls, ...modelUrls, ...carrierViewerUrls, ...carrierModelUrls, ...loadChartUrls])];
     }
 
     // Ticks or crosses every .cache-all-status span with the REAL current
