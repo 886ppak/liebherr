@@ -121,6 +121,10 @@ function loadGLTFAsync(url) {
   });
 }
 
+// Default 3/4 angled view shown the moment a carrier is opened, before the
+// person has had a chance to click Fit View - just the model's own
+// bounding box, since the outrigger sync (markers/pads/ghosts) hasn't run
+// yet at this point (see __carrier3dActivate below).
 function frameCamera(root) {
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
@@ -134,20 +138,51 @@ function frameCamera(root) {
   controls.update();
 }
 
+// Bounding box of everything currently visible - the carrier model itself
+// AND any markers/pads/ghost boxes from the outrigger sync (see
+// applySync) - not just the model's own footprint, since a shifted ghost
+// footprint or an outrigger ghost pad can sit well outside the carrier's
+// own bounding box.
+function sceneBox() {
+  const box = new THREE.Box3();
+  const root = modelCache[currentModelKey];
+  if (root) box.union(new THREE.Box3().setFromObject(root));
+  if (outriggerGroup) box.union(new THREE.Box3().setFromObject(outriggerGroup));
+  return box;
+}
+
+// Bird's-eye (top-down), zoomed to fit everything currently drawn. Used to
+// be two separate buttons - an angled "Fit View" that only fit the model
+// itself, and a separate straight-down "Top View" - person asked to fold
+// them into one, since there's no real use for the angled fit once the
+// bird's-eye view already fits everything on screen. See
+// methodology.txt 10.85.
+//
 // Nearly-but-not-quite straight down (0.5° off vertical) - true vertical is
 // a degenerate case for OrbitControls (camera "up" and "forward" become
-// parallel, its internal orientation math breaks), so this reads as a top
-// view while staying fully compatible with drag-to-rotate afterwards.
-// Doesn't touch camera.up at all, unlike an early debug-only version of
-// this did - OrbitControls caches object.up at construction time and
-// doesn't notice it changing later, which made dragging behave oddly
-// after switching views. See methodology.txt 10.79.
-function topView(root) {
-  const box = new THREE.Box3().setFromObject(root);
+// parallel, its internal orientation math breaks). Doesn't touch camera.up
+// at all - OrbitControls caches object.up at construction time and doesn't
+// notice it changing later, which made dragging behave oddly after
+// switching views in an earlier version of this. See methodology.txt
+// 10.79.
+//
+// Distance is derived from the camera's own vertical FOV and current
+// aspect ratio, fit against whichever of the two horizontal axes (lateral
+// X, longitudinal Z) actually constrains the canvas's own shape - a fixed-
+// margin guess (what this used to do) can crop one axis on a canvas that
+// isn't roughly square.
+function fitView() {
+  const box = sceneBox();
+  if (!isFinite(box.min.x)) return;
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.z) || 1;
-  const dist = maxDim * 1.3;
+  const aspect = camera.aspect || 1;
+  const fovRad = THREE.MathUtils.degToRad(camera.fov);
+  const halfZ = Math.max(size.z, 0.5) / 2;
+  const halfX = Math.max(size.x, 0.5) / 2;
+  const distForZ = halfZ / Math.tan(fovRad / 2);
+  const distForX = halfX / (Math.tan(fovRad / 2) * aspect);
+  const dist = Math.max(distForZ, distForX) * 1.15; // 15% margin so nothing sits flush against the edge
   const tiltRad = THREE.MathUtils.degToRad(0.5);
   camera.position.set(center.x, center.y + dist, center.z + dist * Math.sin(tiltRad));
   camera.near = dist / 100;
@@ -158,13 +193,7 @@ function topView(root) {
 }
 
 window.__carrier3dFitView = function () {
-  const root = modelCache[currentModelKey];
-  if (root) frameCamera(root);
-};
-
-window.__carrier3dTopView = function () {
-  const root = modelCache[currentModelKey];
-  if (root) topView(root);
+  if (modelCache[currentModelKey]) fitView();
 };
 
 async function loadModel(modelKey, url, onDone) {
