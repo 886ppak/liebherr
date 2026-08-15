@@ -4841,4 +4841,50 @@ own confirmed domain fact, not an assumption).
   person too ("it uses tracks not outriggers") - don't go looking for a
   support-base % table on this crane again.
 
+13.4 Renamed the app's outrigger corners from P1-P4 to C1-C4 to match
+     Liebherr's own numbering
+  The app's outrigger-pad code (cadFleetData, the Outrigger Pad Positions
+  tab's toggles) had its own P1-P4 naming from before this session,
+  already correctly assigned to physical corners: P1=Rear Right,
+  P2=Front Right, P3=Front Left, P4=Rear Left. Checked this against
+  Liebherr's own numbering, found directly in LTM 1130-5.1's manual,
+  chapter 3.05 "Crane at the job site", section "1.2 Numbering of
+  support" (confirmed as standard chapter numbering, same place other
+  cranes' manuals define it): "1 Support right rear / 2 Support right
+  front / 3 Support left front / 4 Support left rear" - this is the same
+  numbering shown on the crane's own BTT/LICCON display. It matches the
+  app's existing P1-P4 assignment exactly, corner for corner, which is
+  also why the Technical Data "3.1 Support Base" table's "Extension
+  condition [c1 to c4]" column groups c1/c4 as "Rear" and c2/c3 as
+  "Front" (see 13.3) - same underlying numbering, just Liebherr's own
+  "c" shorthand for it in that chapter. Because the assignment was
+  already identical, this was a pure relabel (P1->C1, P2->C2, P3->C3,
+  P4->C4: object keys P1_RR/P2_FR/P3_FL/P4_RL -> C1_RR/C2_FR/C3_FL/
+  C4_RL across all 7 cranes in cadFleetData, the "name" field inside
+  each, the two craneObj.P*_* usages in syncCarrier3DOutriggers/
+  calcCAD, and the 8 checkbox labels on the Outrigger Pad Positions /
+  3D Carrier Preview toolbar) - not a remap, no risk of assigning the
+  wrong physical corner. If a future crane's numbering ever turns out
+  to run the other rotation direction (some manufacturers do
+  front-first), verify against that crane's own "Numbering of support"
+  section before assuming this same C1=RR/C2=FR/C3=FL/C4=RL pattern
+  holds - it's confirmed standard across the LTM series checked so far,
+  not assumed universal.
+
+13.5 LTM 1110-5.1's Driving w/ Equipment display now shows both sides
+     of its asymmetric "Reduced" stage
+  Per 13.3's front/rear resolution, the Driving w/ Equipment chart's
+  5.00m figure for LTM 1110-5.1 is the C2/C3 (front) reading at 55% -
+  C1/C4 (rear) sits at 50%/5.40m for that same physical pinned position,
+  which the chart's own single "Support width (min.B)" column never
+  states. A bare "(55% extension)" label would wrongly read as if all
+  four corners were at 55%. Fixed by adding OUTRIGGER_ASYMMETRIC_PAIR
+  (keyed by crane + the chart's own quoted width) so the render checks
+  for a known asymmetric stage before falling back to the plain
+  percentage - when present, shows both readings explicitly: "5.00 m -
+  C2/C3 (front): 55% · C1/C4 (rear): 50%, 5.40 m". Only 1110 has an
+  entry today, since it's the only crane whose own Support Base table
+  splits front/rear at all (13.3) - every other crane in the fleet
+  keeps the plain single-percentage line.
+
 ================================================================================
