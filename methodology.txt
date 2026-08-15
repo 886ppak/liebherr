@@ -4978,3 +4978,154 @@ own confirmed domain fact, not an assumption).
   looking for a Driving w/ Equipment book for this crane.
 
 ================================================================================
+
+14. LOAD CHART FINDER: T-BOOM CAPACITY LOOKUP (LTM 1110-5.1)  [CONVERSATION]
+--------------------------------------------------------------------------------
+New tab: person gives a working radius and a target load, the tool finds
+which boom-length/telescoping configurations can lift it, ranked by
+margin (top 5), with the exact extension % breakdown (e.g. "0/0/46/0/0/0")
+needed to set it up. Scope, per the person's explicit request: T-boom
+only (no lattice/folding jib), outriggers fully deployed, 360° slew, with
+counterweight and wind-speed as selectable variables. This is a
+fundamentally bigger undertaking than the Driving w/ Equipment charts
+(section 13) - load charts are the crane's actual lifting-capacity
+tables, not a single driving condition, and the source document turned
+out to be enormous.
+
+14.1 Source document reality check - 12,292 pages, not a normal manual
+  The crane's "Load chart manual" folder has 4 PDFs, one per boom type:
+  a "_T" suffix file (plain telescopic, what's needed), "_TK" and "_TVK"
+  (jib variants, out of scope), plus an "_R" file (not investigated).
+  The "_T" file is 46MB and, per PyMuPDF, 12,292 pages - not a
+  hand-authored manual but a LICCON-software-generated exhaustive set,
+  one page-group per valid crane configuration. Filtering to exactly
+  what was asked for (fully-deployed support base + 360° + plain T, not
+  T~ or T*) still leaves 1,532 pages.
+  Two symbols the person flagged in advance as things to watch for,
+  confirmed via the manual's own "40.62 Operating modes" chapter:
+    T   = plain Telescopic boom - the real lifting mode, what's wanted.
+    T~  = "Maintenance operation" - NOT a lifting chart at all, used
+          only for servicing/lubricating the boom. Excluded.
+    T*  = "Telescopic boom with auxiliary device" - requires a special
+          rigging accessory assembled on the crane, not the standard
+          configuration. Excluded.
+  First impression was that this was scanned/image-only (page.get_text()
+  on early pages returned near-nothing) - turned out that was just the
+  cover/legend pages using embedded JPEGs; the actual data pages (from
+  around page 50 onward) have real, extractable text. Confirmed by
+  checking get_images()/get_text() on a spread of pages before assuming
+  either way.
+  Each page is ONE fixed combination of counterweight + wind-speed
+  bracket (confirmed via the footer icons: a "0.0t"-style counterweight
+  badge and an "11.2 m/s"-style wind badge appear on every page), and a
+  full page is one page of MANY needed for that combo (~13 pages each,
+  continuing to longer boom lengths across pages, not always in strictly
+  ascending order - don't assume page order implies boom-length order,
+  just union all columns found across a combo's page range). Full-
+  document scan found 39 distinct counterweight levels (0.0t to 29.0t,
+  following the crane's own plate-combination steps, not round numbers -
+  matches the same weight steps already seen in the Driving w/ Equipment
+  data) x 3 wind brackets (11.2 / 13.4 / 15.6 m/s) = 117 combos, all
+  present (39 x 3 = 117 exactly, no gaps).
+
+14.2 Extraction method - PyMuPDF find_tables(), not naive text order
+  Raw page.get_text() comes out in scrambled reading order on these
+  pages (confirmed by inspection - numbers appear in a sequence that
+  doesn't match the visual grid at all). PyMuPDF's page.find_tables()
+  reconstructs the actual grid structure directly and reliably once two
+  real bugs in the first attempt were found and fixed:
+    - t.cells (the table's flat per-cell bbox list) is NOT simple
+      row-major (row*col_count + col) indexing - it has merges/gaps
+      (404 entries for a 28x15=420 grid). The correct API is
+      t.rows[r].cells[c], which returns properly ordered bboxes.
+      Using the wrong indexing silently paired every capacity value
+      with the WRONG cell's bbox, corrupting every radius assignment
+      it touched - caught by comparing extracted values against a
+      rendered image of the same page, not just checking the code ran.
+    - The 6 "telescopic section extension %" rows were being detected
+      by matching a column-0 label starting with "1" and containing
+      "\n2" - which false-matched the "18.0\n20.0" RADIUS row (also
+      starts with "1", also contains "\n2" via its second line "20.0").
+      Fixed by matching on the "%" character instead, which only ever
+      appears in the real extension-row label ("1\n2\n3\n4\n5\n% 6").
+  find_tables() also merges pairs of adjacent radius rows into one
+  detected table row (e.g. "3.0"/"3.5" show as one cell with a
+  newline-joined pair of values) - can't just split-and-zip pairwise,
+  because a column's data sometimes only covers ONE of the two radii
+  (found a real case: the 26.4m boom column had a capacity at r=3.5 but
+  nothing at r=3.0, and naive pairwise splitting would have assigned
+  that lone value to the wrong radius). Fixed properly by using each
+  detected cell's own bbox to re-query page.get_text("words", clip=bbox)
+  and matching each value's actual y-coordinate against the cell's own
+  vertical midpoint, rather than assuming order - verified this exact
+  edge case by checking the value's real y0 against the two candidate
+  radius label's y0 directly (matched the lower one, i.e. r=3.5, exactly
+  as the rendered page showed).
+  Verification method throughout: render the actual PDF page to a PNG
+  (page.get_pixmap(dpi=200)) and compare every extracted number against
+  it directly, not just spot-checking a few values against expectation.
+  Did this twice, on two different (counterweight, wind) combos,
+  including checking a mid-range page (page 6 of 13) to confirm
+  multi-page continuation extracts cleanly too - both matched the
+  rendered image exactly, including the sparse-cell edge case, before
+  running the full extraction.
+
+14.3 Final extraction numbers
+  1,532 pages processed, 0 errors. 117 (cwt, wind) combos, 20,044
+  distinct boom-length/extension-config columns, 364,647 individual
+  radius->capacity data points. Compacted (numeric radius keys instead
+  of string dict keys, [radius,capacity] pairs instead of nested
+  objects, extension values split into [percent, isPinned] pairs) to
+  5.58MB JSON, stored at loadchart/ltm1110-T-fulldeploy.json - each
+  combo also carries its own chart code/reference (e.g. "0195" /
+  "T197.001.12076", confirmed constant across all pages of one combo)
+  so a result can be cross-checked against the physical/PDF chart.
+
+14.4 Why this data is NOT inline in index.html like everything else
+  Every other tab's data (COUNTERWEIGHT_DATA, DRIVING_EQ_DATA, etc.) is
+  baked directly into index.html as JS. At 5.58MB for a single crane's
+  single scope, doing that here would bloat every page load for a tab
+  most visits never open. Fetched on demand instead - same lazy-load
+  pattern already used for reeving diagrams (ensureReeveManifestLoaded):
+  fetch('./loadchart/<file>.json'), cached in a module-level variable
+  after first load, picked up by the service worker's normal
+  CONTENT_CACHE fetch-and-cache-on-demand behavior with no sw.js changes
+  needed (APP_SHELL precaching is the wrong tool here - CONTENT_CACHE's
+  existing behavior already does exactly the "keep it once fetched"
+  guarantee wanted).
+
+14.5 Radius rounding - round UP, never interpolate, with a visible notice
+  Chart radii are discrete, non-uniform steps (0.5m from 3-5m, 1m from
+  5-16m, 2m from 16-40m) - not every possible radius is tabulated.
+  Person's explicit call when asked: always round the requested radius
+  UP to the next tabulated row (never interpolate), because that can
+  only ever understate capacity relative to what was actually asked
+  for, never overstate it - the safe direction for safety-critical data.
+  Also explicitly asked for a visible notice whenever this rounding
+  happens, so it's never silent - implemented as a dismissable-looking
+  but always-shown banner stating both the requested and actual radius
+  and why. loadChartRoundUpRadius() implements this as a simple ascending
+  scan (radii list is stored pre-sorted) - first tabulated value >=
+  requested wins.
+
+14.6 Two counterweight modes
+  "I have this fitted" (default/manual): person picks their actual
+  counterweight from the 39 real levels this crane can build, results
+  are scoped to exactly that level only.
+  "Find minimum needed" (advanced, person's own request - "recommend
+  the minimum cwt required to hit the highest capacity"): searches the
+  39 levels ascending and stops at the FIRST (lowest) one where at
+  least one config clears the target load at the rounded radius,
+  reporting that level explicitly ("Minimum counterweight needed to hit
+  this target: X t") alongside the same top-5-by-margin display. Not
+  "the CWT that gives the single highest capacity overall" - scoped to
+  the person's actual radius+target query, same as manual mode, just
+  without them having to pick a starting counterweight and iterate by
+  hand.
+  Verified the browser-side query logic against the source JSON
+  directly (not just by eyeballing the UI) - looked up the exact same
+  (boom=22.6m, cwt=0.8t, wind=11.2m/s, r=10m) cell in the raw extracted
+  data via a separate script and confirmed it matched the app's own
+  "Option 1" result (16.9t) exactly before considering this done.
+
+================================================================================
