@@ -4673,3 +4673,58 @@ to) the two source documents from 11.1. Nothing more is needed for Claude to
 follow this section directly.
 
 ================================================================================
+
+12. SOURCING A BRAND-NEW CRANE: WHAT'S PUBLIC VS WHAT NEEDS THE FULL MANUAL
+    [CONVERSATION]
+--------------------------------------------------------------------------------
+Use this to triage what to ask the person for BEFORE starting on a crane
+that isn't in the app at all yet, ahead of running section 9 (reeving) or
+section 11 (CWT) - it's about which document covers which tab, not how to
+process any one of them once in hand.
+
+12.1 The public Liebherr product page (no login, e.g.
+     liebherr.com/.../mobile-cranes/ltm-mobile-cranes/ltm-<model>) has a
+     Downloads tab with a "Technical Data - Mobile crane <model> [m/t]" PDF
+     - the same document TYPE as an OEM dimension sheet (the "Maße" page
+     style - overall dimensions, axle loads, outrigger geometry). This
+     alone is enough for:
+       - Outrigger Support Positioning (P1-P4 figures, always read at
+         100% extension - the person's own standing rule, confirmed
+         independent of any specific crane).
+       - Rope Retentioning (drum length/pull are typically in this sheet
+         too).
+     This PDF was NOT verified by directly fetching the live page in this
+     conversation - WebFetch 404'd on it (Liebherr's site likely blocks or
+     requires JS rendering this tool can't do), so what it contains was
+     taken from the document TYPE's established pattern, not a live check
+     of that specific page. Try fetching it directly when this actually
+     comes up; if it 404s again, ask the person for the PDF itself rather
+     than assuming the pattern holds.
+
+12.2 What the public page does NOT reliably cover, confirmed by the
+     person directly rather than assumed:
+       - CWT Combinations: the product page's "ballast systems" section
+         may show an exploded-view image (useful for the 2D diagram's own
+         geometry/plate layout, same role as the artwork described in
+         10.4), but not the actual combination-validity table - which
+         specific plate combos are OEM-approved, at what weight. That
+         table has come from the full Operator Manual's own
+         "Counterweight" chapter for every crane in this app so far (see
+         11.1a) - a public summary sheet isn't the same document.
+       - Reeving Plan: the EINSCHERPLAN diagrams (section 9's own source)
+         are an Operator Manual document too, not something the public
+         product page carries.
+       - 3D CAD models / GLB exports: never public - always the person's
+         own Onshape work (section 11.2), regardless of crane.
+
+12.3 Practical upshot for a brand-new crane
+     Ask for the Operator Manual PDF (unlocked, per 11.1a) from the start,
+     alongside/instead of just a product-page link - don't wait to
+     discover the CWT/reeving gap after already starting on the parts the
+     public page DOES cover. The public Technical Data sheet is still
+     worth having even so: it can very likely be worked from independently
+     for the Outrigger and Rope Retentioning tabs while the fuller manual
+     extraction (CWT, reeving) happens in parallel, rather than gating
+     everything on one document.
+
+================================================================================
