@@ -5570,4 +5570,44 @@ cranes get their own subsections as they're built.
   JSON - comparable in scale to 1110's own dataset. Regression-checked
   LRT 1100, LTM 1110, and LTM 1160 afterward - 0 console errors.
 
+15.7 LTM 1300-6.2 - back to a single axis (no ballast radius on this
+     crane), per-column wind, 6 telescopic sections
+  1344 pages. Real "T*" mode again (auxiliary device exclusion, same as
+  1250). This crane's own 40.65 icon chapter documents Counterweight
+  and Crane-supported (support base) icons but never a counterweight-
+  radius icon - checked directly rather than assumed from 1250's
+  precedent, and confirmed empirically too (no second radius value ever
+  appears in any footer badge across the classification scan). Matches
+  what the person's original crane list implied (only 160/250/650 were
+  named as needing the selector) - good agreement between the manual's
+  own documentation and the request, not just a coincidence worth
+  flagging either way.
+  Support base varies (2.68 / 5.60 / 7.06 / 8.53m) with the same
+  "widest = only 360°" pattern as 1130/1160/1250 - confirmed via each
+  width's own slew badge rather than assumed to repeat automatically.
+  11 counterweight levels at the 8.53m/360° scope (0 through 96t),
+  16-17 pages each, all contiguous - found via a ~16s full-document
+  scan (much faster than 1250's 13k-page job, this file is only 1,344
+  pages). One real regex bug caught immediately by a 0-combos result
+  on the first attempt (not silently trusted): the footer badge's
+  counterweight and outrigger-length values sit on the SAME line here
+  ("96.0      8.90 x     360°"), unlike the newline-separated version
+  the regex was copied from - fixed by comparing the failing pattern
+  against the actual page text before touching real extraction logic.
+  Extension-row layout is yet a fourth distinct shape (all now handled
+  by the same general "read section count from label digits, walk rows
+  by their own depth" algorithm with zero per-crane branching in the
+  extraction code itself, only in how each script locates the
+  page-specific badge fields): 6 sections, reeving ("ESTn"), AND wind
+  ("m/s") all stacked into ONE merged label cell, each as its own
+  single-value-per-column row - reeving directly following the 6
+  section rows, wind directly after that. Verified two pages (cwt=96.0
+  and cwt=0.0, both start-of-combo pages) against rendered/dumped text
+  before shipping - boom lengths, radius/capacity values, reeving, and
+  wind ratings all matched exactly.
+  Final size: 11 combos, 2,139 columns, 36,516 datapoints, ~620KB JSON.
+  Regression-checked LRT 1100, LTM 1110, LTM 1130, and LTM 1250
+  afterward (both wind-group and ballast-group UI correctly hidden for
+  this crane) - 0 console errors.
+
 ================================================================================
