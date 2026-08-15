@@ -3037,6 +3037,18 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   Composition/Total/2D-hotspot sync re-verified working after the rework.
   No console errors.
 
+  UPDATE (superseded as the default, not wrong at the time): this was
+  the right call for the cranes shipped up to this point, but starting
+  at 10.71 the person's own workflow shifted to spacing the stack by
+  hand in Onshape and shipping preExploded: true instead - not a
+  reversal of this reasoning, a different tradeoff that won out once
+  composite-part swaps (10.75) and multi-crane batches made "exact
+  control over the file, no heuristics to second-guess" worth more
+  than "spacing is a one-line edit here." STACK_GAP/explodeParts()
+  stay in cwt3d.js, real working infrastructure for the case, not
+  dead code - just not the current default for a NEW crane. See
+  section 11 for the procedure as it actually runs today.
+
 ================================================================================
 
 10.60 Consolidated "Cache All Offline Content" - one shared button instead
@@ -4466,5 +4478,145 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   same way the person already screenshots it for stack-order
   confirmation), use underscores in the partMap from the start rather
   than copying the space-containing name and finding out the hard way.
+
+================================================================================
+
+11. HOW TO SOURCE A NEW CRANE'S COUNTERWEIGHT DATA + 3D MODEL  [CONVERSATION]
+--------------------------------------------------------------------------------
+Use this whenever a crane needs its CWT Combinations tab built or extended -
+either from scratch, or adding a 3D model to a crane that currently only has
+the 2D diagram. This is the person's own real, repeatable workflow, run the
+same way across every crane so far - written down here as one procedure
+instead of left scattered across the dozen-plus per-crane entries in section
+10 that each describe living through some piece of it. Same relationship to
+section 10 that section 9 has to section 5: section 10 is the record of what
+actually happened and why (including the false starts); this section is the
+current, distilled procedure.
+
+11.1 Two source documents, from two different places
+  a) The OEM operator manual PDF for that specific crane, "unlocked" (its
+     own password/permission protection removed) before it's handed over.
+     Just the Counterweight chapter needs extracting from it (10.1)
+     - it's the source of the combination weights/ids/subset-sum data,
+     not the 3D geometry.
+     Extraction gotcha to check for, not assume away: this fleet's PDFs
+     have shown up both plain and with a uniform per-character code-point
+     shift applied by an embedded font subset (confirmed on the 1250 doc,
+     10.1) - decode one word and confirm it reads correctly before
+     trusting a bulk extraction. Tool availability isn't constant session
+     to session either (poppler-utils present for some, absent for
+     others, 10.1 vs section 9's own toolchain) - don't assume this
+     session has what a previous one did.
+  b) A GLB export of the vendor-supplied 3D CAD model, prepared in
+     Onshape by the person (11.2) - this is the source of the 3D
+     geometry/positions, not the weight data. The PDF and the GLB are
+     independent inputs; nothing about one is inferred from the other.
+
+11.2 Preparing the GLB in Onshape, before export
+  Open the vendor-supplied 3D model in Onshape and:
+  - Space the counterweight stack itself apart (~120mm between adjacent
+    plates has been the standard gap used everywhere in this app -
+    STACK_GAP in cwt3d.js matches it exactly, 10.59) so it reads as an
+    exploded view rather than the plates' real touching-flush assembled
+    position. This is now done BY HAND in Onshape for every new crane
+    (10.71 onward), not left for the app's own auto-explode heuristics
+    to figure out - see the UPDATE note on 10.59 for why the workflow
+    moved this direction. The resulting model3d config uses
+    preExploded: true, which tells cwt3d.js to trust these positions
+    exactly and skip its own explode logic entirely.
+  - Rename parts to real, meaningful names where Onshape allows it. Note
+    a real Onshape UI limitation the person has hit directly: only the
+    ASSEMBLY INSTANCE can always be renamed from the assembly tree; the
+    underlying PART's own name (the one that actually ends up on the
+    exported GLB node, see 11.4) sometimes can't be changed from there -
+    it has to be renamed in the part's own Part Studio instead, which
+    isn't always practical. When it isn't, the export ships with
+    Onshape's own generic "Part N" names instead of anything semantic -
+    not a blocker (see 11.4), just means the partMap has to be built by
+    cross-referencing an Onshape instance-tree screenshot against real
+    geometry instead of reading it straight off descriptive names.
+  - Swap out any Composite Parts (an Onshape object type - a merged/
+    boolean result, not a plain solid). These get SILENTLY DROPPED by
+    Onshape's assembly-level GLB exporter even though they're a normal
+    part of the tree (discovered the hard way on LTM 1110's Winch 2*,
+    10.69 - confirmed by comparing the Onshape instance count against
+    what the GLB actually contained, not assumed). The fix that's stuck:
+    export the Composite Part on its own to STEP, reimport that STEP
+    file as a plain solid, then swap the assembly's instance of the old
+    composite-linked part for the reimported one. The reimported node
+    lands with real geometry and survives the main assembly export
+    normally after that (10.75) - the earlier approach (exporting the
+    composite as its own small supplementary GLB and loading it
+    alongside the main one via model3d.extraParts) still works and is
+    still in cwt3d.js, but is no longer the first thing to reach for now
+    that the STEP-swap fix is known to work directly in the main file.
+  - Export the finished, exploded, composite-free assembly as one GLB.
+    Two export-setting gotchas that have bitten before and are worth
+    checking for on every new file, not just assumed fixed: Onshape
+    defaults to Draco compression, which needs a matching decoder on the
+    app's own side (already vendored, 10.70 - not a per-export toggle
+    the person needs to remember, just worth knowing why an
+    un-flagged-off compressed export still loads fine) - and if the
+    export instructions above ever change to allow it, watch for literal
+    SPACES in real part names ("Part 6", "winch 2") surviving into the
+    export: THREE.js's GLTFLoader silently sanitizes spaces to
+    underscores on load, so a partMap copied verbatim from the raw file/
+    instance names will silently match nothing (10.90 - use the
+    underscore form in the partMap from the start).
+
+11.3 What actually gets handed over
+  The PDF extract (11.1a) plus the finished GLB (11.2) - and, when part
+  names came out generic ("Part N", not renamed), an Onshape instance-
+  tree screenshot showing each stack's own physical order, described
+  top-to-bottom with at minimum the top and bottom part numbers stated
+  explicitly (10.87/10.88's LTM 1650 CWT session is the reference
+  example - the person named the top and bottom of each stack and
+  confirmed the tree's own listing order was the physical order,
+  which turned out to let the middle positions be inferred too). This
+  screenshot is cheap for the person to produce and removes almost all
+  the guesswork on the receiving end - worth including as standard
+  practice going forward, not just when something's ambiguous.
+
+11.4 What Claude does with it
+  - PDF: extract the combination chart, verify every printed combo
+    reconciles exactly against the subset-sum of a fixed component list
+    (10.2's method) - a combo that doesn't reconcile is a transcription
+    error worth re-checking before shipping, not a data quirk to shrug
+    off.
+  - GLB: confirmed node names always carry the real "Part N" (or
+    equivalent) identifiers, whether or not Onshape ever let them be
+    renamed to something descriptive (10.88) - the ORIGINAL "-low"
+    LTM 1650 export was avoided specifically for lacking this. When an
+    instance-tree screenshot is available (11.3), cross-check the
+    person's stated order against the model's own real geometry
+    (world position per axis, mesh bounding-box size/thickness) before
+    trusting either source alone - this is what caught that the tree's
+    listing order really did match physical stack order, and separately
+    confirmed a plate the person flagged as possibly-duplicated (a <2>
+    instance count in the Onshape tree) was genuinely a single physical
+    part (10.88).
+  - Build the partMap from confirmed identifiers only, matching the
+    app's own existing component ids (a stack's two matching plates -
+    left and right - map to the SAME id, same "×2" pairing the 2D
+    diagram already uses, not two separate ids).
+  - Ship with preExploded: true (11.2) and verify with an ACTUAL CLICK
+    test before calling it done - not just "no console errors." A wrong
+    node-name assumption can leave every namedPart wired to a single
+    wrong id while the model still loads and renders with zero console
+    errors (10.90 - this exact failure mode shipped once and only
+    surfaced when the person tried actually using it). Click a plate,
+    confirm the Total Counterweight number itself changes correctly,
+    not just that something highlights.
+  - Regression-check every OTHER crane's 3D CWT view after any change to
+    cwt3d.js itself (not just the new crane) - several of the real bugs
+    caught this way (10.75's Group-vs-Object3D gap, 10.89's perspective-
+    depth fit bug, 10.90's Mesh-type gap) were found specifically by
+    sweeping the existing fleet after a change made for one crane, not
+    by testing that one crane in isolation.
+
+To ask for this workflow to run on a new crane, the person doesn't need to
+re-explain any of the above - just say which crane, and provide (or point
+to) the two source documents from 11.1. Nothing more is needed for Claude to
+follow this section directly.
 
 ================================================================================
