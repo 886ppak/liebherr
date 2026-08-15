@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v1.7</span></h1>
+    <h1>MYSLEWER <span class="app-version">v1.8</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -4271,7 +4271,7 @@
             r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
             <tr>
-              <td><b>P${item.id}</b></td>
+              <td><b>C${item.id}</b></td>
               <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
               <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
               <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
@@ -4321,7 +4321,7 @@
           : `${movedR} mm<br>${movedDir} ${movedAngle.toFixed(1)}°`;
         resultsHtml += `
           <tr>
-            <td><b>P${item.id}</b><br>${tag}</td>
+            <td><b>C${item.id}</b><br>${tag}</td>
             <td>${movedCell}</td>
             <td>${stayR} mm<br>${stayDir} ${stayAngle.toFixed(1)}°</td>
             <td>${item.r} mm<br>${dirFor(item.angle)} ${Math.abs(item.angle).toFixed(1)}°</td>
@@ -4447,13 +4447,13 @@
         // outline, same "current/now" yellow already used for the old-
         // center dot in compare mode - not the must-move/optional
         // green/amber, since that status is still fully conveyed by the
-        // connecting line's own color/dash and the P-label, so the pad's
+        // connecting line's own color/dash and the C-label, so the pad's
         // own dot is free to mark "this is where the mat IS right now"
         // instead of duplicating status the line already shows.
         if (o.pad) drawPadBox(o.x, o.y, o.pad, '#e5a900', 'rgba(229,169,0,0.18)', []);
 
         if (o.required) {
-          clickableTargets.push({ id: `P${o.id}`, type: 'Must-Move Setup Pad', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
+          clickableTargets.push({ id: `C${o.id}`, type: 'Must-Move Setup Pad', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
           ctx.strokeStyle = '#10b981'; ctx.setLineDash([]);
           ctx.beginPath(); ctx.moveTo(crane.x, crane.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
@@ -4466,15 +4466,15 @@
           else if (o.quadrant === 'FR') { offsetX = 10; offsetY = -8; }
           else if (o.quadrant === 'FL') { offsetX = -28; offsetY = -8; }
           else if (o.quadrant === 'RL') { offsetX = -28; offsetY = 15; }
-          ctx.fillText(`P${o.id}`, pt.x + offsetX, pt.y + offsetY);
+          ctx.fillText(`C${o.id}`, pt.x + offsetX, pt.y + offsetY);
         } else {
-          clickableTargets.push({ id: `P${o.id}`, type: 'Optional / Left in Place', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
+          clickableTargets.push({ id: `C${o.id}`, type: 'Optional / Left in Place', x: pt.x, y: pt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: o.posX, posY: o.posY });
 
           ctx.fillStyle = o.pad ? '#e5a900' : '#f59e0b'; ctx.strokeStyle = '#f59e0b';
           ctx.beginPath(); ctx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI); ctx.fill();
           ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(crane.x, crane.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
           ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 13px sans-serif';
-          ctx.fillText(`P${o.id}`, pt.x - 25, pt.y - 10);
+          ctx.fillText(`C${o.id}`, pt.x - 25, pt.y - 10);
 
           // Ghost "target" dot: for optional legs, shows where this pad WOULD
           // go if you chose to move it — separate from the current dot above.
@@ -4501,9 +4501,9 @@
             }
 
             ctx.fillStyle = '#7dd3fc'; ctx.font = '10px sans-serif';
-            ctx.fillText(`P${o.id} target`, tpt.x + 9, tpt.y + 4);
+            ctx.fillText(`C${o.id} target`, tpt.x + 9, tpt.y + 4);
 
-            clickableTargets.push({ id: `P${o.id} (target)`, type: o.clash ? 'Not possible right now' : 'If moved, target spot', x: tpt.x, y: tpt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.movedX), posY: Math.round(o.movedY) });
+            clickableTargets.push({ id: `C${o.id} (target)`, type: o.clash ? 'Not possible right now' : 'If moved, target spot', x: tpt.x, y: tpt.y, r: o.r, dir: o.dir, angle: o.relAngle, posX: Math.round(o.movedX), posY: Math.round(o.movedY) });
           }
         }
       });
