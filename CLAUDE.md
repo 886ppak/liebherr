@@ -30,3 +30,11 @@ Confirm each deploy actually landed by fetching `sw.js` from the live
 Pages URL and checking `CACHE_VERSION` before considering the work done
 (`myslewer.github.io/myslewer/sw.js` for main,
 `886ppak.github.io/myslewer-beta/sw.js` for beta).
+
+# App version number
+
+The `.app-version` span next to the MYSLEWER wordmark in `index.html`
+(`v1.1` as of this writing) is a separate, user-facing version, distinct
+from the internal `CACHE_VERSION` build string. Bump its minor number
+(v1.1 -> v1.2 -> ...) on every meaningful push to `main`, same as
+`CACHE_VERSION` gets bumped for every app-shell change.
