@@ -4524,11 +4524,13 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   (composite parts themselves get silently dropped by Onshape's
   assembly-level GLB exporter, 10.69), reimport the STEP as a plain
   solid, swap it into the assembly in place of the old individual
-  instances, rename if possible, re-export the whole assembly. Not
-  done as of this entry - the '98037278_002_<1>' block-mapping above
-  is the shipped, working state either way; a cleaner single-part
-  export would just mean simplifying the partMap to one direct id
-  later, not something blocking p1 from working today.
+  instances, rename if possible, re-export the whole assembly.
+  UPDATE: person tried the Composite Part / STEP swap and hit friction
+  getting it to work cleanly - decided the '98037278_002_<1>' block-
+  mapping above is a fine PERMANENT answer for this crane, not a
+  stopgap waiting on a cleaner export. Nothing to revisit here unless
+  the person independently gets a genuinely merged export later; this
+  isn't tracked as outstanding work.
 
 ================================================================================
 
