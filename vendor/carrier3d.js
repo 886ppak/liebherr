@@ -196,24 +196,35 @@ window.__carrier3dFitView = function () {
   if (modelCache[currentModelKey]) fitView();
 };
 
+// Only ever shown for a transient loading/error state now - the
+// permanent "positions are approximate" disclaimer that used to sit here
+// covered a chunk of the model itself and stayed up the whole time the
+// preview was open, so it's gone (see methodology.txt 10.86). Hidden
+// entirely rather than left as an empty padded chip once there's nothing
+// to say.
+function setLabel(text) {
+  const el = document.getElementById('carrier-3d-label');
+  el.textContent = text;
+  el.style.display = text ? '' : 'none';
+}
+
 async function loadModel(modelKey, url, onDone) {
   if (modelCache[modelKey]) { onDone(modelCache[modelKey]); return; }
   if (loadingInProgress[modelKey]) return;
   loadingInProgress[modelKey] = true;
 
-  const labelEl = document.getElementById('carrier-3d-label');
-  labelEl.textContent = 'Loading 3D model…';
+  setLabel('Loading 3D model…');
 
   try {
     const root = await loadGLTFAsync(url);
     root.updateMatrixWorld(true);
     modelCache[modelKey] = root;
     loadingInProgress[modelKey] = false;
-    labelEl.textContent = 'Outrigger pad positions shown below are approximate - the CAD model is aligned to the site plan using the same OEM footprint figures, not survey-precise.';
+    setLabel('');
     onDone(root);
   } catch (err) {
     loadingInProgress[modelKey] = false;
-    labelEl.textContent = '3D model failed to load.';
+    setLabel('3D model failed to load.');
     console.error('carrier3d load error', err);
   }
 }
@@ -231,7 +242,7 @@ window.__carrier3dActivate = function (modelKey, url) {
   if (cached) {
     scene.add(cached);
     frameCamera(cached);
-    document.getElementById('carrier-3d-label').textContent = 'Outrigger pad positions shown below are approximate - the CAD model is aligned to the site plan using the same OEM footprint figures, not survey-precise.';
+    setLabel('');
     if (pendingSync[modelKey]) applySync(modelKey, cached, pendingSync[modelKey]);
   } else {
     loadModel(modelKey, url, (root) => {

@@ -4259,3 +4259,21 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   aspect ratios, nothing clipped. CARRIER3D_VERSION bumped to 20.
 
 ================================================================================
+
+10.86 3D Carrier Preview: removed the permanent "approximate" overlay text
+  Person said the "Outrigger pad positions shown below are approximate -
+  the CAD model is aligned to..." caption blocked the view - it sat as
+  a translucent chip over the top-left corner of the canvas the ENTIRE
+  time the preview was open (not just transiently), covering part of
+  the model itself, unlike the "Loading 3D model…" / error text it
+  shares an element with, which are genuinely transient. Removed it
+  outright rather than relocating it - added a setLabel() helper that
+  also toggles the element's own display:none when there's nothing to
+  show, so an empty caption doesn't leave a stray padded chip visible
+  (the div's CSS gives it padding/background/border-radius regardless
+  of content, so clearing textContent alone wasn't enough). Loading and
+  error states are unchanged. Verified across all 6 carrier-equipped
+  cranes: label is empty and display:none once loaded, no console
+  errors. CARRIER3D_VERSION bumped to 21.
+
+================================================================================
