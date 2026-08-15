@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.3</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.4</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -748,10 +748,11 @@
             <input type="number" id="lc-weight" step="0.1" min="0" placeholder="e.g. 10" oninput="renderLoadChartResults()">
           </div>
         </div>
-        <div class="form-group" style="margin-top:14px;">
+        <div class="form-group" id="lc-wind-group" style="margin-top:14px;">
           <label>Maximum Wind Speed</label>
           <div class="mode-toggle" id="lc-wind-toggle"></div>
         </div>
+        <div class="disclaimer" id="lc-wind-column-note" style="margin-top:14px; display:none;">This crane's chart doesn't use a fixed wind bracket — each boom configuration has its own maximum permissible wind speed instead, shown with its result below.</div>
         <div class="form-group" style="margin-top:14px;">
           <label>Counterweight</label>
           <div class="mode-toggle" id="lc-cwt-mode-toggle">
@@ -5604,6 +5605,7 @@
     // other on-demand asset. See methodology.txt section 14 for how this
     // was extracted and verified.
     const LOAD_CHART_FILES = {
+      '1100': './loadchart/lrt1100-T-fulldeploy.json',
       '1110': './loadchart/ltm1110-T-fulldeploy.json'
     };
     let loadChartData = null;
@@ -5623,6 +5625,7 @@
     // name has loaded - onLoadChartCraneChange() overwrites the selected
     // option's text with the real name once the fetch resolves.
     const LOAD_CHART_CRANE_LABELS = {
+      '1100': 'LRT 1100-2.1',
       '1110': 'LTM 1110-5.1'
     };
 
@@ -5642,13 +5645,31 @@
         const sel = document.getElementById('lc-crane');
         if (sel.options[sel.selectedIndex]) sel.options[sel.selectedIndex].text = data.meta.crane;
 
-        const winds = [...new Set(Object.values(data.combos).map(c => c.wind))]
-          .sort((a, b) => parseFloat(a) - parseFloat(b));
-        const windToggle = document.getElementById('lc-wind-toggle');
-        windToggle.innerHTML = winds.map((w, i) =>
-          `<button class="mode-btn${i === 0 ? ' active' : ''}" onclick="setLoadChartWind('${w}', this)">${w}</button>`
-        ).join('');
-        loadChartWind = winds[0] || null;
+        // Most cranes fix wind speed at the page level (pick a bracket,
+        // every column on that page shares it) - LRT 1100 instead prints
+        // its own max permissible wind PER COLUMN (see methodology.txt
+        // 14.10), so there's no bracket to toggle between. windMode
+        // flags which shape this crane's data uses; older files without
+        // the field (LTM 1110) default to the original page-bracket
+        // behavior.
+        const windMode = data.meta.windMode || 'page';
+        const windGroupEl = document.getElementById('lc-wind-group');
+        const windColumnNoteEl = document.getElementById('lc-wind-column-note');
+        if (windMode === 'column') {
+          windGroupEl.style.display = 'none';
+          windColumnNoteEl.style.display = '';
+          loadChartWind = 'n/a';
+        } else {
+          windGroupEl.style.display = '';
+          windColumnNoteEl.style.display = 'none';
+          const winds = [...new Set(Object.values(data.combos).map(c => c.wind))]
+            .sort((a, b) => parseFloat(a) - parseFloat(b));
+          const windToggle = document.getElementById('lc-wind-toggle');
+          windToggle.innerHTML = winds.map((w, i) =>
+            `<button class="mode-btn${i === 0 ? ' active' : ''}" onclick="setLoadChartWind('${w}', this)">${w}</button>`
+          ).join('');
+          loadChartWind = winds[0] || null;
+        }
 
         const cwts = [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
         buildSelect(document.getElementById('lc-cwt'), cwts, (c) => `${c.toFixed(1)} t`, (c) => c);
@@ -5790,7 +5811,7 @@
         if (!combo) continue;
         const found = [];
         for (const col of combo.cols) {
-          const [boomLength, ext, reeving, radiiPairs] = col;
+          const [boomLength, ext, reeving, radiiPairs, windRating] = col;
           // A "-" on any telescopic section (isPinned===false) means that
           // section is allowed to telescope UNDER LOAD up to this %, not
           // that it must be pinned there - the OEM manual's own live-
@@ -5813,7 +5834,7 @@
           const usableCapacity = rawCapacity * (loadChartDerate ? 0.9 : 1);
           if (usableCapacity >= effectiveTarget) {
             found.push({
-              cwt, boomLength, ext, reeving, rawCapacity, usableCapacity,
+              cwt, boomLength, ext, reeving, rawCapacity, usableCapacity, windRating,
               margin: usableCapacity - effectiveTarget, code: combo.code, ref: combo.ref
             });
           }
@@ -5855,8 +5876,9 @@
             <tbody>
               <tr><td style="text-align:left;">Boom length</td><td>${r.boomLength.toFixed(1)} m</td></tr>
               <tr><td style="text-align:left;">Telescopic section extension</td><td>${formatLoadChartExtension(r.ext)}</td></tr>
-              <tr><td style="text-align:left;">Hoist rope reeving</td><td>${r.reeving}</td></tr>
+              ${r.reeving ? `<tr><td style="text-align:left;">Hoist rope reeving</td><td>${r.reeving}</td></tr>` : ''}
               <tr><td style="text-align:left;">Counterweight</td><td>${r.cwt.toFixed(1)} t</td></tr>
+              ${r.windRating != null ? `<tr><td style="text-align:left;">Max permissible wind (this config)</td><td>${r.windRating.toFixed(1)} m/s</td></tr>` : ''}
               <tr><td style="text-align:left;">Chart capacity at ${actualRadius}m</td><td>${r.rawCapacity.toFixed(2)} t</td></tr>
               ${loadChartDerate ? `<tr><td style="text-align:left;">Usable capacity (90% rule)</td><td>${r.usableCapacity.toFixed(2)} t</td></tr>` : ''}
               ${riggingWeight > 0 ? `<tr><td style="text-align:left;">Rigging weight deducted</td><td>${riggingWeight.toFixed(2)} t</td></tr>` : ''}
