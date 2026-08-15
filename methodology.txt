@@ -4305,3 +4305,97 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   all 6 carrier-equipped cranes.
 
 ================================================================================
+
+10.87 LTM 1650 CWT: wired up the real model, real partMap
+  Person supplied a NEW export (Myslewer/Counterweight/LTM1650CWT.glb -
+  not the earlier "-low" one staged back in 10.82) plus their own
+  Onshape instance tree screenshot describing each stack's top-to-
+  bottom part order, and asked to confirm the read before uploading
+  the model. Cross-checked their description against the file's real
+  geometry rather than trusting either alone:
+    - Every "Part N" node name in the GLB matches the Onshape tree
+      exactly (occurrence-of-Part-N, no collisions anywhere in the
+      file) - unlike the earlier "-low" export, this one names
+      individual plates, not just "Part N" as a generic default.
+    - World position confirms both the left/right split (X identical
+      to several decimals within each side) and the exact top-to-
+      bottom order the person described, independently, for both
+      stacks: Right 6->12->1->2->3->10->7->15, Left 13->9->8->16->4->
+      14->5->11.
+    - Mesh bounding-box thickness confirms the 5t/10t split: Part 6/13
+      (the two "5t" plates) are 0.389m thick vs 0.68m for every 10t
+      plate, same footprint (2.192 x 2.192) throughout - consistent
+      with a 5t plate being roughly half a 10t one.
+    - Person separately confirmed Part 16's <2> instance count in the
+      Onshape tree wasn't a hidden duplicate ("I just dragged it") -
+      confirmed independently too: exactly one "occurrence of Part 16"
+      node exists anywhere in the file, sitting exactly where its
+      stack position predicts.
+  Wired up model3d on '1650' for real: each 10t PAIR (one plate per
+  side, matching the 2D diagram's own "×2" ids p10a..p10g) maps both
+  that pair's GLB node names to the same app id, paired by physical
+  stack rank; p5x2 the same way for the two 5t plates. Winch 2 is a
+  single clean node; Winch 3 is a 6-body sub-assembly under cryptic
+  Onshape-generated names (id11__$ etc) - confirmed unique, all 6
+  mapped to w3. p1 (All Counterweight Frame Receptacles) deliberately
+  left UNMAPPED - its own GLB representation is a large, complex
+  nested sub-assembly (hundreds of anonymous sub-parts, a different
+  problem than the 16 clearly-identified plates) - shown as background
+  geometry, not 3D-clickable; the 2D diagram remains how it's toggled.
+  First attempt used cwt3d.js's own auto-explode (no preExploded flag)
+  since the raw GLB's plates were only 0.1m apart, which read as
+  "real assembled position, needs auto-explode" by the same logic
+  that's worked for every non-preExploded crane so far. Wrong: the
+  person had already exploded the stack themselves in Onshape (0.1m
+  WAS their intended gap, not the real touching thickness) - letting
+  auto-explode run on top of that doubled the spacing AND left the
+  large unmapped p1 base geometry static while the plates moved away
+  from it, which read as visually broken (confirmed by screenshot,
+  not just theorized). Fixed by setting preExploded: true once this
+  was clarified - trusts the person's own layout untouched, consistent
+  with everything staying spatially correct relative to the static
+  base. Verified: 3D toggle appears for 1650, click-to-select works
+  (confirmed via an actual hit, not just no-console-errors), no
+  console errors, CWT3D_VERSION unaffected by this entry (see 10.88
+  for the version bump that also landed alongside it).
+
+================================================================================
+
+10.88 CWT 3D viewer: front view + fit-to-model default, fixed a
+      perspective depth bug found along the way
+  Person asked for the CWT 3D viewer's default camera to be a front
+  view with everything fit in frame ("zoom to fit or whatever it's
+  called"), after LTM 1650's own default 3/4-angle view (10.87) left
+  its left counterweight stack sitting behind the model's own central
+  base/winch bulk, only visible after manually dragging to rotate -
+  same class of problem carrier3d.js's Fit View already solved for the
+  outrigger tab (10.85), applied here to the CWT tab's own viewer.
+  Replaced cwt3d.js's frameCamera() 3/4-angle fixed-margin guess with
+  a straight-on front view (camera on +Z, default up, looking at the
+  model's own bounding-box center) sized from the camera's actual FOV/
+  aspect ratio, same approach as carrier3d.js's fitView - fit against
+  whichever of X (width) or Y (height) actually constrains the
+  canvas's own shape.
+  Regression-checked against every other CWT-3D crane (1250, 1130,
+  1110, 1300, 1220) before trusting it as a safe default change, not
+  just eyeballing the one crane that prompted it - caught a REAL bug
+  doing this: LTR 1220's counterweight is nearly as deep (Z) as it is
+  tall (Y), and the initial version measured required distance only
+  from the bounding box's CENTER depth, which under a perspective
+  camera under-fits anything with real thickness - the model's own
+  front (near-camera) face sits closer than the "fit" distance and
+  gets magnified past the frame edges. Confirmed by comparing computed
+  fit distance against the model's own half-depth (halfZ=1.2 against a
+  fit distance of only 3.2 before margin - the front face was ~1.3x
+  closer than the framing assumed) rather than guessing from the
+  screenshot alone. Fixed by adding each axis's own halfZ to its
+  required distance, so the fit is valid at the model's NEAREST point,
+  not just its average depth - a no-op for a genuinely flat model,
+  the actual fix for a thick one.
+  Verified all 6 cranes (1650, 1250, 1130, 1110, 1300, 1220): no
+  console errors, everything fits in frame with visible margin on all
+  sides, nothing clipped, click-to-select still functions (confirmed
+  via an actual hit on LTM 1650's stack, not just visual inspection).
+  CWT3D_VERSION bumped to 12.
+
+================================================================================

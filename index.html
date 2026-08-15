@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v1.2</span></h1>
+    <h1>MYSLEWER <span class="app-version">v1.3</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -1250,6 +1250,63 @@
         figRef: 'Fig. 156378, Liebherr doc LTM 1650-8-1-000 (0213131-03) — actual OEM exploded-view artwork, extracted directly, not redrawn.',
         manualUrl: 'https://drive.google.com/file/d/11AKxwy5Xl3udo2b_R3CUhCWDwHzoptto/view?usp=drive_link',
         manualPage: 987,
+        // Person-supplied Onshape GLB (Myslewer/Counterweight/LTM1650CWT.glb,
+        // NOT the earlier "-low" export - see methodology.txt 10.87). Node
+        // names carry real Part N identifiers matching the Onshape instance
+        // tree exactly, confirmed against the person's own top/next/bottom
+        // description of each stack plus real geometry (world position and
+        // mesh bounding-box thickness) - not guessed:
+        //   Right stack, top->bottom: 6(5t), 12, 1, 2, 3, 10, 7, 15
+        //   Left stack, top->bottom:  13(5t), 9, 8, 16, 4, 14, 5, 11
+        // The app models each 10t PAIR (one plate per side) as a single id
+        // (p10a..p10g) - same "×2" pairing the 2D diagram already uses, not
+        // 16 individually-selectable plates - so each pair's two GLB nodes
+        // (different literal names, e.g. "Part 12" and "Part 9") both map to
+        // the same app id, paired by physical rank in the stack (a and g are
+        // the top and bottom pairs respectively; interchangeableGroup means
+        // the exact letter assignment doesn't matter functionally). p5x2
+        // (Part 6 + Part 13) is the top pair on both sides, same way.
+        // preExploded: true - person confirmed they've already exploded
+        // the stacks themselves in Onshape (same as 1250/1110), so
+        // cwt3d.js's own auto-explode heuristics must NOT touch this one.
+        // Letting auto-explode run anyway (tried first, before this was
+        // confirmed) double-exploded an already-spaced layout AND left the
+        // large unmapped p1 base/receptacle assembly (see below) static
+        // while the plates moved away from it - visually broken, not just
+        // redundant. preExploded skips all of that and trusts the GLB's
+        // own positions directly.
+        // Winch 2 is a single clean mesh node ("winch 2"). Winch 3 is a
+        // 6-body sub-assembly under a "winch 3 <1>" group with cryptic
+        // Onshape-generated names (id11__$, id8__$, etc) - all 6 confirmed
+        // unique (no collision with anything else in the file) and mapped
+        // to w3 individually. With preExploded true, none of that matters
+        // for positioning (nothing here moves - see above), only for
+        // knowing which meshes are clickable/highlightable as w2/w3.
+        // p1 (All Counterweight Frame Receptacles) is deliberately left
+        // UNMAPPED - its own GLB representation is a large, complex nested
+        // sub-assembly (hundreds of anonymously-named sub-parts, a
+        // different problem than the 16 clearly-identified plates above),
+        // so it renders as background geometry but isn't 3D-clickable; the
+        // 2D diagram remains the way to toggle it. Same reasoning as why
+        // the whole model was held back from being wired up in the first
+        // place - see methodology.txt 10.82.
+        model3d: {
+          url: './counterweight/models/ltm1650-cwt.glb?v=1',
+          preExploded: true,
+          partMap: {
+            'Part 6': 'p5x2', 'Part 13': 'p5x2',
+            'Part 12': 'p10a', 'Part 9': 'p10a',
+            'Part 1': 'p10b', 'Part 8': 'p10b',
+            'Part 2': 'p10c', 'Part 16': 'p10c',
+            'Part 3': 'p10d', 'Part 4': 'p10d',
+            'Part 10': 'p10e', 'Part 14': 'p10e',
+            'Part 7': 'p10f', 'Part 5': 'p10f',
+            'Part 15': 'p10g', 'Part 11': 'p10g',
+            'winch 2': 'w2',
+            'id11__$': 'w3', 'id8__$': 'w3', 'id17__$': 'w3',
+            'id2__$': 'w3', 'id14__$': 'w3', 'id5__$': 'w3'
+          }
+        },
         components: [
           { id: 'p1', name: 'All Counterweight Frame Receptacles', weight: 25, linkedId: 'p4center', shortLabel: '',
             hotspots: [{ points: '333,1001 745,1001 745,1249 333,1249' }, { points: '1087,1001 1500,1001 1500,1249 1087,1249' }] },
@@ -1588,7 +1645,7 @@
     // the dynamic import in setCwtView() and by cacheAllOfflineContent()'s
     // file list, so the two can't drift apart and start caching different
     // versions of the same file.
-    const CWT3D_VERSION = 11;
+    const CWT3D_VERSION = 12;
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
