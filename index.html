@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v1.9</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.0</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -224,6 +224,7 @@
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" onclick="switchTab('cad-tab', event)">Outrigger Support Positioning</button>
     <button class="tab-btn" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
+    <button class="tab-btn" onclick="switchTab('loadchart-tab', event)">Load Chart Finder</button>
   </nav>
 
   <div class="container">
@@ -726,6 +727,46 @@
           </div>
           <div class="cache-all-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 7: LOAD CHART FINDER ================= -->
+    <div id="loadchart-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Find Boom Configuration</div>
+        <div class="form-group">
+          <label>Select Crane Model</label>
+          <select id="lc-crane" onchange="onLoadChartCraneChange()"></select>
+        </div>
+        <div class="grid" style="margin-top:14px;">
+          <div class="form-group">
+            <label>Working Radius (m)</label>
+            <input type="number" id="lc-radius" step="0.1" min="0" placeholder="e.g. 10" oninput="renderLoadChartResults()">
+          </div>
+          <div class="form-group">
+            <label>Target Load (t)</label>
+            <input type="number" id="lc-weight" step="0.1" min="0" placeholder="e.g. 10" oninput="renderLoadChartResults()">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>Maximum Wind Speed</label>
+          <div class="mode-toggle" id="lc-wind-toggle"></div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>Counterweight</label>
+          <div class="mode-toggle" id="lc-cwt-mode-toggle">
+            <button class="mode-btn active" id="lc-cwt-mode-manual" onclick="setLoadChartCwtMode('manual')">I have this fitted</button>
+            <button class="mode-btn" id="lc-cwt-mode-auto" onclick="setLoadChartCwtMode('auto')">Find minimum needed</button>
+          </div>
+          <select id="lc-cwt" style="margin-top:8px;" onchange="renderLoadChartResults()"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Top Options</div>
+        <div id="lc-rounding-notice" class="disclaimer" style="display:none;"></div>
+        <div id="lc-results"></div>
+        <div class="disclaimer">Scope: T-boom only (no lattice/folding jib), outriggers fully deployed (7.9m x 8.3m rear / 7.0m front), 360° slewing range. Radius is rounded up to the nearest tabulated chart row — see the notice above when that happens. Reference tool only — cross-check the shown chart code/reference against the current OEM load chart before lifting.</div>
       </div>
     </div>
 
@@ -5523,6 +5564,198 @@
       setTimeout(checkOfflineContentStatus, 600);
     }
 
+    // --- TAB 7: LOAD CHART FINDER ---
+    // Data is NOT inline like every other tab's data (COUNTERWEIGHT_DATA,
+    // DRIVING_EQ_DATA, etc.) - a single crane's fully-deployed/360°/T-boom-
+    // only load chart is ~360,000 individual radius->capacity data points
+    // (~5.6MB as JSON), extracted from the crane's own LICCON-generated
+    // load chart manual (12,292 pages total for LTM 1110-5.1's T-only
+    // file; 1,532 of those matched this exact scope). Baking that into
+    // index.html would bloat every single page load for a tab most visits
+    // never open. Fetched on demand instead, same lazy-load pattern as
+    // reeving diagrams (see ensureReeveManifestLoaded) - the browser/SW
+    // caches it after first fetch, same CONTENT_CACHE behavior as any
+    // other on-demand asset. See methodology.txt section 14 for how this
+    // was extracted and verified.
+    const LOAD_CHART_FILES = {
+      '1110': './loadchart/ltm1110-T-fulldeploy.json'
+    };
+    let loadChartData = null;
+    let loadChartCraneKey = null;
+    let loadChartWind = null;
+    let loadChartCwtMode = 'manual';
+
+    function ensureLoadChartLoaded(craneKey) {
+      if (loadChartData && loadChartCraneKey === craneKey) return Promise.resolve(loadChartData);
+      return fetch(LOAD_CHART_FILES[craneKey])
+        .then(r => r.json())
+        .then(data => { loadChartData = data; loadChartCraneKey = craneKey; return data; });
+    }
+
+    // Placeholder labels shown before each crane's own manifest.meta.crane
+    // name has loaded - onLoadChartCraneChange() overwrites the selected
+    // option's text with the real name once the fetch resolves.
+    const LOAD_CHART_CRANE_LABELS = {
+      '1110': 'LTM 1110-5.1'
+    };
+
+    function initLoadChartTab() {
+      const sel = document.getElementById('lc-crane');
+      buildSelect(sel, Object.keys(LOAD_CHART_FILES), (k) => LOAD_CHART_CRANE_LABELS[k] || k, (k) => k);
+      onLoadChartCraneChange();
+    }
+
+    function onLoadChartCraneChange() {
+      const craneKey = document.getElementById('lc-crane').value;
+      document.getElementById('lc-results').innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Loading load chart data…</div>';
+      ensureLoadChartLoaded(craneKey).then((data) => {
+        // crane select label was a placeholder key until the manifest's
+        // own display name loaded - fix it up now without re-triggering
+        // onchange (buildSelect would re-fetch for no reason).
+        const sel = document.getElementById('lc-crane');
+        if (sel.options[sel.selectedIndex]) sel.options[sel.selectedIndex].text = data.meta.crane;
+
+        const winds = [...new Set(Object.values(data.combos).map(c => c.wind))]
+          .sort((a, b) => parseFloat(a) - parseFloat(b));
+        const windToggle = document.getElementById('lc-wind-toggle');
+        windToggle.innerHTML = winds.map((w, i) =>
+          `<button class="mode-btn${i === 0 ? ' active' : ''}" onclick="setLoadChartWind('${w}', this)">${w}</button>`
+        ).join('');
+        loadChartWind = winds[0] || null;
+
+        const cwts = [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
+        buildSelect(document.getElementById('lc-cwt'), cwts, (c) => `${c.toFixed(1)} t`, (c) => c);
+
+        renderLoadChartResults();
+      });
+    }
+
+    function setLoadChartWind(wind, btn) {
+      loadChartWind = wind;
+      btn.parentElement.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderLoadChartResults();
+    }
+
+    function setLoadChartCwtMode(mode) {
+      loadChartCwtMode = mode;
+      document.getElementById('lc-cwt-mode-manual').classList.toggle('active', mode === 'manual');
+      document.getElementById('lc-cwt-mode-auto').classList.toggle('active', mode === 'auto');
+      document.getElementById('lc-cwt').style.display = mode === 'manual' ? '' : 'none';
+      renderLoadChartResults();
+    }
+
+    // Chart rows are discrete (3.0, 3.5, 4.0, 4.5, 5.0, then 1m steps to
+    // 16.0, then 2m steps to 40.0), not continuous. Per the person's own
+    // call: always round UP to the next tabulated row rather than
+    // interpolate - this can only ever understate capacity relative to
+    // the requested radius, never overstate it. Assumes data.meta.radii
+    // is already ascending (true of how the extraction wrote it).
+    function loadChartRoundUpRadius(requested, radiiList) {
+      for (const r of radiiList) {
+        if (r >= requested - 1e-9) return r;
+      }
+      return null;
+    }
+
+    // '[[0,true],[46,false],...]' -> '0+/46-/...' - '+' means that
+    // telescopic section must be pinned at this %, '-' means it can
+    // telescope under load up to this %. Matches the OEM chart's own
+    // notation exactly (see 40.65 Description of the load chart, section
+    // "Extension condition of the telescopic sections").
+    function formatLoadChartExtension(ext) {
+      return ext.map(e => e ? `${e[0]}${e[1] ? '+' : '-'}` : null).filter(Boolean).join('/');
+    }
+
+    function renderLoadChartResults() {
+      const data = loadChartData;
+      const resultsEl = document.getElementById('lc-results');
+      const noticeEl = document.getElementById('lc-rounding-notice');
+      if (!data) return;
+
+      const radiusInput = parseFloat(document.getElementById('lc-radius').value);
+      const weightInput = parseFloat(document.getElementById('lc-weight').value);
+      if (!radiusInput || !weightInput || !loadChartWind) {
+        resultsEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Enter a working radius and target load above.</div>';
+        noticeEl.style.display = 'none';
+        return;
+      }
+
+      const actualRadius = loadChartRoundUpRadius(radiusInput, data.meta.radii);
+      if (actualRadius === null) {
+        resultsEl.innerHTML = '<div style="color:var(--danger); font-size:0.85rem;">Requested radius is beyond this chart\'s maximum tabulated range.</div>';
+        noticeEl.style.display = 'none';
+        return;
+      }
+
+      if (actualRadius !== radiusInput) {
+        noticeEl.style.display = '';
+        noticeEl.textContent = `Requested radius ${radiusInput}m isn't a tabulated chart row - rounded UP to ${actualRadius}m (the next row out). Every figure below is the capacity at ${actualRadius}m, not ${radiusInput}m, so it's a safe (slightly conservative) match for what you asked for, never an optimistic one.`;
+      } else {
+        noticeEl.style.display = 'none';
+      }
+
+      const manualCwt = parseFloat(document.getElementById('lc-cwt').value);
+      const cwtLevels = loadChartCwtMode === 'manual'
+        ? [manualCwt]
+        : [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
+
+      let results = [];
+      let usedCwt = null;
+      for (const cwt of cwtLevels) {
+        const combo = data.combos[`${cwt}|${loadChartWind}`];
+        if (!combo) continue;
+        const found = [];
+        for (const col of combo.cols) {
+          const [boomLength, ext, reeving, radiiPairs] = col;
+          const pair = radiiPairs.find(p => p[0] === actualRadius);
+          if (!pair) continue;
+          const capacity = pair[1];
+          if (capacity >= weightInput) {
+            found.push({ cwt, boomLength, ext, reeving, capacity, margin: capacity - weightInput, code: combo.code, ref: combo.ref });
+          }
+        }
+        if (found.length > 0) {
+          results = found;
+          usedCwt = cwt;
+          // Auto mode wants the LOWEST counterweight that still clears the
+          // target - cwtLevels is ascending, so the first hit is it. Manual
+          // mode only ever has the one level in cwtLevels to begin with.
+          if (loadChartCwtMode === 'auto') break;
+        }
+      }
+
+      results.sort((a, b) => b.margin - a.margin);
+      const top5 = results.slice(0, 5);
+
+      if (top5.length === 0) {
+        const scopeNote = loadChartCwtMode === 'manual' ? ' at this counterweight' : ', at any counterweight this chart covers,';
+        resultsEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">No configuration${scopeNote} reaches ${weightInput}t at ${actualRadius}m under these conditions.</div>`;
+        return;
+      }
+
+      const autoNote = loadChartCwtMode === 'auto'
+        ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--success);">Minimum counterweight needed to hit this target: <b>${usedCwt.toFixed(1)} t</b></div>`
+        : '';
+
+      resultsEl.innerHTML = autoNote + top5.map((r, i) => `
+        <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
+          <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${i + 1}${i === 0 ? ' — best margin' : ''}</div>
+          <table>
+            <tbody>
+              <tr><td style="text-align:left;">Boom length</td><td>${r.boomLength.toFixed(1)} m</td></tr>
+              <tr><td style="text-align:left;">Telescopic section extension</td><td>${formatLoadChartExtension(r.ext)}</td></tr>
+              <tr><td style="text-align:left;">Hoist rope reeving</td><td>${r.reeving}</td></tr>
+              <tr><td style="text-align:left;">Counterweight</td><td>${r.cwt.toFixed(1)} t</td></tr>
+              <tr><td style="text-align:left;">Capacity at ${actualRadius}m</td><td>${r.capacity.toFixed(1)} t</td></tr>
+              <tr><td style="text-align:left;">Margin over target</td><td>${r.margin.toFixed(1)} t</td></tr>
+              <tr><td style="text-align:left;">Chart reference</td><td>${r.ref || '—'} (code ${r.code || '—'})</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `).join('');
+    }
+
     // Initialize Page Controls
     loadRopeModel();
     calcHook();
@@ -5530,6 +5763,7 @@
     initCwtTab();
     initDriveEqTab();
     initReeveTab(); // Reeving Plans is the default active tab on load
+    initLoadChartTab();
     updateZoomReadout();
     updateCompassUI();
     initReeveZoomGestures();
