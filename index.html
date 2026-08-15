@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.5</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.6</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -760,6 +760,10 @@
             <button class="mode-btn" id="lc-cwt-mode-auto" onclick="setLoadChartCwtMode('auto')">Find minimum needed</button>
           </div>
           <select id="lc-cwt" style="margin-top:8px;" onchange="renderLoadChartResults()"></select>
+        </div>
+        <div class="form-group" id="lc-ballast-group" style="margin-top:14px; display:none;">
+          <label>Ballast (Counterweight Tray) Radius</label>
+          <div class="mode-toggle" id="lc-ballast-toggle"></div>
         </div>
       </div>
 
@@ -5607,13 +5611,15 @@
     const LOAD_CHART_FILES = {
       '1100': './loadchart/lrt1100-T-fulldeploy.json',
       '1110': './loadchart/ltm1110-T-fulldeploy.json',
-      '1130': './loadchart/ltm1130-T-fulldeploy.json'
+      '1130': './loadchart/ltm1130-T-fulldeploy.json',
+      '1160': './loadchart/ltm1160-T-fulldeploy.json'
     };
     let loadChartData = null;
     let loadChartCraneKey = null;
     let loadChartWind = null;
     let loadChartCwtMode = 'manual';
     let loadChartDerate = false;
+    let loadChartBallastRadius = null;
 
     function ensureLoadChartLoaded(craneKey) {
       if (loadChartData && loadChartCraneKey === craneKey) return Promise.resolve(loadChartData);
@@ -5628,7 +5634,8 @@
     const LOAD_CHART_CRANE_LABELS = {
       '1100': 'LRT 1100-2.1',
       '1110': 'LTM 1110-5.1',
-      '1130': 'LTM 1130-5.1'
+      '1130': 'LTM 1130-5.1',
+      '1160': 'LTM 1160-5.2'
     };
 
     function initLoadChartTab() {
@@ -5676,6 +5683,28 @@
         const cwts = [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
         buildSelect(document.getElementById('lc-cwt'), cwts, (c) => `${c.toFixed(1)} t`, (c) => c);
 
+        // Some cranes (1160 onward) can mount their superstructure
+        // counterweight tray at more than one radius from the slew axis -
+        // a real third selectable axis alongside cwt tonnage and wind,
+        // not a display-only detail (each radius genuinely changes chart
+        // capacity - see methodology.txt 15.5). Present regardless of
+        // manual/auto counterweight mode per the person's explicit
+        // request - it isn't something auto mode should silently pick
+        // for the crew, they still choose it themselves either way.
+        const ballastGroupEl = document.getElementById('lc-ballast-group');
+        if (data.meta.hasBallastRadius) {
+          ballastGroupEl.style.display = '';
+          const radii = data.meta.ballastRadii.slice().sort((a, b) => a - b);
+          const ballastToggle = document.getElementById('lc-ballast-toggle');
+          ballastToggle.innerHTML = radii.map((r, i) =>
+            `<button class="mode-btn${i === 0 ? ' active' : ''}" onclick="setLoadChartBallastRadius(${r}, this)">${r.toFixed(1)}m</button>`
+          ).join('');
+          loadChartBallastRadius = radii[0] ?? null;
+        } else {
+          ballastGroupEl.style.display = 'none';
+          loadChartBallastRadius = null;
+        }
+
         // Same fleet block catalog the Minimum Hook Block Weights tab's
         // recommendations are drawn from (FLEET_BLOCK_SPEC), not a
         // separate hardcoded list - one source of truth for what blocks
@@ -5722,6 +5751,13 @@
       renderLoadChartResults();
     }
 
+    function setLoadChartBallastRadius(radius, btn) {
+      loadChartBallastRadius = radius;
+      btn.parentElement.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderLoadChartResults();
+    }
+
     function setLoadChartCwtMode(mode) {
       loadChartCwtMode = mode;
       document.getElementById('lc-cwt-mode-manual').classList.toggle('active', mode === 'manual');
@@ -5760,7 +5796,7 @@
 
       const radiusInput = parseFloat(document.getElementById('lc-radius').value);
       const weightInput = parseFloat(document.getElementById('lc-weight').value);
-      if (!radiusInput || !weightInput || !loadChartWind) {
+      if (!radiusInput || !weightInput || !loadChartWind || (data.meta.hasBallastRadius && loadChartBallastRadius == null)) {
         resultsEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Enter a working radius and target load above.</div>';
         noticeEl.style.display = 'none';
         return;
@@ -5809,7 +5845,15 @@
         // (0.0/11.0/17.0/29.0t), returning "no results" even when the
         // data has a perfectly good match. toFixed(1) matches the data's
         // one-decimal-place format exactly for every value in this set.
-        const combo = data.combos[`${cwt.toFixed(1)}|${loadChartWind}`];
+        // Cranes with a selectable ballast radius carry it as a third
+        // key segment (data.meta.hasBallastRadius) - counterweight
+        // levels too low to offer a radius choice are duplicated into
+        // the JSON under every radius value at extraction time (see
+        // methodology.txt 15.5), so this lookup never needs a fallback.
+        const comboKey = data.meta.hasBallastRadius
+          ? `${cwt.toFixed(1)}|${loadChartWind}|${loadChartBallastRadius}`
+          : `${cwt.toFixed(1)}|${loadChartWind}`;
+        const combo = data.combos[comboKey];
         if (!combo) continue;
         const found = [];
         for (const col of combo.cols) {
@@ -5860,10 +5904,13 @@
       const derateLine = loadChartDerate
         ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">Capacity checked at <b style="color:var(--text-main);">90%</b> of the chart's rated figure (site rule)</div>`
         : '';
+      const ballastLine = data.meta.hasBallastRadius
+        ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">Counterweight tray at <b style="color:var(--text-main);">${loadChartBallastRadius.toFixed(1)}m</b> radius</div>`
+        : '';
 
       if (top5.length === 0) {
         const scopeNote = loadChartCwtMode === 'manual' ? ' at this counterweight' : ', at any counterweight this chart covers,';
-        resultsEl.innerHTML = riggingLine + derateLine + `<div style="color:var(--text-muted); font-size:0.85rem;">No configuration${scopeNote} clears ${effectiveTarget.toFixed(2)}t at ${actualRadius}m under these conditions.</div>`;
+        resultsEl.innerHTML = riggingLine + derateLine + ballastLine + `<div style="color:var(--text-muted); font-size:0.85rem;">No configuration${scopeNote} clears ${effectiveTarget.toFixed(2)}t at ${actualRadius}m under these conditions.</div>`;
         return;
       }
 
@@ -5871,7 +5918,7 @@
         ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--success);">Minimum counterweight needed to hit this target: <b>${usedCwt.toFixed(1)} t</b></div>`
         : '';
 
-      resultsEl.innerHTML = riggingLine + derateLine + autoNote + top5.map((r, i) => `
+      resultsEl.innerHTML = riggingLine + derateLine + ballastLine + autoNote + top5.map((r, i) => `
         <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
           <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${i + 1}${i === 0 ? ' — best margin' : ''}</div>
           <table>

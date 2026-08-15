@@ -5457,4 +5457,65 @@ cranes get their own subsections as they're built.
   Regression-checked LRT 1100 and LTM 1110 in the same tab afterward -
   0 console errors, both still matched their pre-change output.
 
+15.5 LTM 1160-5.2 - first crane needing the ballast (counterweight tray)
+     radius selector, and its own new T*-equivalent exclusion
+  1495 pages, one file (main boom types just "T"/"V" again, same as
+  1130 - no per-mode file split needed). This crane's own 40.65 icon
+  chapter confirms the standard "+"=pinned/"-"=live-telescope reading
+  again (not LRT 1100's inverted one) - checked directly, not assumed
+  from 1130 just because both are non-LRT Liebherrs.
+  Found this crane's OWN T*-equivalent: a handful of pages (3, out of
+  ~1386 T-mode pages) print operating mode as "T *)" instead of plain
+  "T" - a footnoted variant tied to a single-position, 0°-slew,
+  extreme-capacity chart (160t at 3m radius on one page checked) that
+  reads exactly like 1110's T* ("requires an auxiliary device/special
+  rigging accessory", 14.1) even though the footnote symbol itself
+  ("*)" vs 1110's literal "*" suffix) differs - excluded on the same
+  basis, checked by tallying mode-label counts across the whole
+  document before writing any extraction logic, not assumed from a
+  single sample page.
+  Outrigger support base varies (2.45 / 5.38 / 6.84 / 8.30m) with the
+  same "only the widest offers 360°" pattern as 1130 (confirmed via
+  each width's own slew badge, not assumed to carry over) - "fully
+  deployed" = 8.30m, and that's the same filter as 360° again here.
+  The actual new thing this crane needed: at the 8.30m/360° scope,
+  counterweight levels of 10.0t and above each print TWO separate
+  charts for the exact same tonnage - one with the counterweight tray
+  badge reading "x4.8m", one reading "x5.3m" (a distance from the slew
+  axis, confirmed by cross-referencing the same cwt+outrigger+slew
+  combination showing genuinely different capacity numbers between the
+  two - not a duplicate/misprint). The two lowest levels (0.0t/4.0t)
+  print no radius badge at all - only one physical mounting exists at
+  that little counterweight, nothing to choose between. This is what
+  the person had asked for as the "ballast radius selector" back before
+  any of this crane's charts were opened, and it lines up exactly with
+  what's actually in the PDF once found (a full-document badge scan,
+  not assumed from theory-chapter wording - the icon-explanation
+  chapter never separately describes a counterweight-radius icon, it
+  only shows up as an extra token appended to the counterweight badge
+  on the pages that have it).
+  Implementation: JSON combo keys gained a third segment
+  ('cwt|wind|ballastRadius'), with the two radius-less counterweight
+  levels' columns duplicated verbatim under BOTH radius keys at
+  extraction time - simpler than teaching the lookup code a fallback
+  path, and means selecting either radius always finds every
+  counterweight level the crane actually offers, never showing "no
+  results" just because the crew's chosen radius happens not to apply
+  at the low end. New UI: a ballast-radius toggle (mode-btn row, same
+  pattern as CWT/wind), shown only when meta.hasBallastRadius is set,
+  and left visible in BOTH manual and auto/find-minimum-CWT counterweight
+  modes per the person's explicit instruction - it's the crew's choice
+  either way, not something the auto-finder should quietly pick for them.
+  Verified two pages (one radius-less low-cwt combo, one 4.8m-radius
+  combo) against rendered images before shipping - reeving, wind
+  ratings, extension states and radius/capacity values all matched
+  exactly, including cross-checking that selecting 4.8m vs 5.3m in the
+  UI actually pulled different chart references (0054 vs 1467) and
+  different capacity numbers for literally the same boom/cwt request,
+  not the same data shown twice under two labels.
+  Final size: 24 stored combo entries (22 real + 2 duplicated), 2,608
+  columns, 43,182 datapoints, ~700KB JSON. Regression-checked LRT 1100,
+  LTM 1110, and LTM 1130 afterward (ballast-radius UI correctly stays
+  hidden for all three) - 0 console errors.
+
 ================================================================================
