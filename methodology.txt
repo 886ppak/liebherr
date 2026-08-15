@@ -4728,3 +4728,59 @@ process any one of them once in hand.
      everything on one document.
 
 ================================================================================
+
+13. DRIVING W/ EQUIPMENT: FINDING THE OUTRIGGER EXTENSION % STAGES
+    [CONVERSATION]
+--------------------------------------------------------------------------------
+For the Driving w/ Equipment tab's own request: showing each chart row's
+required outrigger extension as a percentage (100/75/50/25/0) alongside the
+raw length, matching the crane's actual PINNED support-base positions - the
+ONLY positions Liebherr outriggers can physically be operated at (person's
+own confirmed domain fact, not an assumption).
+
+13.1 Best source: the manual has a table for this directly - check here
+     FIRST
+  Confirmed live on LTM 1160-5.2's operator manual, exact navigation path
+  (from the PDF's own contents panel, not guessed): Operating Instructions
+  -> 1 Description of Crane -> 1.03 Technical Data -> 3 Support ->
+  3.1 Support Base. The table there ("Support base" / "Extension condition
+  [c1 to c4]" / "Length [a]" / "Width [b]") gives the percentage DIRECTLY,
+  already labeled - no derivation, no interpolation, no risk of confusing
+  it with an unrelated dimension. LTM 1160-5.2's confirmed values:
+    0%   ->  9.18m x 2.45m
+    50%  ->  9.18m x 5.38m
+    75%  ->  9.18m x 6.84m
+    100% ->  9.18m x 8.30m
+  Only 4 stages exist for this crane (no 25%) - confirmed two independent
+  ways: this table, AND a separate place elsewhere in the same manual the
+  person found listing only 100/75/50/0. Don't assume every crane has all
+  five round-number stages; read what's actually there. Note Length [a]
+  stays fixed at 9.18m across every stage here - only Width [b] changes
+  with extension - worth checking whether that holds for every crane or
+  is specific to this one's beam layout (e.g. a crane with front AND rear
+  telescoping beams, not just left/right, could vary both dimensions).
+  "1.03 Technical Data" (with this same "3 Support" numbering) is
+  reasonably likely to be a STANDARD chapter/section structure across
+  this manual series, not a one-off - worth checking this exact path
+  first on any future crane's manual before falling back to 13.2.
+
+13.2 Fallback: derive it from the general dimension sheet if 13.1's table
+     isn't present
+  The overall min-max range printed on the crane's dimension sheet (e.g.
+  "2446-8306") gives the 0% and 100% endpoints directly. Intermediate
+  values printed on the SAME dimension stack can be checked against
+  simple linear interpolation - value = min + (max-min) x fraction -
+  BEFORE trusting them as a stage: confirmed working (exact match) for
+  LTM 1160-5.2's own 50%/75% figures cross-checked this way, matching
+  13.1's table to within a few mm (rounding only).
+  Real trap hit and caught during this exact exercise: a THIRD number in
+  the same dimension stack (4270) did NOT fit the linear pattern as 25%
+  (expected ~3911) - turned out to be the width of the CWT slabs, an
+  entirely unrelated dimension that happened to sit in the same visual
+  area of the drawing. A number that doesn't fit the linear check is a
+  signal to ask what it actually is, not to force it into the pattern
+  or discard the check. This is exactly why 13.1 (a table that states
+  the percentage outright) is the preferred source whenever it exists -
+  this derivation method is a fallback, not the first move.
+
+================================================================================
