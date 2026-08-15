@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v1.6</span></h1>
+    <h1>MYSLEWER <span class="app-version">v1.7</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -530,16 +530,16 @@
             <label>Ground Bearing Pads — toggle per leg as placed</label>
             <div style="display:flex; gap:14px; margin-top:6px; flex-wrap:wrap;">
               <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
-                <input type="checkbox" id="cad-pad-1" onchange="syncPadToggle(1, this)" style="width:auto; cursor:pointer;"> P1
+                <input type="checkbox" id="cad-pad-1" onchange="syncPadToggle(1, this)" style="width:auto; cursor:pointer;"> C1
               </label>
               <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
-                <input type="checkbox" id="cad-pad-2" onchange="syncPadToggle(2, this)" style="width:auto; cursor:pointer;"> P2
+                <input type="checkbox" id="cad-pad-2" onchange="syncPadToggle(2, this)" style="width:auto; cursor:pointer;"> C2
               </label>
               <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
-                <input type="checkbox" id="cad-pad-3" onchange="syncPadToggle(3, this)" style="width:auto; cursor:pointer;"> P3
+                <input type="checkbox" id="cad-pad-3" onchange="syncPadToggle(3, this)" style="width:auto; cursor:pointer;"> C3
               </label>
               <label style="display:flex; align-items:center; gap:5px; cursor:pointer; text-transform:none; font-weight:400;">
-                <input type="checkbox" id="cad-pad-4" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> P4
+                <input type="checkbox" id="cad-pad-4" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> C4
               </label>
             </div>
           </div>
@@ -599,16 +599,16 @@
             <input type="checkbox" id="carrier-3d-compare-toggle" onchange="toggleCompareMode(this)" style="width:auto; cursor:pointer;"> Compare old/new position
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; text-transform:none; margin-left:8px;">
-            <input type="checkbox" id="carrier-3d-pad-1-toggle" onchange="syncPadToggle(1, this)" style="width:auto; cursor:pointer;"> P1
+            <input type="checkbox" id="carrier-3d-pad-1-toggle" onchange="syncPadToggle(1, this)" style="width:auto; cursor:pointer;"> C1
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; text-transform:none;">
-            <input type="checkbox" id="carrier-3d-pad-2-toggle" onchange="syncPadToggle(2, this)" style="width:auto; cursor:pointer;"> P2
+            <input type="checkbox" id="carrier-3d-pad-2-toggle" onchange="syncPadToggle(2, this)" style="width:auto; cursor:pointer;"> C2
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; text-transform:none;">
-            <input type="checkbox" id="carrier-3d-pad-3-toggle" onchange="syncPadToggle(3, this)" style="width:auto; cursor:pointer;"> P3
+            <input type="checkbox" id="carrier-3d-pad-3-toggle" onchange="syncPadToggle(3, this)" style="width:auto; cursor:pointer;"> C3
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; text-transform:none;">
-            <input type="checkbox" id="carrier-3d-pad-4-toggle" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> P4
+            <input type="checkbox" id="carrier-3d-pad-4-toggle" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> C4
           </label>
         </div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
@@ -2904,6 +2904,19 @@
       '1650': [[0, 2.62], [25, 4.36], [50, 6.10], [75, 7.84], [100, 9.58]]
     };
 
+    // LTM 1110-5.1's own Support Base table is asymmetric front/rear (see
+    // methodology.txt 13.3): the "Reduced" position sits at 55%/5.00m on
+    // C2/C3 (front) but only 50%/5.40m on C1/C4 (rear) - one physical
+    // pinned position, two different per-corner percentages. The Driving
+    // w/ Equipment chart's single "Support width (min.B)" column only
+    // ever quotes the front number, so a bare "55% extension" label would
+    // wrongly imply all four corners sit at 55%. Keyed by the crane's
+    // chart-quoted width so the render below can look up the paired rear
+    // reading whenever this specific stage applies.
+    const OUTRIGGER_ASYMMETRIC_PAIR = {
+      '1110': { '5.00': { frontPct: 55, frontWidth: 5.00, rearPct: 50, rearWidth: 5.40 } }
+    };
+
     // Matches within a small tolerance rather than requiring an exact
     // decimal match - the "Driving w/ equipment" chart's own quoted widths
     // (e.g. 1130's 4.95m) sometimes round slightly differently than the
@@ -2918,6 +2931,18 @@
         if (diff <= TOL && (!best || diff < best.diff)) best = { pct, diff };
       }
       return best ? best.pct : null;
+    }
+
+    // Returns the front/rear pair note for an asymmetric crane's stage, or
+    // null for every symmetric crane (i.e. everything except 1110 today).
+    function outriggerAsymmetricPair(modelKey, width) {
+      const pairs = OUTRIGGER_ASYMMETRIC_PAIR[modelKey];
+      if (!pairs || typeof width !== 'number') return null;
+      const TOL = 0.15;
+      for (const key of Object.keys(pairs)) {
+        if (Math.abs(width - parseFloat(key)) <= TOL) return pairs[key];
+      }
+      return null;
     }
 
     function renderDriveEqOutput() {
@@ -2958,6 +2983,10 @@
         const noHookBlock = r.hookBlock === '0';
         const rec = (r.hookBlock && !noHookBlock) ? driveEqMaxCompliantHookBlock(modelKey, r.hookBlock) : null;
         const outriggerPct = outriggerStagePercent(modelKey, r.supportWidth);
+        const outriggerPair = outriggerAsymmetricPair(modelKey, r.supportWidth);
+        const outriggerNote = outriggerPair
+          ? ` — C2/C3 (front): ${outriggerPair.frontPct}% &nbsp;·&nbsp; C1/C4 (rear): ${outriggerPair.rearPct}%, ${outriggerPair.rearWidth.toFixed(2)} m`
+          : (outriggerPct !== null ? ` (${outriggerPct}% extension)` : '');
         return `
         <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
           ${rows.length > 1 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${String.fromCharCode(65 + i)}</div>` : ''}
@@ -2967,7 +2996,7 @@
               ${noHookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>No hook block</td></tr>` : (r.hookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>${r.hookBlock} kg</td></tr>` : '')}
               ${rec ? `<tr><td style="text-align:left;">Maximum known size hook block (lighter is fine)</td><td>${rec.name}</td></tr>` : ''}
               <tr><td style="text-align:left;">Telescopic boom angle to the horizontal</td><td>${r.boomAngle}</td></tr>
-              <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m${outriggerPct !== null ? ` (${outriggerPct}% extension)` : ''}</td></tr>
+              <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m${outriggerNote}</td></tr>
               <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupA}</td><td>${r.axleA} t</td></tr>
               <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupB}</td><td>${r.axleB} t</td></tr>
             </tbody>
@@ -3943,46 +3972,46 @@
     // --- TAB 3: OUTRIGGER SUPPORT POSITIONING LOGIC ---
     const cadFleetData = {
       "1650": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 6240, angle: 50.1,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 8097, angle: 143.7, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 7709, angle: -141.5,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 6591, angle: -46.5, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 6240, angle: 50.1,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 8097, angle: 143.7, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 7709, angle: -141.5,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 6591, angle: -46.5, quadrant: "RL" }
       },
       "1300": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5517, angle: 50.0,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 6894, angle: 138.0, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 6589, angle: -140.0,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5786, angle: -48.0, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 5517, angle: 50.0,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 6894, angle: 138.0, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 6589, angle: -140.0,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 5786, angle: -48.0, quadrant: "RL" }
       },
       "1250": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5379, angle: 51.0,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 7201, angle: 135.0, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 6900, angle: -143.0,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5613, angle: -48.0, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 5379, angle: 51.0,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 7201, angle: 135.0, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 6900, angle: -143.0,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 5613, angle: -48.0, quadrant: "RL" }
       },
       "1160": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5389, angle: 51.0,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 7211, angle: 136.0, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 6878, angle: -143.0,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5631, angle: -48.0, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 5389, angle: 51.0,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 7211, angle: 136.0, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 6878, angle: -143.0,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 5631, angle: -48.0, quadrant: "RL" }
       },
       "1130": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 4847, angle: 51.0,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 6240, angle: 137.0, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 5956, angle: -141.0,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5092, angle: -47.0, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 4847, angle: 51.0,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 6240, angle: 137.0, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 5956, angle: -141.0,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 5092, angle: -47.0, quadrant: "RL" }
       },
       "1110": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5049, angle: 56.0,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 6098, angle: 135.0, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 5857, angle: -143.0,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5267, angle: -52.0, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 5049, angle: 56.0,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 6098, angle: 135.0, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 5857, angle: -143.0,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 5267, angle: -52.0, quadrant: "RL" }
       },
       "1100": {
-        P1_RR: { id: 1, name: "P1 (Rear Right)",  r: 5293, angle: 43.0,  quadrant: "RR" },
-        P2_FR: { id: 2, name: "P2 (Front Right)", r: 5098, angle: 135.0, quadrant: "FR" },
-        P3_FL: { id: 3, name: "P3 (Front Left)",  r: 5362, angle: -137.0,quadrant: "FL" },
-        P4_RL: { id: 4, name: "P4 (Rear Left)",   r: 5096, angle: -46.0, quadrant: "RL" }
+        C1_RR: { id: 1, name: "C1 (Rear Right)",  r: 5293, angle: 43.0,  quadrant: "RR" },
+        C2_FR: { id: 2, name: "C2 (Front Right)", r: 5098, angle: 135.0, quadrant: "FR" },
+        C3_FL: { id: 3, name: "C3 (Front Left)",  r: 5362, angle: -137.0,quadrant: "FL" },
+        C4_RL: { id: 4, name: "C4 (Rear Left)",   r: 5096, angle: -46.0, quadrant: "RL" }
       }
     };
 
@@ -4087,7 +4116,7 @@
     }
 
     // Same mirrored-checkbox pattern as toggleCompareMode above, one per
-    // leg - the person wanted the P1-P4 "as placed" toggles reachable from
+    // leg - the person wanted the C1-C4 "as placed" toggles reachable from
     // the 3D toolbar too (so a person looking at the 3D view doesn't have
     // to scroll back up), but explicitly asked to keep the originals above
     // as well for anyone using only the 2D view - not a move, a mirror.
@@ -4155,7 +4184,7 @@
       document.getElementById('carrier-3d-hint').style.display = carrier3DActive ? '' : 'none';
       document.getElementById('carrier-3d-toolbar').style.display = carrier3DActive ? '' : 'none';
       if (carrier3DActive) {
-        // Toolbar checkboxes (Compare + P1-P4) mirror the 2D card's own
+        // Toolbar checkboxes (Compare + C1-C4) mirror the 2D card's own
         // checkboxes (see toggleCompareMode/syncPadToggle) - but only ever
         // get pushed INTO sync by a change event on either side, so if the
         // person toggled any of them before ever opening the 3D view, the
@@ -4196,7 +4225,7 @@
       const calibration = CARRIER_CALIBRATION[modelKey];
       if (!calibration) return;
       const craneObj = cadFleetData[modelKey];
-      const baseLegs = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL].map(item => {
+      const baseLegs = [craneObj.C1_RR, craneObj.C2_FR, craneObj.C3_FL, craneObj.C4_RL].map(item => {
         const rad = item.angle * (Math.PI / 180);
         return { id: item.id, r: item.r, x: item.r * Math.sin(rad), y: item.r * Math.cos(rad) };
       });
@@ -4217,12 +4246,12 @@
       updateCarrier3DAvailability(modelKey);
       const craneObj = cadFleetData[modelKey];
       const fp = FOOTPRINTS[modelKey];
-      const baseData = [craneObj.P1_RR, craneObj.P2_FR, craneObj.P3_FL, craneObj.P4_RL];
+      const baseData = [craneObj.C1_RR, craneObj.C2_FR, craneObj.C3_FL, craneObj.C4_RL];
 
       const shiftX = (parseFloat(document.getElementById('cad-shiftx').value) || 0) * 1000;
       const shiftYinput = (parseFloat(document.getElementById('cad-shifty').value) || 0) * 1000;
       // Stored polar data uses "front = negative Y" (confirmed against the OEM
-      // outrigger diagram: P2/P3 near the boom = front; P1/P4 near the rear).
+      // outrigger diagram: C2/C3 near the boom = front; C1/C4 near the rear).
       // A "+forward" user input must DECREASE the internal Y value.
       const shiftY = -shiftYinput;
       const sharedPad = sharedPadDims();
