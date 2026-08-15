@@ -4306,7 +4306,7 @@ in a visual stack, or jump straight to a known combination from a dropdown.
 
 ================================================================================
 
-10.87 LTM 1650 CWT: wired up the real model, real partMap
+10.88 LTM 1650 CWT: wired up the real model, real partMap
   Person supplied a NEW export (Myslewer/Counterweight/LTM1650CWT.glb -
   not the earlier "-low" one staged back in 10.82) plus their own
   Onshape instance tree screenshot describing each stack's top-to-
@@ -4356,16 +4356,16 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   with everything staying spatially correct relative to the static
   base. Verified: 3D toggle appears for 1650, click-to-select works
   (confirmed via an actual hit, not just no-console-errors), no
-  console errors, CWT3D_VERSION unaffected by this entry (see 10.88
+  console errors, CWT3D_VERSION unaffected by this entry (see 10.89
   for the version bump that also landed alongside it).
 
 ================================================================================
 
-10.88 CWT 3D viewer: front view + fit-to-model default, fixed a
+10.89 CWT 3D viewer: front view + fit-to-model default, fixed a
       perspective depth bug found along the way
   Person asked for the CWT 3D viewer's default camera to be a front
   view with everything fit in frame ("zoom to fit or whatever it's
-  called"), after LTM 1650's own default 3/4-angle view (10.87) left
+  called"), after LTM 1650's own default 3/4-angle view (10.88) left
   its left counterweight stack sitting behind the model's own central
   base/winch bulk, only visible after manually dragging to rotate -
   same class of problem carrier3d.js's Fit View already solved for the
@@ -4397,5 +4397,74 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   sides, nothing clipped, click-to-select still functions (confirmed
   via an actual hit on LTM 1650's stack, not just visual inspection).
   CWT3D_VERSION bumped to 12.
+
+================================================================================
+
+10.90 HOTFIX: LTM 1650 CWT plates were completely unclickable in
+      production - GLTFLoader sanitizes spaces out of node names
+  Person reported, on the LIVE deployed app, that "the only clickable
+  item is winch 3" - a real bug in code shipped in 10.88, not a
+  hypothetical. Root-caused with a temporary debug hook dumping
+  groupsByKey and namedParts (removed before shipping the fix, same
+  as every other debug-hook episode this doc records - never ship
+  with one left in):
+    - THREE.js's GLTFLoader sanitizes node names on load, replacing
+      spaces with underscores - "Part 6" becomes "Part_6", "winch 2"
+      becomes "winch_2". Confirmed directly: dumping every Group/
+      Object3D name actually present in the loaded scene showed
+      "Part_6", "Part_12", "winch_2", etc, not the space-containing
+      names the raw glTF JSON (and this app's own partMap, copied
+      from that raw JSON) both used.
+    - Every other crane's partMap already happened to use underscore-
+      style names (Counterweight_Plate_2, Receptacle_Plate_1, etc) -
+      not because anyone knew about this sanitization, but because
+      those Onshape part names never happened to contain a literal
+      space to begin with. LTM 1650's new export (10.88) was the
+      first one where real part names DID contain spaces ("Part 6",
+      "winch 2"), which is what finally made this pre-existing,
+      previously-invisible GLTFLoader behavior matter.
+    - Net effect: every "Part N" and "winch 2" partMap entry silently
+      matched nothing at all. The ONLY thing that DID match was two of
+      winch 3's six sub-parts (id2__$, id5__$ - no spaces in those
+      names to sanitize) - and one of those two happens to reference a
+      1264-primitive mesh, large enough to visually cover most of the
+      model's surface. That combination is exactly what read as "only
+      winch 3 is clickable" - not a coincidence, a direct consequence
+      of the naming mismatch plus one oversized mesh filling the gap.
+      Checked that oversized mesh's own world bounding box before
+      assuming it was itself a problem: it sits centered in the
+      model's own upper-middle area between the two stacks, not
+      overlapping either one - consistent with being real, detailed
+      winch mechanism geometry (plausible for a hydraulic winch's
+      internals), not an export mistake. Left as-is.
+  Fix: changed partMap keys to the underscore form GLTFLoader actually
+  produces ('Part 6' -> 'Part_6', 'winch 2' -> 'winch_2').
+  Found a SECOND, unrelated bug in the same pass, via the same debug
+  dump: 4 of winch 3's 6 sub-parts (id11__$, id8__$, id17__$, id14__$)
+  still didn't match even after the naming fix. Cause: a glTF mesh
+  with exactly ONE primitive becomes a bare THREE.Mesh on load, not a
+  Group wrapping one Mesh child the way every multi-primitive part in
+  this app so far has landed - confirmed by checking each of the 6
+  sub-parts' own primitive count directly (the 4 broken ones: exactly
+  1 each; the 2 working ones: 1264 and 50). The traversal's own type
+  filter only ever checked for Group/Object3D, silently skipping
+  plain Mesh nodes - a real gap for any future single-primitive part
+  on any crane, not an LTM-1650-only fix. Added `|| obj.isMesh` to the
+  filter.
+  Verified end-to-end after both fixes: groupsByKey now finds all 23
+  expected keys (16 plates + winch_2 + all 6 winch 3 sub-parts,
+  5104 total meshes correctly distributed across the right appIds,
+  not one appId absorbing everything). Clicked an actual plate and
+  confirmed both the visual selection AND the Total Counterweight
+  readout updated correctly (10.0t for the 5t pair) - not just "no
+  console errors," the actual number a crew would rely on. Regression-
+  checked every other CWT-3D crane (1250, 1130, 1110, 1300, 1220) -
+  unaffected, as expected, since their own partMaps never had a space
+  to begin with. CWT3D_VERSION bumped to 13.
+  Lesson for future CWT models: if a new Onshape export's own part
+  names contain spaces (check the Onshape instance tree directly, the
+  same way the person already screenshots it for stack-order
+  confirmation), use underscores in the partMap from the start rather
+  than copying the space-containing name and finding out the hard way.
 
 ================================================================================

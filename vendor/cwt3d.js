@@ -377,9 +377,15 @@ async function loadModel(modelKey, data, onDone) {
     // with a real partMap key (partMap only ever lists the part's own
     // name, never its occurrence wrapper's), so loosening this filter
     // doesn't risk matching the wrong node for any existing crane.
+    // A part whose glTF mesh has exactly ONE primitive lands as a bare
+    // Mesh instead of a Group wrapping one Mesh child - confirmed
+    // against LTM 1650's winch 3 sub-assembly, 4 of its 6 bodies each
+    // have a single-primitive mesh and were silently invisible to this
+    // traversal (obj.isMesh, not Group/Object3D) until this was added -
+    // see methodology.txt 10.89.
     const groupsByKey = new Map();
     root.traverse((obj) => {
-      if (obj.type !== 'Group' && obj.type !== 'Object3D') return;
+      if (obj.type !== 'Group' && obj.type !== 'Object3D' && !obj.isMesh) return;
       const key = partMapKeyFor(obj.name, partMap);
       if (!key) return; // unmapped part - shown but not selectable
       if (!groupsByKey.has(key)) groupsByKey.set(key, []);
@@ -510,7 +516,7 @@ function placeAboveWholeModel(extraGroup, mainRoot) {
 // aspect ratio (same approach as carrier3d.js's fitView), fit against
 // whichever of X/Y is the binding constraint for the canvas's own
 // shape, so nothing gets cropped on a non-square canvas. See
-// methodology.txt 10.88.
+// methodology.txt 10.89.
 function frameCamera(root) {
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
