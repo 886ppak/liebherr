@@ -4277,3 +4277,31 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   errors. CARRIER3D_VERSION bumped to 21.
 
 ================================================================================
+
+10.87 Ground Bearing Pads: mirror the P1-P4 toggles onto the 3D toolbar
+  Person wanted the per-leg pad toggles (Ground Bearing Pads - P1/P2/
+  P3/P4, above the 2D plan) reachable from the 3D toolbar too, next to
+  Compare old/new position - same reasoning as that toggle already
+  being mirrored there (10.80). First asked to "move" them down;
+  clarified mid-turn that the originals should stay too, for anyone
+  using only the 2D view - a mirror, not a relocation. Pad size (Pad
+  Length/Width) stays only in its original spot above - only the on/
+  off state needed a second home.
+  Added syncPadToggle(legId, sourceEl), the same mirrored-checkbox
+  pattern as toggleCompareMode: whichever checkbox fires the change
+  event updates its counterpart and calls calcCAD(). padEnabledFor
+  still only ever reads cad-pad-N, so that stays the single source of
+  truth; the 3D toolbar checkbox is purely a second control surface
+  for it, not a second state. Also fixed a gap toggleCompareMode
+  already had (but hadn't hit yet): opening the 3D view for the first
+  time after already toggling a pad above would show the toolbar's
+  checkbox unchecked until the next change event, since sync only ever
+  ran ON a change event - toggleCarrier3D() now pulls the real current
+  state into all 5 toolbar checkboxes (Compare + P1-P4) at open time.
+  Verified: toggling P1/P3 above then opening 3D shows both checked on
+  the toolbar; toggling P2 on the toolbar reflects back to the
+  checkbox above; toolbar wraps cleanly at 420px and sits on one line
+  at 900px, no overlap with Fit View/Compare; no console errors across
+  all 6 carrier-equipped cranes.
+
+================================================================================
