@@ -4948,4 +4948,33 @@ own confirmed domain fact, not an assumption).
   something to assume holds for every future crane either way -
   check each book directly.
 
+13.8 Fleet-wide check: 1110 was the only gap, everyone else already
+     complete
+  After 13.7, checked every other crane's own "Driving with the
+  equipment in place" book directly (not assumed) for the same thing -
+  plain T-boom (excluding TK/TNZK/TVK/TVNZK/TS/TNZF-jib variants),
+  not-fully-retracted configs missing from the app. Result: nothing
+  else needed adding anywhere in the fleet.
+    - LTM 1130-5.1: only ONE T-boom length exists in the entire book
+      (T-12.7, already fully retracted) - already in the app.
+    - LTM 1300-6.2: all three plain-T sections (T-14.7 front, T-14.7
+      rear, T-19.6 front-only) already in the app, verified row-for-
+      row exact against the 445/525-tire sub-chapter.
+    - LTM 1650-8.1: person explicitly scoped this to "T3 only" (not
+      the dozen-plus T3Y/T3N/T3NH/T3YVEN guying-variant sections this
+      crane's huge 1213-page book also has for the SAME T-16.7 boom
+      length) - both T3 sections (with/without winch 2) already in the
+      app, verified exact.
+    - LTM 1160-5.2 / LTM 1250-5.1: both use "Outer radius of
+      counterweight" labeling instead of boom-length notation because
+      their own "T operation" section is a SINGLE boom length
+      (T-13.1) with counterweight-radius as the only variable - both
+      radius variants already in the app, verified exact.
+  LRT 1100-2.1 explicitly excluded from this whole feature, per the
+  person: it's a rough terrain crane that generally always drives WITH
+  its counterweight fitted - the "driving with the equipment in place"
+  concept this feature is built around doesn't apply to it the way it
+  does to the LTM (mobile crane) fleet. Not a data gap - don't go
+  looking for a Driving w/ Equipment book for this crane.
+
 ================================================================================
