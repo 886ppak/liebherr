@@ -498,14 +498,44 @@ function placeAboveWholeModel(extraGroup, mainRoot) {
   applyWorldOffset(extraGroup, offset);
 }
 
+// Straight-on front view (camera on the +Z axis looking back at the
+// model, default camera.up), fit to the model's own bounding box rather
+// than a fixed-margin guess - was a 3/4 angled view before, which on a
+// wide model (e.g. LTM 1650's two side-by-side counterweight stacks)
+// left one side sitting behind the model's own central bulk from the
+// default angle, only visible after manually dragging to rotate. A
+// front view puts X (left/right) and Y (up/down) on screen with nothing
+// in between, so both sides are visible without needing to rotate at
+// all. Distance is derived from the camera's actual vertical FOV and
+// aspect ratio (same approach as carrier3d.js's fitView), fit against
+// whichever of X/Y is the binding constraint for the canvas's own
+// shape, so nothing gets cropped on a non-square canvas. See
+// methodology.txt 10.88.
 function frameCamera(root) {
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z) || 1;
-  camera.position.set(center.x + maxDim * 0.65, center.y + maxDim * 0.5, center.z + maxDim * 0.65);
-  camera.near = maxDim / 100;
-  camera.far = maxDim * 20;
+  const aspect = camera.aspect || 1;
+  const fovRad = THREE.MathUtils.degToRad(camera.fov);
+  const halfY = Math.max(size.y, 0.5) / 2;
+  const halfX = Math.max(size.x, 0.5) / 2;
+  // The model has real depth (size.z) - its own front (near-camera) face
+  // sits halfZ CLOSER to the camera than the box's center, which this
+  // distance is measured from. A perspective camera magnifies whatever's
+  // closer, so fitting purely off the center depth under-shoots for
+  // anything with real thickness (confirmed against LTR 1220, whose
+  // counterweight is nearly as deep as it is tall - its front plate
+  // visibly clipped past the frame edges before this was added). Adding
+  // halfZ to each required distance keeps the fit valid at the NEAREST
+  // point of the model, not just its average depth - harmless no-op for
+  // a genuinely flat model (halfZ ~ 0) and the fix for a thick one.
+  const halfZ = Math.max(size.z, 0.5) / 2;
+  const distForY = halfY / Math.tan(fovRad / 2) + halfZ;
+  const distForX = halfX / (Math.tan(fovRad / 2) * aspect) + halfZ;
+  const dist = Math.max(distForY, distForX) * 1.15; // 15% margin so nothing sits flush against the edge
+  camera.position.set(center.x, center.y, center.z + dist);
+  camera.near = dist / 100;
+  camera.far = dist * 20;
   camera.updateProjectionMatrix();
   controls.target.copy(center);
   controls.update();
