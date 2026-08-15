@@ -5715,4 +5715,72 @@ cranes get their own subsections as they're built.
   and the same completion is reflected on the OTHER tabs' status spans
   too (shared cache pool, as expected) - 0 console errors.
 
+15.10 Compare Cranes sub-tab - "find the best of several cranes for this
+      lift" as its own mode, not a Find Boom Configuration option
+  Person floated this as "a concept thought" first (multi-select 3+
+  cranes, one radius/weight, get each crane's minimum counterweight and
+  best-margin chart back) - answered with feasibility and the one real
+  design snag (rigging weight/hook block choice is per-crane, doesn't
+  generalize across a multi-select) rather than building anything yet,
+  per the general rule for a floated idea rather than a request. Person's
+  follow-up settled both open questions directly: drop rigging weight
+  entirely for this mode, and present it as two sub-tabs inside the
+  existing Load Chart Finder tab rather than a new top-level tab -
+  "Find Boom Configuration" (unchanged) and "Compare Cranes" (new).
+  Implementation:
+  - HTML: a mode-toggle pair (lc-subtab-find/lc-subtab-compare, same
+    .mode-toggle/.mode-btn pattern used everywhere else in this feature)
+    switches which of two wrapper divs (lc-panel-find / lc-panel-compare)
+    is visible - the existing three Find Boom Configuration cards moved
+    into the first wrapper unchanged, nothing about their own behavior
+    touched. Offline Availability stays outside both wrappers, visible
+    regardless of sub-tab (it already covers every crane's JSON
+    regardless of which sub-tab last touched them).
+  - Compare Cranes gets its own crane multi-select (checkboxes built
+    from the same LOAD_CHART_FILES/LOAD_CHART_CRANE_LABELS maps every
+    other part of this feature already uses - one source of truth, no
+    separate crane list to keep in sync), shared radius/weight inputs,
+    and its own 90%-site-rule toggle (kept, unlike rigging weight -
+    it's a single global multiplier, not something that varies per
+    crane the way a hook block catalog does).
+  - New computeLoadChartBestForCrane(data, radiusInput, weightInput,
+    derateOn) factors out the core "ascend counterweight levels, stop at
+    the first one with any qualifying column, keep that level's best-
+    margin column" search - the same logic renderLoadChartResults()'s
+    auto/find-minimum-CWT mode already does, but self-contained (no
+    reliance on the Find Boom Configuration sub-tab's own module-level
+    state - loadChartWind/loadChartBallastRadius/loadChartCwtMode belong
+    to that sub-tab only) since Compare needs to run this once per
+    selected crane independently, each with that crane's OWN default
+    wind bracket (lowest) and ballast radius (widest/most permissive,
+    matching the existing "column mode defaults to largest" convention
+    from 15.8) rather than sharing one global setting across cranes with
+    different data shapes.
+  - Compare has its own crane-data cache (loadChartCompareCache, keyed
+    by crane) separate from the Find sub-tab's single-crane
+    loadChartData/loadChartCraneKey pair - Compare needs several cranes'
+    data resident at once for a side-by-side table, Find only ever needs
+    one. Both fetch the identical URL per crane though, so they share
+    the same service-worker CONTENT_CACHE entry - switching sub-tabs
+    never re-downloads a crane already opened in the other one.
+  - Results sorted by margin descending (best option first, matching
+    Find Boom Configuration's own top5 ordering) with out-of-range and
+    no-qualifying-configuration cranes sorted to the bottom rather than
+    hidden, so a crane that genuinely can't do the lift is still visible
+    as a result, not silently dropped from the list.
+  One real bug caught before shipping (not by inspection, by an actual
+  edge-case query): the "no qualifying configuration" branch returned
+  {none: true} without also carrying the rounded-up actualRadius the
+  message template needed, rendering "...clears 5000.00t at undefinedm"
+  - fixed by returning actualRadius on every branch, not just the
+  success path. Verified an impossible target weight (5000t) and an
+  out-of-range radius (999m) both render clean messages afterward, then
+  a normal 3-crane query (1110/1130/1300, 10m/20t) sorted correctly by
+  margin and recalculated correctly when the 90% toggle was flipped
+  (1110's minimum counterweight rose from 6.9t to 8.5t, as expected -
+  more counterweight needed once only 90% of chart capacity counts) -
+  and confirmed switching back to Find Boom Configuration afterward
+  was completely unaffected (separate state, separate cache) with a
+  full regression sweep across all seven cranes - 0 console errors.
+
 ================================================================================
