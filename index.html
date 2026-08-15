@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.2</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.3</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -5890,6 +5890,16 @@
         const found = [];
         for (const col of combo.cols) {
           const [boomLength, ext, reeving, radiiPairs] = col;
+          // A "-" on any telescopic section (isPinned===false) means that
+          // section is allowed to telescope UNDER LOAD up to this %, not
+          // that it must be pinned there - the OEM manual's own live-
+          // telescoping charts, meant for niche obstacle-avoidance work
+          // (tele in past an obstruction, place the load, tele back out
+          // still under load). Per the person's explicit request, these
+          // are excluded from the normal recommendation list entirely -
+          // a specialised rigging technique, not a boom config a crew
+          // should be steered toward by default.
+          if (ext.some(e => e && e[1] === false)) continue;
           const pair = radiiPairs.find(p => p[0] === actualRadius);
           if (!pair) continue;
           const rawCapacity = pair[1];
