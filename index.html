@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.12</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.13</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -834,6 +834,12 @@
 
     <!-- ================= TAB 7: LOAD CHART FINDER ================= -->
     <div id="loadchart-tab" class="tab-content">
+      <div class="mode-toggle" id="lc-subtab-toggle" style="margin-bottom:14px;">
+        <button class="mode-btn active" id="lc-subtab-find" onclick="setLoadChartSubTab('find')">Find Boom Configuration</button>
+        <button class="mode-btn" id="lc-subtab-compare" onclick="setLoadChartSubTab('compare')">Compare Cranes</button>
+      </div>
+
+      <div id="lc-panel-find">
       <div class="card">
         <div class="card-title">Find Boom Configuration</div>
         <div class="form-group">
@@ -901,6 +907,41 @@
         <div id="lc-rounding-notice" class="disclaimer" style="display:none;"></div>
         <div id="lc-results"></div>
         <div class="disclaimer">Scope: T-boom only (no lattice/folding jib), outriggers fully deployed (7.9m x 8.3m rear / 7.0m front), 360° slewing range. Radius is rounded up to the nearest tabulated chart row — see the notice above when that happens. Reference tool only — cross-check the shown chart code/reference against the current OEM load chart before lifting.</div>
+      </div>
+      </div>
+
+      <div id="lc-panel-compare" style="display:none;">
+      <div class="card">
+        <div class="card-title">Cranes to Compare</div>
+        <div id="lc-cmp-crane-list" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Target</div>
+        <div class="grid">
+          <div class="form-group">
+            <label>Working Radius (m)</label>
+            <input type="number" id="lc-cmp-radius" step="0.1" min="0" placeholder="e.g. 10" oninput="renderLoadChartCompare()">
+          </div>
+          <div class="form-group">
+            <label>Target Load (t)</label>
+            <input type="number" id="lc-cmp-weight" step="0.1" min="0" placeholder="e.g. 10" oninput="renderLoadChartCompare()">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>Site Capacity Rule</label>
+          <div class="mode-toggle" id="lc-cmp-derate-toggle">
+            <button class="mode-btn active" id="lc-cmp-derate-off" onclick="setLoadChartCompareDerate(false)">100% (chart rated)</button>
+            <button class="mode-btn" id="lc-cmp-derate-on" onclick="setLoadChartCompareDerate(true)">90% (site rule)</button>
+          </div>
+        </div>
+        <div class="disclaimer" style="margin-top:14px;">No rigging weight deduction here (hook block/Winch 2 vary per crane) — target load is checked straight against each crane's chart capacity. Each crane finds its own minimum counterweight and best-margin boom configuration, at that crane's default wind bracket and ballast radius (widest/most permissive where applicable) — switch to Find Boom Configuration for full control over a single crane.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Comparison</div>
+        <div id="lc-cmp-results"></div>
+      </div>
       </div>
 
       <div class="card">
@@ -5770,6 +5811,21 @@
       const sel = document.getElementById('lc-crane');
       buildSelect(sel, Object.keys(LOAD_CHART_FILES), (k) => LOAD_CHART_CRANE_LABELS[k] || k, (k) => k);
       onLoadChartCraneChange();
+
+      const listEl = document.getElementById('lc-cmp-crane-list');
+      listEl.innerHTML = Object.keys(LOAD_CHART_FILES).map(k => `
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem; text-transform:none; font-weight:400;">
+          <input type="checkbox" class="lc-cmp-crane" value="${k}" style="width:auto; cursor:pointer;" onchange="renderLoadChartCompare()">
+          ${LOAD_CHART_CRANE_LABELS[k] || k}
+        </label>
+      `).join('');
+    }
+
+    function setLoadChartSubTab(mode) {
+      document.getElementById('lc-subtab-find').classList.toggle('active', mode === 'find');
+      document.getElementById('lc-subtab-compare').classList.toggle('active', mode === 'compare');
+      document.getElementById('lc-panel-find').style.display = mode === 'find' ? '' : 'none';
+      document.getElementById('lc-panel-compare').style.display = mode === 'compare' ? '' : 'none';
     }
 
     function onLoadChartCraneChange() {
@@ -5869,6 +5925,161 @@
       document.getElementById('lc-derate-off').classList.toggle('active', !on);
       document.getElementById('lc-derate-on').classList.toggle('active', on);
       renderLoadChartResults();
+    }
+
+    // --- Compare Cranes sub-tab ---
+    // Separate from loadChartData/loadChartCraneKey above (the Find Boom
+    // Configuration sub-tab's own single-crane state) since Compare needs
+    // several cranes' data loaded and visible at once, not just the last
+    // one selected. Same fetch URL as ensureLoadChartLoaded() though, so
+    // it lands in the exact same service-worker CONTENT_CACHE entry -
+    // switching between sub-tabs never re-downloads a crane already
+    // opened in the other one.
+    let loadChartCompareCache = {};
+    let loadChartCompareDerate = false;
+
+    function ensureLoadChartLoadedForCompare(craneKey) {
+      if (loadChartCompareCache[craneKey]) return Promise.resolve(loadChartCompareCache[craneKey]);
+      return fetch(LOAD_CHART_FILES[craneKey])
+        .then(r => r.json())
+        .then(data => { loadChartCompareCache[craneKey] = data; return data; });
+    }
+
+    function setLoadChartCompareDerate(on) {
+      loadChartCompareDerate = on;
+      document.getElementById('lc-cmp-derate-off').classList.toggle('active', !on);
+      document.getElementById('lc-cmp-derate-on').classList.toggle('active', on);
+      renderLoadChartCompare();
+    }
+
+    // Per-crane "find minimum counterweight + best margin" search, same
+    // core logic as renderLoadChartResults()'s auto/find-minimum-CWT
+    // mode, but self-contained (no dependency on the Find Boom
+    // Configuration sub-tab's own module-level state) and with no
+    // rigging-weight deduction - per the person's explicit call, hook
+    // block/Winch 2 selection varies per crane and comparing across
+    // cranes should stay simple, target load checked straight against
+    // chart capacity. Wind bracket and ballast radius (where a crane has
+    // either) default to that crane's own most permissive option (lowest
+    // wind bracket, widest/least-restrictive ballast radius) rather than
+    // being exposed here - full control over those stays on the Find
+    // Boom Configuration sub-tab.
+    function computeLoadChartBestForCrane(data, radiusInput, weightInput, derateOn) {
+      const actualRadius = loadChartRoundUpRadius(radiusInput, data.meta.radii);
+      if (actualRadius === null) return { outOfRange: true };
+
+      const windMode = data.meta.windMode || 'page';
+      let wind = 'n/a';
+      if (windMode !== 'column') {
+        const winds = [...new Set(Object.values(data.combos).map(c => c.wind))]
+          .sort((a, b) => parseFloat(a) - parseFloat(b));
+        wind = winds[0] || null;
+      }
+
+      const ballastComboMode = data.meta.hasBallastRadius && data.meta.ballastRadiusMode !== 'column';
+      let ballastRadiusForKey = null;
+      let ballastRadiusFilterMax = null;
+      if (data.meta.hasBallastRadius) {
+        const radii = data.meta.ballastRadii.slice().sort((a, b) => a - b);
+        if (ballastComboMode) {
+          ballastRadiusForKey = radii[0];
+        } else {
+          ballastRadiusFilterMax = radii[radii.length - 1];
+        }
+      }
+
+      const cwtLevels = [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
+
+      for (const cwt of cwtLevels) {
+        const comboKey = ballastComboMode
+          ? `${cwt.toFixed(1)}|${wind}|${ballastRadiusForKey}`
+          : `${cwt.toFixed(1)}|${wind}`;
+        const combo = data.combos[comboKey];
+        if (!combo) continue;
+
+        let best = null;
+        for (const col of combo.cols) {
+          const [boomLength, ext, reeving, radiiPairs] = col;
+          const windRating = windMode === 'column' ? col[4] : undefined;
+          const colBallastRadius = data.meta.ballastRadiusMode === 'column' ? col[4] : undefined;
+          if (ext.some(e => e && e[1] === false)) continue;
+          if (colBallastRadius != null && ballastRadiusFilterMax != null && colBallastRadius > ballastRadiusFilterMax) continue;
+          const pair = radiiPairs.find(p => p[0] === actualRadius);
+          if (!pair) continue;
+          const rawCapacity = pair[1];
+          const usableCapacity = rawCapacity * (derateOn ? 0.9 : 1);
+          if (usableCapacity < weightInput) continue;
+          const margin = usableCapacity - weightInput;
+          if (!best || margin > best.margin) {
+            best = { boomLength, ext, reeving, rawCapacity, usableCapacity, margin, windRating, colBallastRadius, ref: combo.ref, code: combo.code };
+          }
+        }
+        if (best) return { actualRadius, usedCwt: cwt, best };
+      }
+      return { none: true, actualRadius };
+    }
+
+    async function renderLoadChartCompare() {
+      const resultsEl = document.getElementById('lc-cmp-results');
+      const craneKeys = [...document.querySelectorAll('.lc-cmp-crane:checked')].map(el => el.value);
+      const radiusInput = parseFloat(document.getElementById('lc-cmp-radius').value);
+      const weightInput = parseFloat(document.getElementById('lc-cmp-weight').value);
+
+      if (!craneKeys.length || !radiusInput || !weightInput) {
+        resultsEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Select at least one crane and enter a working radius and target load above.</div>';
+        return;
+      }
+
+      resultsEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Loading…</div>';
+      const rows = await Promise.all(craneKeys.map(async (craneKey) => {
+        const data = await ensureLoadChartLoadedForCompare(craneKey);
+        const outcome = computeLoadChartBestForCrane(data, radiusInput, weightInput, loadChartCompareDerate);
+        return { craneKey, label: data.meta.crane, outcome };
+      }));
+
+      // Cranes with a usable result sort to the top by best margin
+      // (most headroom first, same ordering as Find Boom Configuration's
+      // own results) - cranes that can't reach the target (or whose
+      // chart doesn't cover this radius at all) sort to the bottom.
+      rows.sort((a, b) => {
+        const am = a.outcome.best ? a.outcome.best.margin : -Infinity;
+        const bm = b.outcome.best ? b.outcome.best.margin : -Infinity;
+        return bm - am;
+      });
+
+      resultsEl.innerHTML = rows.map(r => {
+        const o = r.outcome;
+        if (o.outOfRange) {
+          return `<div style="border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;">
+            <div style="font-weight:700; margin-bottom:6px;">${r.label}</div>
+            <div style="color:var(--danger); font-size:0.85rem;">Requested radius is beyond this chart's maximum tabulated range.</div>
+          </div>`;
+        }
+        if (o.none) {
+          return `<div style="border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;">
+            <div style="font-weight:700; margin-bottom:6px;">${r.label}</div>
+            <div style="color:var(--text-muted); font-size:0.85rem;">No configuration, at any counterweight this chart covers, clears ${weightInput.toFixed(2)}t at ${o.actualRadius}m.</div>
+          </div>`;
+        }
+        const b = o.best;
+        return `<div style="border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;">
+          <div style="font-weight:700; margin-bottom:8px;">${r.label}</div>
+          <table>
+            <tbody>
+              <tr><td style="text-align:left;">Minimum counterweight needed</td><td>${o.usedCwt.toFixed(1)} t</td></tr>
+              <tr><td style="text-align:left;">Boom length</td><td>${b.boomLength.toFixed(1)} m</td></tr>
+              <tr><td style="text-align:left;">Telescopic section extension</td><td>${formatLoadChartExtension(b.ext)}</td></tr>
+              ${b.reeving ? `<tr><td style="text-align:left;">Hoist rope reeving</td><td>${b.reeving}</td></tr>` : ''}
+              ${b.windRating != null ? `<tr><td style="text-align:left;">Max permissible wind (this config)</td><td>${b.windRating.toFixed(1)} m/s</td></tr>` : ''}
+              ${b.colBallastRadius != null ? `<tr><td style="text-align:left;">Ballast radius</td><td>${b.colBallastRadius.toFixed(1)}m</td></tr>` : ''}
+              <tr><td style="text-align:left;">Chart capacity at ${o.actualRadius}m</td><td>${b.rawCapacity.toFixed(2)} t</td></tr>
+              ${loadChartCompareDerate ? `<tr><td style="text-align:left;">Usable capacity (90% rule)</td><td>${b.usableCapacity.toFixed(2)} t</td></tr>` : ''}
+              <tr><td style="text-align:left;">Margin over target</td><td>${b.margin.toFixed(2)} t</td></tr>
+              <tr><td style="text-align:left;">Chart reference</td><td>${b.ref || '—'} (code ${b.code || '—'})</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+      }).join('');
     }
 
     function onLoadChartWinch2Toggle() {
