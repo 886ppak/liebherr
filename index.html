@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.0</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.1</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -760,6 +760,32 @@
           </div>
           <select id="lc-cwt" style="margin-top:8px;" onchange="renderLoadChartResults()"></select>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Site Rules &amp; Rigging Weight</div>
+        <div class="form-group">
+          <label>Site Capacity Rule</label>
+          <div class="mode-toggle" id="lc-derate-toggle">
+            <button class="mode-btn active" id="lc-derate-off" onclick="setLoadChartDerate(false)">100% (chart rated)</button>
+            <button class="mode-btn" id="lc-derate-on" onclick="setLoadChartDerate(true)">90% (site rule)</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>Hook Block Fitted</label>
+          <select id="lc-block" onchange="renderLoadChartResults()"></select>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; text-transform:none; font-weight:400;">
+            <input type="checkbox" id="lc-winch2-toggle" style="width:auto; cursor:pointer;" onchange="onLoadChartWinch2Toggle()">
+            Winch 2 fitted (adds a second block's weight to the static load)
+          </label>
+        </div>
+        <div class="form-group" id="lc-winch2-block-group" style="margin-top:10px; display:none;">
+          <label>Winch 2 Block Fitted</label>
+          <select id="lc-winch2-block" onchange="renderLoadChartResults()"></select>
+        </div>
+        <div class="disclaimer" style="margin-top:14px;">Both the printed chart capacity AND the target load you enter are for reference only until rigging weight is accounted for — per the OEM load chart manual ("40.02 Basic information"), the weight of load lifting equipment and fastening equipment must be deducted from the chart's capacity, since it hangs from the boom tip before your actual load is even attached. Selecting a block here (and Winch 2's, if fitted) applies that deduction automatically.</div>
       </div>
 
       <div class="card">
@@ -5584,6 +5610,7 @@
     let loadChartCraneKey = null;
     let loadChartWind = null;
     let loadChartCwtMode = 'manual';
+    let loadChartDerate = false;
 
     function ensureLoadChartLoaded(craneKey) {
       if (loadChartData && loadChartCraneKey === craneKey) return Promise.resolve(loadChartData);
@@ -5626,8 +5653,43 @@
         const cwts = [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
         buildSelect(document.getElementById('lc-cwt'), cwts, (c) => `${c.toFixed(1)} t`, (c) => c);
 
+        // Same fleet block catalog the Minimum Hook Block Weights tab's
+        // recommendations are drawn from (FLEET_BLOCK_SPEC), not a
+        // separate hardcoded list - one source of truth for what blocks
+        // this crane's fleet actually has. Base block weight only (no
+        // auxiliary ballast sub-selection here, unlike that tab) since
+        // this is about static rigging weight, not hook-block sizing.
+        const blockSpec = FLEET_BLOCK_SPEC[craneKey];
+        const blocks = blockSpec ? blockSpec.blocks : [];
+        buildSelect(document.getElementById('lc-block'), blocks, (b) => `${b.name} (${b.weight.toFixed(2)} t)`, (b) => b.id);
+        buildSelect(document.getElementById('lc-winch2-block'), blocks, (b) => `${b.name} (${b.weight.toFixed(2)} t)`, (b) => b.id);
+
         renderLoadChartResults();
       });
+    }
+
+    function setLoadChartDerate(on) {
+      loadChartDerate = on;
+      document.getElementById('lc-derate-off').classList.toggle('active', !on);
+      document.getElementById('lc-derate-on').classList.toggle('active', on);
+      renderLoadChartResults();
+    }
+
+    function onLoadChartWinch2Toggle() {
+      const on = document.getElementById('lc-winch2-toggle').checked;
+      document.getElementById('lc-winch2-block-group').style.display = on ? '' : 'none';
+      renderLoadChartResults();
+    }
+
+    // Looks up a selected block's own base weight (tonnes) from this
+    // crane's FLEET_BLOCK_SPEC by id - returns 0 if nothing's fitted/
+    // selected yet, so rigging weight defaults to 0 rather than NaN
+    // breaking every downstream calculation.
+    function loadChartBlockWeight(craneKey, blockId) {
+      const spec = FLEET_BLOCK_SPEC[craneKey];
+      if (!spec || !blockId) return 0;
+      const block = spec.blocks.find(b => b.id === blockId);
+      return block ? block.weight : 0;
     }
 
     function setLoadChartWind(wind, btn) {
@@ -5695,6 +5757,20 @@
         noticeEl.style.display = 'none';
       }
 
+      // Rigging weight: the block(s) hanging off the boom tip are static
+      // load the crane is already carrying before the actual lift is
+      // attached, and per the OEM load chart manual's own "40.02 Basic
+      // information" note, this must be deducted from the printed chart
+      // capacity, not added on top of it as a formality - both framings
+      // are mathematically equivalent (target+rigging <= capacity), this
+      // one keeps "target" meaning exactly what the person types in.
+      const craneKey = document.getElementById('lc-crane').value;
+      const blockWeight = loadChartBlockWeight(craneKey, document.getElementById('lc-block').value);
+      const winch2On = document.getElementById('lc-winch2-toggle').checked;
+      const winch2BlockWeight = winch2On ? loadChartBlockWeight(craneKey, document.getElementById('lc-winch2-block').value) : 0;
+      const riggingWeight = blockWeight + winch2BlockWeight;
+      const effectiveTarget = weightInput + riggingWeight;
+
       const manualCwt = parseFloat(document.getElementById('lc-cwt').value);
       const cwtLevels = loadChartCwtMode === 'manual'
         ? [manualCwt]
@@ -5710,9 +5786,19 @@
           const [boomLength, ext, reeving, radiiPairs] = col;
           const pair = radiiPairs.find(p => p[0] === actualRadius);
           if (!pair) continue;
-          const capacity = pair[1];
-          if (capacity >= weightInput) {
-            found.push({ cwt, boomLength, ext, reeving, capacity, margin: capacity - weightInput, code: combo.code, ref: combo.ref });
+          const rawCapacity = pair[1];
+          // Site capacity rule: mine sites commonly cap usable capacity at
+          // 90% of the chart rating rather than working right up to 100%
+          // (where the LICCON overload alarms trigger) - applied here as
+          // a straight multiplier on the raw chart figure, confirmed
+          // against the person's own worked example (2.4t chart rating x
+          // 0.9 = 2.16t usable) before shipping.
+          const usableCapacity = rawCapacity * (loadChartDerate ? 0.9 : 1);
+          if (usableCapacity >= effectiveTarget) {
+            found.push({
+              cwt, boomLength, ext, reeving, rawCapacity, usableCapacity,
+              margin: usableCapacity - effectiveTarget, code: combo.code, ref: combo.ref
+            });
           }
         }
         if (found.length > 0) {
@@ -5728,9 +5814,16 @@
       results.sort((a, b) => b.margin - a.margin);
       const top5 = results.slice(0, 5);
 
+      const riggingLine = riggingWeight > 0
+        ? `<div style="margin-bottom:6px; font-size:0.85rem; color:var(--text-muted);">Target load ${weightInput.toFixed(2)}t + rigging weight ${riggingWeight.toFixed(2)}t (block${winch2On ? 's' : ''}) = <b style="color:var(--text-main);">${effectiveTarget.toFixed(2)}t</b> the crane must actually clear</div>`
+        : '';
+      const derateLine = loadChartDerate
+        ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">Capacity checked at <b style="color:var(--text-main);">90%</b> of the chart's rated figure (site rule)</div>`
+        : '';
+
       if (top5.length === 0) {
         const scopeNote = loadChartCwtMode === 'manual' ? ' at this counterweight' : ', at any counterweight this chart covers,';
-        resultsEl.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">No configuration${scopeNote} reaches ${weightInput}t at ${actualRadius}m under these conditions.</div>`;
+        resultsEl.innerHTML = riggingLine + derateLine + `<div style="color:var(--text-muted); font-size:0.85rem;">No configuration${scopeNote} clears ${effectiveTarget.toFixed(2)}t at ${actualRadius}m under these conditions.</div>`;
         return;
       }
 
@@ -5738,7 +5831,7 @@
         ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--success);">Minimum counterweight needed to hit this target: <b>${usedCwt.toFixed(1)} t</b></div>`
         : '';
 
-      resultsEl.innerHTML = autoNote + top5.map((r, i) => `
+      resultsEl.innerHTML = riggingLine + derateLine + autoNote + top5.map((r, i) => `
         <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
           <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${i + 1}${i === 0 ? ' — best margin' : ''}</div>
           <table>
@@ -5747,8 +5840,10 @@
               <tr><td style="text-align:left;">Telescopic section extension</td><td>${formatLoadChartExtension(r.ext)}</td></tr>
               <tr><td style="text-align:left;">Hoist rope reeving</td><td>${r.reeving}</td></tr>
               <tr><td style="text-align:left;">Counterweight</td><td>${r.cwt.toFixed(1)} t</td></tr>
-              <tr><td style="text-align:left;">Capacity at ${actualRadius}m</td><td>${r.capacity.toFixed(1)} t</td></tr>
-              <tr><td style="text-align:left;">Margin over target</td><td>${r.margin.toFixed(1)} t</td></tr>
+              <tr><td style="text-align:left;">Chart capacity at ${actualRadius}m</td><td>${r.rawCapacity.toFixed(2)} t</td></tr>
+              ${loadChartDerate ? `<tr><td style="text-align:left;">Usable capacity (90% rule)</td><td>${r.usableCapacity.toFixed(2)} t</td></tr>` : ''}
+              ${riggingWeight > 0 ? `<tr><td style="text-align:left;">Rigging weight deducted</td><td>${riggingWeight.toFixed(2)} t</td></tr>` : ''}
+              <tr><td style="text-align:left;">Margin over target</td><td>${r.margin.toFixed(2)} t</td></tr>
               <tr><td style="text-align:left;">Chart reference</td><td>${r.ref || '—'} (code ${r.code || '—'})</td></tr>
             </tbody>
           </table>
