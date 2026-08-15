@@ -4481,6 +4481,57 @@ in a visual stack, or jump straight to a known combination from a dropdown.
 
 ================================================================================
 
+10.91 LTM 1650 CWT: made p1 (base/receptacle) clickable in 3D too, as one
+      rigid block - person's own suggestion
+  10.88 deliberately left p1 (All Counterweight Frame Receptacles)
+  unmapped, reasoning that its GLB representation - a large, complex
+  nested sub-assembly with hundreds of anonymously-named sub-parts -
+  was too risky to guess a per-sub-part mapping for. Person, inspecting
+  the file directly in a separate CAD viewer, pointed out this was
+  overthinking it: p1 is only ever toggled as ONE unit everywhere else
+  in the app (no per-sub-part granularity in the 2D diagram either), so
+  it doesn't need per-sub-part mapping at all - just ONE partMap entry
+  pointing at the sub-assembly's own top-level container node, treated
+  as a single rigid block the same way any other multi-body partMap
+  entry already works in this app.
+  Confirmed the container node's exact name empirically rather than
+  assumed, having just been burned by an incorrect naming assumption in
+  10.90: raw name "98037278_002 <1>" loads as "98037278_002_<1>" (space
+  sanitized to underscore, "<1>" suffix preserved as-is - a data point
+  worth keeping in mind for any future name containing similarly unusual
+  characters, not just plain spaces). Note there's ALSO a bare
+  "98037278_002" node in the same file - that's the model's own root,
+  not the receptacle: mapping that one instead would make the entire
+  model - stack, winches, everything - a single clickable p1, wrong.
+  Added '98037278_002_<1>': 'p1' to the partMap. Verified both via a
+  programmatic toggle and an actual canvas click: the whole base/
+  receptacle frame highlights correctly, cleanly excluding the plates
+  and winch mechanism above it (screenshotted and visually confirmed,
+  not assumed from the click succeeding alone) - Total Counterweight
+  shows 25.0t with the OEM-approved checkmark, matching the 2D data
+  exactly. CWT3D_VERSION bumped to 14.
+  Person separately asked about getting Onshape to export this
+  sub-assembly as one true merged part instead, for a cleaner file -
+  their first attempt (selecting the sub-assembly and exporting it
+  directly) came back still showing every individual part in the tree,
+  which is expected: exporting a selection of parts (to STEP or GLB)
+  preserves whatever hierarchy already exists, it does not merge
+  anything. Onshape's Composite Part tool is what actually performs a
+  boolean union into one new solid body - it's a modeling operation
+  done BEFORE export, not an export option. Explained the same
+  procedure already proven for Winch 2* (10.75): create the Composite
+  Part from the selected solids, export THAT specifically to STEP
+  (composite parts themselves get silently dropped by Onshape's
+  assembly-level GLB exporter, 10.69), reimport the STEP as a plain
+  solid, swap it into the assembly in place of the old individual
+  instances, rename if possible, re-export the whole assembly. Not
+  done as of this entry - the '98037278_002_<1>' block-mapping above
+  is the shipped, working state either way; a cleaner single-part
+  export would just mean simplifying the partMap to one direct id
+  later, not something blocking p1 from working today.
+
+================================================================================
+
 11. HOW TO SOURCE A NEW CRANE'S COUNTERWEIGHT DATA + 3D MODEL  [CONVERSATION]
 --------------------------------------------------------------------------------
 Use this whenever a crane needs its CWT Combinations tab built or extended -
