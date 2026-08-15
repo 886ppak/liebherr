@@ -36,6 +36,7 @@
 
     header { background-color: #181a1d; border-bottom: 1px solid var(--border-color); padding: 16px 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
     header h1 { font-size: 1.15rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-gold); font-weight: 800; }
+    header h1 .app-version { font-size: 0.6rem; letter-spacing: 0; color: var(--text-muted); font-weight: 500; vertical-align: super; margin-left: 2px; }
     #update-check-btn { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-gold); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
     #update-check-btn svg { width: 18px; height: 18px; transition: transform 0.6s ease; }
     #update-check-btn.spinning svg { animation: spin 0.8s linear infinite; }
@@ -210,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER</h1>
+    <h1>MYSLEWER <span class="app-version">v1.0</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
