@@ -5178,4 +5178,44 @@ out to be enormous.
   1.35t, effective target 11.35t, margin 5.55t - all four recomputed by
   hand and matched the rendered UI exactly, zero console errors.
 
+14.8 HOTFIX: whole-number counterweights (0.0/11.0/17.0/29.0t) silently
+     returned "no configuration" even when the data had a good match
+  Person hit this directly - r=26m, 2t target, 29.0t counterweight (the
+  crane's actual max) returned no results at all, despite the raw data
+  having a config good for 8.5t at that exact cell (verified directly
+  against the JSON before assuming it was a UI bug rather than a
+  genuine "physically can't be done" result).
+  Root cause: the combo lookup built its key with a plain template
+  literal, `${cwt}|${wind}`. The JSON's own combo keys were written by
+  Python as str(float) - e.g. "29.0", "11.0", "0.0" - always with the
+  decimal point, because that's how compact_data.py originally split
+  and rejoined the classify-pass keys. JS's default Number->string
+  coercion drops the trailing ".0" for whole numbers (String(29) ===
+  "29", not "29.0"), so the browser-built key "29|11.2 m/s" silently
+  missed the real "29.0|11.2 m/s" entry - `if (!combo) continue` just
+  skipped it with no error, indistinguishable from a genuine "physically
+  impossible" result. Every fractional counterweight (0.8, 3.3, 6.9,
+  etc.) coincidentally worked fine, because JS's coercion of THOSE
+  numbers happens to match Python's - the bug only ever hit whole-number
+  levels: 0.0, 11.0, 17.0, 29.0 out of the 39 total.
+  Fixed by using cwt.toFixed(1) to build the key instead of bare string
+  interpolation - matches the data's one-decimal-place format for every
+  value in the set, not just the ones that happened to coincide.
+  Verified against the person's exact reported inputs (r=26m, 2t,
+  29.0t CWT, 90% rule, 63t block + winch 2 + default second block)
+  before and after the fix - "no configuration" before, 5 real results
+  after, top one at 3.91t margin, matching the raw-data cross-check
+  (8.5t chart capacity x 0.9 - 3.74t effective target = 3.91t) exactly.
+  Also re-verified auto (find-minimum-CWT) mode separately, since it
+  iterates the same whole-number levels internally - correctly skips
+  0.0t and lands on 6.9t as the minimum for a similar query, 0 console
+  errors either way.
+  Lesson: never build a data lookup key from a bare template literal
+  across a language boundary (Python-written JSON, JS-read at runtime)
+  without checking that both sides format numbers identically - a
+  silent miss (falls into the same code path as "genuinely no match")
+  is far more dangerous here than a thrown error would have been, since
+  it's indistinguishable from a correct negative result without
+  independently checking the source data.
+
 ================================================================================
