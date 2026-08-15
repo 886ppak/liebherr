@@ -5610,4 +5610,76 @@ cranes get their own subsections as they're built.
   afterward (both wind-group and ballast-group UI correctly hidden for
   this crane) - 0 console errors.
 
+15.8 LTM 1650-8.1 (T3 boom) - last of the six, and ballast radius turned
+     out to mean something genuinely different on this crane
+  Sixth and last of the person's requested crane list. 1,803-page source
+  ("_T3" file specifically - the person confirmed mid-session this is
+  the one wanted, not the sibling _T3Y/_T3N/_T3F files sitting alongside
+  it at up to 204MB each). This crane's own 40.60 chapter names its main
+  boom sign directly as "T3" (= "Telescopic boom 54 m", as opposed to a
+  sibling "T5" = 80m boom in a completely different source file) -
+  T3 is the mode symbol itself here, not a suffix on a generic "T", so
+  the T*-equivalent exclusion is "T3*" and the Maintenance-operation
+  exclusion is "T3~" (confirmed present via a mode tally across the
+  whole T3 file before assuming either symbol carries over unchanged
+  from 1110/1160/1250's own conventions).
+  Ballast radius exists on this crane too, per the person's original
+  request - but it does NOT take the shape either prior implementation
+  (15.5's per-combo pair, 15.6's same idea) assumed. First investigation
+  pass only checked the page's own TOP badge for a radius/angle value
+  and found it present on just 2 of 17 counterweight levels, each with
+  only ONE value - not a parallel pair to choose between like 1160's
+  charts - and reported this dead end to the person rather than guessing
+  a shape onto data that didn't support it. Person's reply named the
+  real numbers directly (6.4/7.4/8.4) and the actual use case: filtering
+  by ballast-swing clearance ("i may or may not be limited on
+  clearance... to have my receptacle out all the way to 8.4"), which
+  led to checking one of the "no radius badge" pages' full table
+  structure directly rather than trusting the earlier top-badge-only
+  scan - the real values were sitting in the extension-condition block
+  the whole time, as two extra per-page rows ('m' = radius, '°' = angle,
+  same uniform value repeated across every column on a page) that a
+  badge-only regex never looked at. Person independently confirmed the
+  three fixed pairs before extraction was finished (6.4m=135°,
+  7.4m=90°, 8.4m=45°) - matched exactly once found.
+  This is a structurally different kind of "ballast radius" than 15.5/
+  15.6: not a chart-selection axis picked before searching (their
+  meta.ballastRadiusMode = 'combo', baked into the JSON combo key) but a
+  per-column property of the chart itself - which specific boom/cwt/
+  wind combination happens to need which radius isn't the crew's choice,
+  it's fixed by the chart. What the person wants selectable is a MAXIMUM
+  they're prepared to accept (site clearance), filtering OUT any column
+  whose required radius exceeds it - meta.ballastRadiusMode = 'column'.
+  Implementation: extraction stores radius (and angle, display-only,
+  never filtered) as two more per-column fields alongside boom length/
+  reeving/wind. The existing ballast-radius toggle UI (built for 15.5)
+  is reused unchanged for the widget itself, branching only on
+  ballastRadiusMode: 'column' mode changes the label text ("Maximum
+  Ballast Radius (Site Clearance)"), shows an explanatory disclaimer,
+  defaults to the LARGEST radius (least restrictive - "no constraint" is
+  the common case, unlike 'combo' mode which defaults to the first/
+  smallest), and filters columns (radius > selected -> excluded) instead
+  of selecting a combo-key segment. Column tuple position 4/5 means
+  different things per crane now (wind rating for windMode:'column'
+  cranes vs radius/angle for ballastRadiusMode:'column' cranes) - never
+  ambiguous in practice since no crane has needed both at once, but the
+  render code reads meta flags to decide which each time rather than
+  assuming position 4 means one fixed thing.
+  Verified the clearance filter actually reaches into different
+  underlying chart series, not just relabeling the same numbers:
+  restricting from the default 8.4m to 6.4m on the same query dropped
+  the top result's capacity from 179.90t to 167.20t and its reeving from
+  16x to 22x, and auto/find-minimum-CWT mode honored the same filter
+  (also kept visible in auto mode, per the person's explicit instruction
+  for the ballast-radius selector generally, 15.5).
+  Wired in as crane key '1650-t3' (not bare '1650') to match the
+  existing FLEET_BLOCK_SPEC entry built for this exact boom variant, so
+  the hook-block/Winch 2 selectors needed no new data either.
+  Final size: 51 combos, 4,935 columns, 86,807 datapoints, ~1.35MB JSON.
+  Regression-checked all five previously shipped cranes afterward - 0
+  console errors, all five still matched pre-change output exactly.
+  This closes out the six-crane expansion the person asked for (LRT
+  1100, LTM 1130/1160/1250/1300/1650), each shipped and verified on both
+  channels individually per section 15.1-15.8 above.
+
 ================================================================================
