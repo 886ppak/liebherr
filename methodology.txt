@@ -4783,4 +4783,62 @@ own confirmed domain fact, not an assumption).
   the percentage outright) is the preferred source whenever it exists -
   this derivation method is a fallback, not the first move.
 
+13.3 Confirmed fleet-wide table (all 7 relevant cranes checked)
+  Sourced from each crane's own operator manual via the 13.1 navigation
+  path ("1.03 Technical Data -> 3 Support -> 3.1 Support Base"), confirmed
+  standard across the whole LTM series - present and at that exact path
+  in every LTM manual checked. Width [b] at each extension %, Length [a]
+  fixed per crane (varies by crane, doesn't vary with extension %) unless
+  noted otherwise:
+
+    Crane          0%      25%     50%     75%     100%
+    LTM 1110-5.1   2.4m    -       *5.0m   *7.0m   *7.0/8.3m
+    LTM 1130-5.1   2.40m   -       5.00m   -       7.50m
+    LTM 1160-5.2   2.45m   -       5.38m   6.84m   8.30m
+    LTM 1250-5.1   2.70m   -       5.50m   6.90m   8.30m
+    LTM 1300-6.2   2.68m   -       5.60m   7.06m   8.53m
+    LTM 1650-8.1   2.62m   4.36m   6.10m   7.84m   9.58m
+
+  LTM 1130-5.1 and 1160-5.2 only have 3-4 stages, not 5 - don't assume
+  every crane has 25% and 75%; read what the table actually lists.
+
+  * LTM 1110-5.1 is NOT symmetric front/rear like the rest of the fleet -
+  its own manual table gives named positions instead of one clean %
+  column, because front and rear support width differ at the same
+  nominal stage:
+    Retracted     -> rear 0%  / front 0%,   both 2.4m
+    Reduced       -> rear 50% / front 55%,  rear 5.4m / front 5.0m
+    Reduced wide  -> rear 75% / front 100%, rear 6.85m / front 7.00m
+    Wide          -> rear 100%/ front 100%, rear 8.30m / front 7.0m
+    Variable      -> continuously adjustable 0-100% both sides
+  RESOLVED: the app's existing Driving w/ Equipment chart data for this
+  crane (DRIVING_EQ_DATA['1110']) was sourced from a genuinely separate
+  document - a per-crane "Driving with the equipment in place" book
+  (chapter 15.05, own BAL number, own folder:
+  Driving_with_the_equipment_in_place/, sibling to Operating_instructions_
+  Crane/, NOT inside the main operator manual PDF at all). Downloaded and
+  scanned it directly: every chart in that book's 122 pages uses a
+  "Support width (min.B)" column with only two values across the entire
+  crane, 2.45m and 5.00m - never 5.4m. Since 5.00m matches the Technical
+  Data table's FRONT designation exactly (not the rear's 5.40m), the
+  chart data already reflects the front-axle number, so it maps cleanly
+  to 55%, not 50%. app's OUTRIGGER_STAGE_TABLE['1110'] = [[0,2.40],
+  [55,5.00]] - no front/rear split needed after all, because the source
+  chart itself never varies the number by boom direction, only the
+  Technical Data summary table does.
+  General lesson: when a crane's own "Support Base" table (13.1) looks
+  asymmetric or ambiguous, check whether the SAME manual has a separate
+  "Driving with the equipment in place" book/chapter before assuming the
+  ambiguity carries through to the Driving w/ Equipment feature - the
+  driving chart may already have picked a single number for you.
+
+  LTR 1220 was checked and confirmed OUT OF SCOPE for this feature
+  entirely, not a data gap: it's a crawler crane, riding on fixed-width
+  crawler tracks rather than extendable outrigger beams. Its manual has
+  no "Support Base" chapter at all - the closest analog is a separate
+  "1.03.10 Outrigger pads" section, which covers ground-bearing mats for
+  load distribution, an unrelated concept. Confirmed directly by the
+  person too ("it uses tracks not outriggers") - don't go looking for a
+  support-base % table on this crane again.
+
 ================================================================================

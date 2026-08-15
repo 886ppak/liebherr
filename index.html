@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v1.5</span></h1>
+    <h1>MYSLEWER <span class="app-version">v1.6</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -2781,6 +2781,46 @@
       return fits[0] || null;
     }
 
+    // Pinned support-base extension stages per crane, sourced from each
+    // crane's own operator manual (Operating Instructions -> 1 Description
+    // of Crane -> 1.03 Technical Data -> 3 Support -> 3.1 Support Base).
+    // Liebherr outriggers can only be pinned at these fixed positions, not
+    // extended continuously. See methodology.txt 13.3 for how each row was
+    // sourced and cross-checked.
+    //
+    // LTM 1110-5.1's own Support Base table is asymmetric front/rear (the
+    // "Reduced" position is 50% at the rear axle but 55% at the front, at
+    // two different widths: 5.4m rear / 5.0m front). Confirmed via the
+    // crane's own separate "Driving with the equipment in place" book
+    // (chapter 15.05, "Support width (min.B)" column): every chart in
+    // that book uses only 2.45m and 5.00m, never 5.4m - so the app's
+    // existing 5.00m figure is the FRONT-axle designation, i.e. 55%, not
+    // the rear's 50%. See methodology.txt 13.3.
+    const OUTRIGGER_STAGE_TABLE = {
+      '1110': [[0, 2.40], [55, 5.00]],
+      '1130': [[0, 2.40], [50, 5.00], [100, 7.50]],
+      '1160': [[0, 2.45], [50, 5.38], [75, 6.84], [100, 8.30]],
+      '1250': [[0, 2.70], [50, 5.50], [75, 6.90], [100, 8.30]],
+      '1300': [[0, 2.68], [50, 5.60], [75, 7.06], [100, 8.53]],
+      '1650': [[0, 2.62], [25, 4.36], [50, 6.10], [75, 7.84], [100, 9.58]]
+    };
+
+    // Matches within a small tolerance rather than requiring an exact
+    // decimal match - the "Driving w/ equipment" chart's own quoted widths
+    // (e.g. 1130's 4.95m) sometimes round slightly differently than the
+    // Technical Data table's figures (5.00m) for the same pinned stage.
+    function outriggerStagePercent(modelKey, width) {
+      const stages = OUTRIGGER_STAGE_TABLE[modelKey];
+      if (!stages || typeof width !== 'number') return null;
+      const TOL = 0.15;
+      let best = null;
+      for (const [pct, w] of stages) {
+        const diff = Math.abs(width - w);
+        if (diff <= TOL && (!best || diff < best.diff)) best = { pct, diff };
+      }
+      return best ? best.pct : null;
+    }
+
     function renderDriveEqOutput() {
       const modelKey = document.getElementById('de-crane').value;
       const data = currentDriveEqCraneData();
@@ -2818,6 +2858,7 @@
         // row's wider allowance. See methodology.txt 10.46.
         const noHookBlock = r.hookBlock === '0';
         const rec = (r.hookBlock && !noHookBlock) ? driveEqMaxCompliantHookBlock(modelKey, r.hookBlock) : null;
+        const outriggerPct = outriggerStagePercent(modelKey, r.supportWidth);
         return `
         <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
           ${rows.length > 1 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${String.fromCharCode(65 + i)}</div>` : ''}
@@ -2827,7 +2868,7 @@
               ${noHookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>No hook block</td></tr>` : (r.hookBlock ? `<tr><td style="text-align:left;">Hook block</td><td>${r.hookBlock} kg</td></tr>` : '')}
               ${rec ? `<tr><td style="text-align:left;">Maximum known size hook block (lighter is fine)</td><td>${rec.name}</td></tr>` : ''}
               <tr><td style="text-align:left;">Telescopic boom angle to the horizontal</td><td>${r.boomAngle}</td></tr>
-              <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m</td></tr>
+              <tr><td style="text-align:left;">Support width (min. B)</td><td>${r.supportWidth.toFixed(2)} m${outriggerPct !== null ? ` (${outriggerPct}% extension)` : ''}</td></tr>
               <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupA}</td><td>${r.axleA} t</td></tr>
               <tr><td style="text-align:left;">Max axle load, axle ${dirData.axleGroupB}</td><td>${r.axleB} t</td></tr>
             </tbody>
