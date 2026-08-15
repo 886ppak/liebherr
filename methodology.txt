@@ -4211,3 +4211,20 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   (__carrier3dDebug, __carrier3dDumpAll) removed before shipping.
 
 ================================================================================
+
+10.84 Header: app version number next to the logo
+  Person wanted a version number shown next to the MYSLEWER wordmark,
+  same idea as their norwest-forms PWA. Asked whether it should reuse
+  the existing CACHE_VERSION (already bumped every deploy, so always
+  accurate, but reads as an internal build string like "v51-beta38")
+  or be a separate, clean, user-facing version - person chose the
+  separate version. Added a plain "v1.0" span next to the h1, small
+  and muted (0.6rem, --text-muted, vertical-align:super) so it reads
+  as a version tag rather than competing with the wordmark itself -
+  static markup, not wired to any constant, since this is meant to be
+  bumped by hand on meaningful releases rather than tracked
+  automatically like CACHE_VERSION/CWT3D_VERSION/CARRIER3D_VERSION
+  are. Checked at both a normal and a narrow (360px) mobile viewport -
+  no wrapping or overlap with the update-check button.
+
+================================================================================
