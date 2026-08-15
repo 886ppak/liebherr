@@ -5682,4 +5682,37 @@ cranes get their own subsections as they're built.
   1100, LTM 1130/1160/1250/1300/1650), each shipped and verified on both
   channels individually per section 15.1-15.8 above.
 
+15.9 Wired Load Chart Finder into the existing "Cache All Offline
+     Content" mechanism
+  All seven crane JSON files were already covered by the app's general
+  rule (the service worker's fetch handler caches anything it
+  successfully fetches into the persistent CONTENT_CACHE, forever) - so
+  a crane already opened once while online was already available
+  offline from then on. What was missing: the Load Chart Finder tab
+  had no "Offline Availability" card and wasn't part of the
+  allOfflineContentUrls() list the "Cache All Offline Content" button
+  and status indicator (Reeving Plans / CWT Combinations / Driving w/
+  Equipment tabs) already draw from - a crane never manually opened had
+  no way to be pre-cached, and there was no way to check "is everything
+  actually cached" for load charts specifically.
+  Fix: added Object.values(LOAD_CHART_FILES) into
+  allOfflineContentUrls() (function bodies aren't evaluated until
+  called, so it not mattering that LOAD_CHART_FILES is declared later
+  in the same script than allOfflineContentUrls() itself - by the time
+  either is actually invoked, at page-load or on a button click, every
+  top-level const in the script has already run), and added the same
+  "Offline Availability" card (status span + Cache All button +
+  progress bar) already used on the other three tabs to the bottom of
+  the Load Chart Finder tab, plus added 'loadchart-tab' to the tab-
+  switch list that refreshes the status indicator. No new mechanism
+  built - purely plugging the existing one in for a tab that had been
+  left out of it.
+  Verified via Playwright: allOfflineContentUrls() now lists all 7
+  loadchart/*.json paths, clicking "Cache All Offline Content" on the
+  Load Chart Finder tab actually caches them (confirmed via
+  caches.match() on every required URL, not just trusting the button's
+  own completion message), the status flips to "Downloaded" afterward,
+  and the same completion is reflected on the OTHER tabs' status spans
+  too (shared cache pool, as expected) - 0 console errors.
+
 ================================================================================
