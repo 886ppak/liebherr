@@ -5218,4 +5218,29 @@ out to be enormous.
   it's indistinguishable from a correct negative result without
   independently checking the source data.
 
+14.9 Excluded live-telescoping configs from the recommendation list
+  Person explained a "-" on a telescopic section (e.g. an extension
+  breakdown like "0+/0+/0+/-100/0+") means that section may telescope
+  UNDER LOAD up to that %, not that it must be pinned there. These are
+  niche charts for obstacle-avoidance work - telescope in past an
+  obstruction, place the load, telescope back out while still under
+  load - a specialised rigging technique, not a normal boom
+  configuration a crew should be steered toward by default. This
+  confirms and extends 13.6/13.7's own "+" = must be pinned, "-" =
+  can telescope under load" reading of the OEM notation - already
+  extracted and stored per-section (isPinned true/false in each
+  column's ext array) since section 14's original build, just not yet
+  filtered out of the results shown.
+  Per the person's explicit request, any column with at least one "-"
+  section is now excluded from ALL load chart finder results (manual
+  and auto/find-minimum-CWT mode alike) - not hidden behind a toggle,
+  removed outright, matching how T~/T* operating modes are already
+  fully out of scope for this feature (see 14.1) rather than offered
+  as an opt-in. Swept both modes across several (radius,
+  weight, counterweight) combinations, including the whole-number
+  counterweight values 14.8 just fixed, confirmed zero "-" markers
+  survive into any displayed result and each query still returns a
+  full set of options (the filter isn't so aggressive it starves
+  results) - 0 console errors.
+
 ================================================================================
