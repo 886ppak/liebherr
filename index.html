@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.8</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.9</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -861,8 +861,9 @@
           <select id="lc-cwt" style="margin-top:8px;" onchange="renderLoadChartResults()"></select>
         </div>
         <div class="form-group" id="lc-ballast-group" style="margin-top:14px; display:none;">
-          <label>Ballast (Counterweight Tray) Radius</label>
+          <label id="lc-ballast-label">Ballast (Counterweight Tray) Radius</label>
           <div class="mode-toggle" id="lc-ballast-toggle"></div>
+          <div class="disclaimer" id="lc-ballast-column-note" style="margin-top:8px; display:none;">Site clearance limit for how far the counterweight tray can swing out — any configuration needing more radius than this is excluded, since it wouldn't physically fit on your site.</div>
         </div>
       </div>
 
@@ -5713,7 +5714,8 @@
       '1130': './loadchart/ltm1130-T-fulldeploy.json',
       '1160': './loadchart/ltm1160-T-fulldeploy.json',
       '1250': './loadchart/ltm1250-T-fulldeploy.json',
-      '1300': './loadchart/ltm1300-T-fulldeploy.json'
+      '1300': './loadchart/ltm1300-T-fulldeploy.json',
+      '1650-t3': './loadchart/ltm1650-T3-fulldeploy.json'
     };
     let loadChartData = null;
     let loadChartCraneKey = null;
@@ -5738,7 +5740,8 @@
       '1130': 'LTM 1130-5.1',
       '1160': 'LTM 1160-5.2',
       '1250': 'LTM 1250-5.1',
-      '1300': 'LTM 1300-6.2'
+      '1300': 'LTM 1300-6.2',
+      '1650-t3': 'LTM 1650-8.1 (T3 boom)'
     };
 
     function initLoadChartTab() {
@@ -5787,24 +5790,40 @@
         buildSelect(document.getElementById('lc-cwt'), cwts, (c) => `${c.toFixed(1)} t`, (c) => c);
 
         // Some cranes (1160 onward) can mount their superstructure
-        // counterweight tray at more than one radius from the slew axis -
-        // a real third selectable axis alongside cwt tonnage and wind,
-        // not a display-only detail (each radius genuinely changes chart
-        // capacity - see methodology.txt 15.5). Present regardless of
-        // manual/auto counterweight mode per the person's explicit
-        // request - it isn't something auto mode should silently pick
-        // for the crew, they still choose it themselves either way.
+        // counterweight tray at more than one radius from the slew axis.
+        // Two different shapes this takes, per meta.ballastRadiusMode:
+        //   'combo'  (1160/1250) - each radius is a genuinely separate
+        //             chart series (same cwt, different printed capacity),
+        //             selected via a third combo-key segment, like cwt/wind.
+        //   'column' (1650)     - radius is a per-column property of the
+        //             chart itself (which specific boom config needs which
+        //             radius, not a choice between parallel charts) - the
+        //             person wants to FILTER by it instead, for jobsite
+        //             ballast-swing clearance (see methodology.txt 15.8:
+        //             "i may or may not be limited on clearance... to
+        //             have my receptacle out all the way to 8.4"). The
+        //             toggle re-used from 'combo' mode picks the MAXIMUM
+        //             radius the site allows - defaults to the largest
+        //             (least restrictive) rather than smallest, since
+        //             "no clearance constraint" is the common case.
         const ballastGroupEl = document.getElementById('lc-ballast-group');
+        const ballastLabelEl = document.getElementById('lc-ballast-label');
+        const ballastColumnNoteEl = document.getElementById('lc-ballast-column-note');
         if (data.meta.hasBallastRadius) {
           ballastGroupEl.style.display = '';
           const radii = data.meta.ballastRadii.slice().sort((a, b) => a - b);
+          const columnMode = data.meta.ballastRadiusMode === 'column';
+          ballastLabelEl.textContent = columnMode ? 'Maximum Ballast Radius (Site Clearance)' : 'Ballast (Counterweight Tray) Radius';
+          ballastColumnNoteEl.style.display = columnMode ? '' : 'none';
+          const defaultIdx = columnMode ? radii.length - 1 : 0;
           const ballastToggle = document.getElementById('lc-ballast-toggle');
           ballastToggle.innerHTML = radii.map((r, i) =>
-            `<button class="mode-btn${i === 0 ? ' active' : ''}" onclick="setLoadChartBallastRadius(${r}, this)">${r.toFixed(1)}m</button>`
+            `<button class="mode-btn${i === defaultIdx ? ' active' : ''}" onclick="setLoadChartBallastRadius(${r}, this)">${r.toFixed(1)}m</button>`
           ).join('');
-          loadChartBallastRadius = radii[0] ?? null;
+          loadChartBallastRadius = radii[defaultIdx] ?? null;
         } else {
           ballastGroupEl.style.display = 'none';
+          ballastColumnNoteEl.style.display = 'none';
           loadChartBallastRadius = null;
         }
 
@@ -5938,6 +5957,15 @@
         ? [manualCwt]
         : [...new Set(Object.values(data.combos).map(c => c.cwt))].sort((a, b) => a - b);
 
+      // Ballast-radius combo mode (1160/1250) carries it as a third combo-
+      // key segment - counterweight levels too low to offer a radius
+      // choice are duplicated into the JSON under every radius value at
+      // extraction time (methodology.txt 15.5), so the lookup never needs
+      // a fallback. Column mode (1650) does NOT touch the combo key at
+      // all - radius there is a per-column property filtered below, not
+      // a chart-selection axis (methodology.txt 15.8).
+      const ballastComboMode = data.meta.hasBallastRadius && data.meta.ballastRadiusMode !== 'column';
+
       let results = [];
       let usedCwt = null;
       for (const cwt of cwtLevels) {
@@ -5948,19 +5976,23 @@
         // (0.0/11.0/17.0/29.0t), returning "no results" even when the
         // data has a perfectly good match. toFixed(1) matches the data's
         // one-decimal-place format exactly for every value in this set.
-        // Cranes with a selectable ballast radius carry it as a third
-        // key segment (data.meta.hasBallastRadius) - counterweight
-        // levels too low to offer a radius choice are duplicated into
-        // the JSON under every radius value at extraction time (see
-        // methodology.txt 15.5), so this lookup never needs a fallback.
-        const comboKey = data.meta.hasBallastRadius
+        const comboKey = ballastComboMode
           ? `${cwt.toFixed(1)}|${loadChartWind}|${loadChartBallastRadius}`
           : `${cwt.toFixed(1)}|${loadChartWind}`;
         const combo = data.combos[comboKey];
         if (!combo) continue;
         const found = [];
         for (const col of combo.cols) {
-          const [boomLength, ext, reeving, radiiPairs, windRating] = col;
+          const [boomLength, ext, reeving, radiiPairs] = col;
+          // col[4]/col[5] mean different things depending on this crane's
+          // data shape (never both at once - windMode:'column' cranes use
+          // col[4] for their per-column wind rating; ballastRadiusMode:
+          // 'column' cranes use col[4]/col[5] for radius/angle instead),
+          // so which one col[4] actually is has to come from the meta
+          // flags, not a fixed positional guess.
+          const windRating = data.meta.windMode === 'column' ? col[4] : undefined;
+          const colBallastRadius = data.meta.ballastRadiusMode === 'column' ? col[4] : undefined;
+          const colBallastAngle = data.meta.ballastRadiusMode === 'column' ? col[5] : undefined;
           // A "-" on any telescopic section (isPinned===false) means that
           // section is allowed to telescope UNDER LOAD up to this %, not
           // that it must be pinned there - the OEM manual's own live-
@@ -5971,6 +6003,12 @@
           // a specialised rigging technique, not a boom config a crew
           // should be steered toward by default.
           if (ext.some(e => e && e[1] === false)) continue;
+          // Site clearance filter (1650 only, methodology.txt 15.8): a
+          // column needing more ballast radius than the site allows for
+          // the counterweight tray to swing out simply doesn't fit -
+          // excluded outright, same as the live-telescope filter above,
+          // not just flagged.
+          if (colBallastRadius != null && colBallastRadius > loadChartBallastRadius) continue;
           const pair = radiiPairs.find(p => p[0] === actualRadius);
           if (!pair) continue;
           const rawCapacity = pair[1];
@@ -5983,7 +6021,7 @@
           const usableCapacity = rawCapacity * (loadChartDerate ? 0.9 : 1);
           if (usableCapacity >= effectiveTarget) {
             found.push({
-              cwt, boomLength, ext, reeving, rawCapacity, usableCapacity, windRating,
+              cwt, boomLength, ext, reeving, rawCapacity, usableCapacity, windRating, colBallastRadius, colBallastAngle,
               margin: usableCapacity - effectiveTarget, code: combo.code, ref: combo.ref
             });
           }
@@ -6007,9 +6045,9 @@
       const derateLine = loadChartDerate
         ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">Capacity checked at <b style="color:var(--text-main);">90%</b> of the chart's rated figure (site rule)</div>`
         : '';
-      const ballastLine = data.meta.hasBallastRadius
+      const ballastLine = !data.meta.hasBallastRadius ? '' : ballastComboMode
         ? `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">Counterweight tray at <b style="color:var(--text-main);">${loadChartBallastRadius.toFixed(1)}m</b> radius</div>`
-        : '';
+        : `<div style="margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">Excluding any configuration needing more than <b style="color:var(--text-main);">${loadChartBallastRadius.toFixed(1)}m</b> ballast radius clearance</div>`;
 
       if (top5.length === 0) {
         const scopeNote = loadChartCwtMode === 'manual' ? ' at this counterweight' : ', at any counterweight this chart covers,';
@@ -6031,6 +6069,7 @@
               ${r.reeving ? `<tr><td style="text-align:left;">Hoist rope reeving</td><td>${r.reeving}</td></tr>` : ''}
               <tr><td style="text-align:left;">Counterweight</td><td>${r.cwt.toFixed(1)} t</td></tr>
               ${r.windRating != null ? `<tr><td style="text-align:left;">Max permissible wind (this config)</td><td>${r.windRating.toFixed(1)} m/s</td></tr>` : ''}
+              ${r.colBallastRadius != null ? `<tr><td style="text-align:left;">Ballast radius / angle</td><td>${r.colBallastRadius.toFixed(1)}m${r.colBallastAngle != null ? ` @ ${r.colBallastAngle.toFixed(1)}°` : ''}</td></tr>` : ''}
               <tr><td style="text-align:left;">Chart capacity at ${actualRadius}m</td><td>${r.rawCapacity.toFixed(2)} t</td></tr>
               ${loadChartDerate ? `<tr><td style="text-align:left;">Usable capacity (90% rule)</td><td>${r.usableCapacity.toFixed(2)} t</td></tr>` : ''}
               ${riggingWeight > 0 ? `<tr><td style="text-align:left;">Rigging weight deducted</td><td>${riggingWeight.toFixed(2)} t</td></tr>` : ''}
