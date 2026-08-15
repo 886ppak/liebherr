@@ -4905,4 +4905,47 @@ own confirmed domain fact, not an assumption).
   reconstructs a label from a raw id rather than reading a stored name
   string won't show up in a search for the old key names.
 
+13.7 Added LTM 1110-5.1's remaining T-only Driving w/ Equipment boom
+     configs (T-22.6, T-33.8) under Advanced
+  Person asked for "all T boom 445/525 tire Driving with equipment
+  charts, non-fully-retracted ones under Advanced" - excluding TK,
+  TVK, TNZK, TK-2.9 (folding-jib/lattice variants) entirely, plain
+  telescopic "T" boom only.
+  Source: the same crane's separate "Driving with the equipment in
+  place" book (chapter 15.05, see 13.6's discovery of this being a
+  genuinely separate document/folder from the main operator manual),
+  re-downloaded and read directly rather than assumed from the table
+  of contents alone.
+  Mapped the book's 24-section table of contents against actual page
+  content (chapter-page-N in the footer maps to PDF page N+27 in this
+  specific file) and found only 3 sections are plain "T" (not
+  TK/TVK/TNZK/TK-2.9):
+    - Sections 1/14/15: T-11.5 (0/0/0/0/0/0) - FULLY RETRACTED. Section
+      1 ("Description") is only 2 illustrative example rows, not a
+      real chart; sections 14/15 are the actual full front/rear chart
+      and were confirmed to be the exact source the app's existing
+      baseline boomConfig was already built from (23/78 rows matched
+      exactly) - nothing new to add here.
+    - Sections 2/3: T-22.6 (46/46/46/0/0/0) - not fully retracted.
+    - Sections 4/5: T-33.8 (46/46/46/46/46/46) - not fully retracted.
+  Added T-22.6 and T-33.8 as new boomConfig entries with advanced:
+  true (68/48 and 63/22 front/rear rows respectively), parsed
+  programmatically from the extracted PDF text (grouped into 6-field
+  row chunks: weight/hookBlock/boomAngle/supportWidth/axleA/axleB)
+  rather than transcribed by hand, given the row counts involved -
+  verified row-count parity (raw line count divisible by 6, no
+  leftover fields) before writing anything into the app.
+  Tire clarification: every page in all three T-only sections lists
+  ALL three tire sizes (385/95, 445/95, 525/80 R25) against the SAME
+  single data table - the tables are tire-agnostic in this specific
+  book, they don't split into a separate 445/525-only table the way
+  the person's framing implied. This differs from how the OTHER
+  cranes' sourceNotes are worded ("chapter 15.05 Charts for 445/95
+  R25 and 525/80 R25 tires") - 445/525 there likely reflects the
+  fleet's actual fitted tires (525/80 R25 confirmed elsewhere as the
+  fleet standard, see the CAD tab's footprint width sourcing) rather
+  than a genuine per-tire chart split in every crane's own book. Not
+  something to assume holds for every future crane either way -
+  check each book directly.
+
 ================================================================================
