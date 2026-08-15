@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.1</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.2</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -5878,7 +5878,14 @@
       let results = [];
       let usedCwt = null;
       for (const cwt of cwtLevels) {
-        const combo = data.combos[`${cwt}|${loadChartWind}`];
+        // Combo keys in the data are Python's str(float) - e.g. "29.0",
+        // never "29" - but JS's default Number->string coercion drops
+        // the trailing ".0" for whole numbers, so a plain template
+        // literal here silently missed every whole-number counterweight
+        // (0.0/11.0/17.0/29.0t), returning "no results" even when the
+        // data has a perfectly good match. toFixed(1) matches the data's
+        // one-decimal-place format exactly for every value in this set.
+        const combo = data.combos[`${cwt.toFixed(1)}|${loadChartWind}`];
         if (!combo) continue;
         const found = [];
         for (const col of combo.cols) {
