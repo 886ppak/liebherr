@@ -5386,4 +5386,75 @@ cranes get their own subsections as they're built.
   toggle still page-bracket mode, reeving column still shows, CWT lookup
   still correct) - 0 console errors, matches pre-change output exactly.
 
+15.4 LTM 1130-5.1 - per-column wind confirmed as the norm going forward,
+     and a genuinely different extension-row layout in the same PDF family
+  2770 pages, one file (no boom-mode suffix - like LRT 1100's file, this
+  one's own 40.60/40.62 chapters confirm main-boom types are just "T"
+  (telescopic) with an optional "V" telescopic-extension add-on, "K"/
+  "NZK" for auxiliary jib variants; scope stays plain "T", nothing else).
+  Person confirmed after seeing LRT 1100's per-column wind rating that
+  most of the remaining fleet (1130/1160/1250/1300) will read the same
+  way, with 1650 the one exception to check for when that crane comes
+  up - matches what this crane's own charts show (a "m/s" row varying
+  per column, not a fixed page-level bracket) and its own 40.65 icon
+  chapter confirms the standard "+" = pinned / "-" = can telescope under
+  load reading (the SAME way round as 1110, not LRT 1100's inverted
+  version - re-read each crane's own legend chapter regardless, per
+  14.1/15.2's rule, rather than assuming either convention carries over).
+  Support base also varies here (2.40m / 5.00m / 7.50m widths) - unlike
+  LRT 1100 though, the narrower widths aren't just narrower, they also
+  cap slewing to a restricted ±10° arc instead of full 360°; only the
+  widest (7.50m) width offers 360°, so "fully deployed outriggers" and
+  "360° slew" are the same filter on this crane (confirmed - not
+  assumed - by checking the slew badge on both the 5.00m and 7.50m width
+  pages directly). A first classification pass that only kept (cwt,
+  outrigger-width) as its dedupe key silently merged the 360° and ±10°
+  page sets together under one key (a broken regex that always matched
+  '?' for slew, not caught until an actual side-by-side page comparison
+  showed near-identical-but-not-quite capacity numbers between two
+  "same key" page groups) - fixed by adding slew to the key before
+  trusting any combo count from the scan. Final in-scope set: 28
+  counterweight levels x 10 pages each = 280 pages (chart refs
+  T205.00301 through T205.00328) - a full-document scan confirmed this
+  before extracting anything, not assumed from a partial sample.
+  This crane's PDF pages ALSO print hoist rope reeving per column (a
+  "* n *" row, strand count per column) - LRT 1100's chart doesn't have
+  this row at all; the extraction script reads it when present and
+  leaves the JSON's reeving field null when it isn't, same field either
+  way.
+  One real structural difference from both prior cranes' extension-row
+  layout, caught by comparing find_tables() output against a rendered
+  page before writing the full script (not assumed to match either
+  prior crane): this crane has 5 telescopic sections, and while their
+  labels ('1'/'2'/'3'/'4'/'5') are merged into one stacked label cell
+  same as before, the actual DATA rows for the block came out grouped
+  at 2-then-2-then-1 sections per raw table row (not "1 row per
+  section" like LRT 1100, and not "1 merged pair per row" like the
+  radius rows above it) - confirmed against a page render (T205.00325,
+  column 12: section 3 correctly a "0-" live-telescope marker, matching
+  both the JSON output and the rendered chart pixel-for-pixel). Rather
+  than hardcode this grouping (which could easily be a THIRD shape on
+  the next crane), the extraction script was rewritten to a general
+  algorithm: read the real section count from the label cell's own
+  digit tokens, then walk forward summing each raw row's own stacked-
+  value depth (however many values are actually stacked in that row's
+  cells) until every section is accounted for, whatever the grouping
+  turns out to be - verified this generalized form still extracts LRT
+  1100's simpler 1-row-per-section layout correctly too (same formula,
+  depth=1 falls out naturally), so no per-crane branch was needed.
+  Verified extraction against two separate pages (T205.00325 columns 1
+  and 12, one all-pinned and one with a real "0-" live-telescope marker)
+  cross-checked pixel-for-pixel against rendered images before shipping
+  - radius/capacity values, wind ratings, reeving counts, and every
+  section's pin state all matched exactly, including the "-" case this
+  crane actually needed (unlike LRT 1100, where the person said to
+  treat everything as pinned - here the exclusion filter from 14.9 has
+  real work to do: 2,492 individual unpinned-section instances found
+  across the full dataset before any filtering).
+  Final size: 28 combos, 3,752 columns, 60,177 datapoints, ~980KB JSON.
+  Wired into LOAD_CHART_FILES/LOAD_CHART_CRANE_LABELS with no changes
+  needed elsewhere (FLEET_BLOCK_SPEC already had an '1130' entry).
+  Regression-checked LRT 1100 and LTM 1110 in the same tab afterward -
+  0 console errors, both still matched their pre-change output.
+
 ================================================================================
