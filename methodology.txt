@@ -4166,3 +4166,48 @@ in a visual stack, or jump straight to a known combination from a dropdown.
   across this investigation.
 
 ================================================================================
+
+10.83 3D Carrier Preview: fixed foot-plate selection (largest reach, not
+      largest footprint) - LTM 1130 "quite off" report
+  Person reported (with two mobile screenshots) that the LTM 1130 3D
+  layout was "quite off" - a real, visible regression from 10.81's own
+  working fix for 1110. Root cause: 10.81's foot-plate selection took
+  the LARGEST FOOTPRINT among ground-level candidates in each quadrant.
+  That happened to work for 1110 because the true foot plate was also
+  the largest ground-level part nearby, but it isn't a safe rule in
+  general - 1130's export has some other ground-level part (closer to
+  the chassis centreline, not a real outrigger foot) with a bigger
+  bounding box than the actual plate, so it won the footprint contest
+  and got wrongly anchored to, exactly matching what the person saw on
+  their screen.
+  Confirmed by dumping every ground-level part's own reach/footprint/
+  groundGap directly (temporary __carrier3dDumpAll debug hook, removed
+  again once done) rather than guessing: the real foot plate (e.g.
+  Part_8, reach ~4.05m, groundGap≈0, footprint ~0.373 m²) was sitting
+  right there in the candidate list, correctly passing the ground-level
+  filter, just losing the footprint contest to a closer/bigger part.
+  Fix: selection criterion changed from largest-footprint to largest-
+  REACH among ground-level candidates - reach is what actually,
+  physically distinguishes an extended outrigger foot from anything
+  else sitting near the ground (a step, a storage box, incidental
+  hardware). Footprint is now only a minimum-size sanity filter
+  (0.02 m² / 2cm x 2cm), rejecting decal-scale noise, not the primary
+  selector.
+  Verified visually against 1130 (screenshot crop: all 4 corners now
+  align with real beam/foot geometry) and via a legAnchors-coverage
+  regression across all 6 carrier-equipped cranes (1110/1130/1160/1250/
+  1300/1650 all confirmed 4/4 legs). 1650 showing full 4/4 confirmation
+  initially looked suspicious given 10.76/10.77's own note that its
+  export was missing outrigger geometry - re-checked with a proper,
+  unclipped Top View screenshot and found that note was itself wrong:
+  1650's export DOES have real, symmetric foot-plate-plus-beam geometry
+  for all four corners (front and rear pairs both ~0.49 m² footprint,
+  ~5.1m reach, near-zero ground gap) - an earlier session's visual
+  impression from a clipped/zoomed screenshot led to a mistaken belief
+  the rear pair was entirely absent. Worth noting as a reminder to
+  verify claims like "this model is missing X" against the actual
+  geometry data rather than carrying them forward as established fact.
+  CARRIER3D_VERSION bumped to 19; both temporary debug hooks
+  (__carrier3dDebug, __carrier3dDumpAll) removed before shipping.
+
+================================================================================

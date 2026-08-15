@@ -375,17 +375,32 @@ function refineCalibrationFromGeometry(root, cal, calibration, baseLegs) {
     });
   });
 
-  // Among each quadrant's ground-level, reach-qualified candidates, the
-  // LARGEST footprint is the plate itself, not incidental hardware. Uses
-  // that winning part's own vertex CENTROID as the detected point, not its
-  // bounding-box centre - see the comment on partCentroids above.
+  // Among each quadrant's ground-level candidates, the FARTHEST-REACHING
+  // one is the foot - reach is what actually, physically distinguishes an
+  // extended outrigger from anything else sitting near the ground (a
+  // storage box, a spare-wheel mount, a step). Footprint is only a
+  // minimum-size sanity filter here (reject an implausibly tiny sliver -
+  // a decal, a bolt head), NOT the primary selector: an earlier version
+  // of this picked the LARGEST footprint among candidates instead, which
+  // sounds similar but isn't - it let a large, ground-level, but much
+  // CLOSER-to-centre part (something incidental, sitting well short of
+  // the true foot) win over a smaller but genuinely far-reaching plate,
+  // simply because it happened to have a bigger bounding box. Confirmed
+  // by dumping every ground-level part's reach directly and finding the
+  // real foot candidate sitting right there, un-selected, because a
+  // closer/bigger part had won the footprint contest instead. See
+  // methodology.txt 10.83.
+  const MIN_FOOTPRINT = 0.02; // 2cm x 2cm - well below any real plate, filters decal-scale noise only
   const corners = { '1_-1': null, '1_1': null, '-1_-1': null, '-1_1': null };
   Object.keys(candidateParts).forEach((key) => {
     let best = null;
     candidateParts[key].forEach((parent) => {
       const box = partBoxes.get(parent);
       const footprint = (box.max.x - box.min.x) * (box.max.z - box.min.z);
-      if (!best || footprint > best.footprint) best = { parent, footprint };
+      if (footprint < MIN_FOOTPRINT) return;
+      const reach = Math.abs(box.min.x - cal.lateralCenter) > Math.abs(box.max.x - cal.lateralCenter)
+        ? Math.abs(box.min.x - cal.lateralCenter) : Math.abs(box.max.x - cal.lateralCenter);
+      if (!best || reach > best.reach) best = { parent, reach };
     });
     if (best) {
       const centroid = partCentroids.get(best.parent);
