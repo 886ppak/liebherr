@@ -5518,4 +5518,56 @@ cranes get their own subsections as they're built.
   LTM 1110, and LTM 1130 afterward (ballast-radius UI correctly stays
   hidden for all three) - 0 console errors.
 
+15.6 LTM 1250-5.1 - both axes at once (page-level wind bracket AND
+     ballast radius), 13,223-page source, real T* back in play
+  Biggest source document since 1110's own 12,292-page file. This
+  crane's own 40.62 chapter has a genuine "T*" main-boom mode again
+  ("Telescopic boom with auxiliary device") - the SAME literal symbol
+  1110 used (not 1160's differently-punctuated "T *)"), confirming this
+  really is a per-crane naming detail, not a fleet-wide constant to
+  hardcode - re-checked directly rather than assumed either way, same
+  as every crane so far.
+  Badge layout is a full step back to 1110's shape: counterweight,
+  counterweight radius, support base, slew, AND a single page-level
+  wind rating are all fixed per page, with NO per-column "m/s" row in
+  the table at all (confirmed against a page render before writing the
+  extraction script - this crane needed its own reeving-row handling
+  too, since without a wind row after the 5 section rows, the very next
+  row is instead the reeving row, labelled "EST1", not a "* n *" row
+  positioned before the extension block like 1130/1160). This crane
+  also has its OWN "counterweight radius" icon explicitly documented in
+  its 40.65 chapter ("large counterweight radius" / "small counterweight
+  radius") - the first crane so far to actually name the concept
+  directly rather than it only being inferable from comparing two
+  same-tonnage charts (1160's case).
+  Net effect: this is the first crane with THREE independently
+  selectable axes at once - counterweight, wind bracket (page-level,
+  reusing 1110's UI unchanged), and ballast radius (reusing 1160's UI
+  unchanged) - and both existing UI code paths turned out to already
+  compose correctly together with zero additional JS changes beyond
+  registering the crane, since the wind-group and ballast-group
+  visibility toggles were written as independent conditionals from the
+  start (14/15.5), not an if/else assuming only one could apply.
+  Full-document classification scan (a genuine ~150s job at 13,223
+  pages, run in the background rather than blocking the session) found
+  21 counterweight levels x 2 ballast radii (4.8m/5.6m) x 3 wind
+  brackets (11.2/13.4/15.6 m/s) = 126 in-scope combos at the fully-
+  deployed 8.30m support base + 360° slew, each a clean contiguous
+  14-page run - verified programmatically (no non-contiguous ranges)
+  before extracting. One near-miss caught during verification, not a
+  real bug: a page sampled during reconnaissance (badge: 78.0t/5.6m
+  radius/11.2m/s) looked like it should match combo key
+  "78.0|5.6|11.2" but that key's actual stored page range was over a
+  thousand pages away - turned out the reconnaissance page had a
+  restricted ±10° slew, correctly excluded by the 360°-only scope
+  filter, and a SEPARATE 360°-slew chart elsewhere in the document
+  happens to share the exact same counterweight/radius/wind badge
+  values. Re-verified against the actual stored page (1316, chart ref
+  T259.101.12002) before trusting the extraction - a reminder that
+  matching badge values alone don't guarantee it's the same chart
+  series once a crane has enough combos in play.
+  Final size: 126 combos, 20,034 columns, 328,416 datapoints, ~5.3MB
+  JSON - comparable in scale to 1110's own dataset. Regression-checked
+  LRT 1100, LTM 1110, and LTM 1160 afterward - 0 console errors.
+
 ================================================================================
