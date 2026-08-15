@@ -5244,3 +5244,146 @@ out to be enormous.
   results) - 0 console errors.
 
 ================================================================================
+
+15. LOAD CHART FINDER: MULTI-CRANE EXPANSION  [CONVERSATION]
+
+Person asked for the same Load Chart Finder feature (section 14) extended
+to the rest of the fleet - LRT 1100-2.1, LTM 1130-5.1, LTM 1160-5.2,
+LTM 1250-5.1, LTM 1300-6.2, then LTM 1650-8.1 last, in that order. 1160/
+1250/1650 additionally need a ballast (counterweight tray) radius
+selector, and 1650's auto/find-minimum-CWT mode needs that selector
+exposed too, not just manual mode. This section covers LRT 1100; later
+cranes get their own subsections as they're built.
+
+15.1 Source manuals for this expansion do NOT come from re-uploads
+  The person's answer to "where are the source PDFs" was "a link/location
+  you already have access to" - this is the person's own Nextcloud share
+  (local.idull.au, public share token in the URL, WebDAV endpoint
+  /public.php/dav/files/<token>/), the SAME place section 14's 1110
+  "_T" file was originally pulled from mid-conversation (a curl -u
+  "<token>:" against a `local.idull.au/.../Load_chart_manual/*_T.pdf`
+  path, found by grepping this session's own transcript for the earlier
+  download command - the file itself doesn't persist in the container
+  between turns, only the fact that it was fetched from there does).
+  Every crane folder follows the same layout:
+    Liebherr cranes/<MODEL>/[OPERATIONS MANUAL - Serial # NNNNNN/[<serial>
+    _<model>_v100_en/]]Load_chart_manual/*.pdf
+  (the extra "OPERATIONS MANUAL - Serial #.../<serial>_..._v100_en/"
+  nesting level is present for some cranes and not others - LTM 1160/1650
+  skip straight to Load_chart_manual, LRT 1100/1130/1250/1300 have it -
+  don't assume a fixed depth, PROPFIND (Depth: 1) each level and follow
+  what's actually there). Confirmed via WebDAV PROPFIND that all six
+  requested cranes have a Load_chart_manual folder before starting any
+  extraction work.
+  Each Load_chart_manual folder holds one PDF per BOOM MODE (a "_T" file
+  = plain telescopic, wanted; "_TK"/"_TVK"/etc = jib variants, out of
+  scope; a "tlt-R_..." file with no mode suffix = a different chapter,
+  not investigated, same as 14.1's "_R file"). Sizes vary hugely by
+  crane - LRT 1100 has one 3.2MB file with no mode suffix at all (this
+  crane's boom system only has one main-boom type, "T", so there's
+  nothing to disambiguate - confirmed via its own 40.60/40.62 chapters,
+  15.2 below); LTM 1650's "_T3" file is 8.9MB but sits next to sibling
+  files up to 204MB for other T3-variant modes (T3N, T3F, etc) - the
+  person confirmed T3 (not T3Y/T3N/T3F/...) is the one wanted before any
+  of those larger files were downloaded.
+
+15.2 LRT 1100-2.1 - much smaller scope than 1110, and two behaviors flip
+  184 pages total, ONE file (no boom-mode suffix needed - chapter 40.60
+  "Short description of component groups" confirms this crane's only
+  main-boom type is "T", auxiliary boom type "K" for an optional folding
+  jib; chapter 40.62 confirms the only main-boom operating mode is
+  literally "T", no T~/T* equivalents to exclude). Chapter 40.90 "Load
+  charts" (data pages) runs pages ~111-183.
+  Support base ALSO varies on this crane (7.30m / 5.50m / 2.69m widths,
+  all at a fixed 7.48m other dimension) - the same "fully deployed
+  outriggers" scope from 14.1 applies here as "widest support base"
+  (7.30m); the narrower two are out of scope, same reasoning as excluding
+  T~/T*. Combined with 3 counterweight levels (0.0/8.0/14.0t) and fixed
+  360 degree slew, in-scope T-mode data is only 3 combos (chart refs
+  T273.00011/00012/00013), 2 pages each - about 40x smaller than 1110's
+  117-combo, 1532-page job. Confirmed with a full-page classification
+  pass before extracting anything, not assumed from the folder listing.
+  Two structural differences from 1110, both confirmed against this
+  crane's OWN "40.65 Description of the load chart" icon-legend chapter
+  before writing any extraction logic - do not assume 14's conventions
+  transfer to a new crane's manual without re-reading its own legend:
+    a) Wind speed is per-COLUMN here, not a page-level bracket. Every
+       boom-length/extension config has its own "maximum permissible
+       wind speed" printed in the same table (a "m/s" row under the four
+       extension-% rows), varying column to column on the same page
+       (e.g. 14.3/14.3/12.8/12.8/11.1/... across one page's 12 columns).
+       There is no fixed set of wind brackets to toggle between for this
+       crane, so this data's meta.windMode = 'column' (vs 1110's
+       implicit 'page' - the field defaults to 'page' when absent so
+       1110's existing JSON needed no changes). index.html branches on
+       this: 'column' mode hides the wind toggle entirely, shows an
+       explanatory note instead, and displays each result's own wind
+       rating as an informational line rather than filtering on it.
+    b) The pin/live-telescope notation is INVERTED from 1110's. This
+       crane's own legend states it explicitly (40.65, "Extension
+       condition of telescopic sections"): "+" suffix = section MUST be
+       pinned (normal case); NO suffix at all (a bare number, e.g. plain
+       "50") = section must NOT be pinned, i.e. live-telescope-under-
+       load - the exact concept 14.9 excludes, just flagged with the
+       opposite character. Person's call after seeing this: "treat all
+       lrt1100 as pinned i dont think there is any true unpinned
+       sections" - so extraction records isPinned=true unconditionally
+       for every LRT 1100 section regardless of the raw +/bare symbol,
+       rather than reading and filtering on it. This means 14.9's
+       exclusion filter (ext.some(e => e && e[1] === false)) naturally
+       never fires for this crane's data without needing a code branch -
+       it only ever produces true.
+  Also found two footnote codes (107 = loads above 69.9t need an
+  auxiliary block, 108 = loads above 80.4t need an auxiliary device) that
+  appear on every T-mode page's top-left corner as a standing warning
+  icon. Read literally, this is a rigging/hook-capacity constraint
+  ("above X tonnes you need a bigger block"), not a boom-configuration
+  restriction like T*'s "requires a special rigging accessory" (14.1) -
+  chose NOT to exclude on this basis, unlike T~/T*/live-telescope. Both
+  thresholds are well above what this crane's realistic lift range
+  covers, so this wasn't pursued further (no per-cell threshold check
+  wired in) - flagged to the person as a judgement call rather than
+  silently decided either way.
+
+15.3 Extraction: find_tables() worked directly, one bug found and fixed
+  Unlike 1110, page.get_text(sort=True) alone produces a fully readable,
+  correctly-ordered table for this crane's PDFs (no scrambling) - but
+  find_tables() was still used for the actual extraction since it
+  handles the sparse-cell column alignment correctly without needing
+  1110's bbox/y-position fallback machinery (that fallback code was kept
+  in the script as a defensive path, just never triggered on this
+  crane's data - confirmed by not seeing it fire during extraction).
+  One real bug, caught before it reached the shipped JSON: the four
+  extension-% rows plus the wind-speed row (labelled "1"/"2"/"3"/"4"/
+  "m/s" in the chart's own left-hand column) are FIVE separate rows in
+  find_tables()'s output, each with its own per-column values - but only
+  their shared label cell (column 0) gets merged into one newline-joined
+  "1\n2\n3\n4\nm/s" block by find_tables(), unlike the radius rows above
+  them where every column's cell is what's newline-joined. First attempt
+  wrongly assumed the same merge pattern applied to all 13 columns of
+  this block (not just column 0), which silently produced only 1 of the
+  4 real extension values per column and left wind rating as None for
+  every row. Caught immediately by cross-checking parsed output against
+  the same page rendered as an image (page 120, T273.00013) before
+  building the full script - not just checking the script ran cleanly.
+  Fixed by reading raw[ext_start + r] as five independent rows directly
+  rather than trying to split column 0's merged text and reapply it
+  elsewhere.
+  Verified the corrected extraction against three separate pages spanning
+  all three combos (visual render of one page's full grid, plus two more
+  combos' raw JSON cross-checked cell-by-cell against the manually-read
+  page text) before shipping - every boom length, extension %, wind
+  rating, and radius/capacity pair matched exactly, including the
+  two-page "page 2 of 2" continuation columns (a single 50.0m boom-length
+  column each, merged into the same combo as its 12-column first page).
+  Final size: 3 combos, 39 columns, 546 datapoints, ~9.5KB JSON - reuses
+  the same lazy-fetch loadchart/<file>.json pattern as 1110 (14.4),
+  wired into the existing LOAD_CHART_FILES/LOAD_CHART_CRANE_LABELS maps
+  with no other index.html cranes touched. FLEET_BLOCK_SPEC already had
+  an '1100' entry from an earlier feature, so the hook-block/Winch 2
+  selectors needed no new data, just picked it up automatically.
+  Regression-checked LTM 1110 in the same tab after these changes (wind
+  toggle still page-bracket mode, reeving column still shows, CWT lookup
+  still correct) - 0 console errors, matches pre-change output exactly.
+
+================================================================================
