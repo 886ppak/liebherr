@@ -34,7 +34,11 @@ Pages URL and checking `CACHE_VERSION` before considering the work done
 # App version number
 
 The `.app-version` span next to the MYSLEWER wordmark in `index.html`
-(`v1.1` as of this writing) is a separate, user-facing version, distinct
+(`v2.27` as of this writing) is a separate, user-facing version, distinct
 from the internal `CACHE_VERSION` build string. Bump its minor number
-(v1.1 -> v1.2 -> ...) on every meaningful push to `main`, same as
+(v2.27 -> v2.28 -> ...) on every meaningful push to `main`, same as
 `CACHE_VERSION` gets bumped for every app-shell change.
+
+Cap the minor number at .30. Once a push would take the minor number past
+.30, roll over to the next major instead: v2.30 -> v3.0 -> v3.1 -> ... ->
+v3.30 -> v4.0, and so on for each future major.
