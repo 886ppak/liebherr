@@ -5830,4 +5830,136 @@ cranes get their own subsections as they're built.
   OEM's own example order and the spot-check above exactly - 0 console
   errors.
 
+16. CRANE SETUP TAB: 360-DEGREE SLEW CLEARANCE
+  New feature, new tab ("Crane Setup", between Crane Positioning and Rope
+  Retentioning). Concept: when parked alongside a structure (wall,
+  stockpile, fence), how far does the superstructure's widest rear-swing
+  point (counterweight, or Winch 2 if it sticks out further) oversail the
+  side of the carrier during a full 360° slew - i.e. how much stand-off
+  clearance is actually needed, or whether an already-parked crane has
+  room to slew at all.
+
+  Geometry (confirmed with the person before building anything): the slew
+  axis sits on the carrier's centerline. Park the crane with that
+  centerline parallel to the structure being cleared and the worst case
+  is when the superstructure has rotated so the boom/CWT points straight
+  sideways - at that angle the full swing radius becomes pure sideways
+  distance from centerline, so subtracting half the carrier width (B/2)
+  gives exactly how far the swing point oversails the side of the
+  carrier. Standard tail-swing-beyond-track-width calc. Angle the crane
+  off-parallel to the structure and the real clearance only gets bigger
+  than this number, never smaller - so this is a conservative/worst-case
+  figure by construction, not an average.
+
+  Source data: each crane's own Operating Instructions manual (NOT the
+  Load_chart_manual folder used for section 15 - a sibling
+  Operating_instructions_Crane PDF, found via the same Nextcloud WebDAV
+  share, chapter 1.03 Technical Data > 1 Dimensions). carrierWidthB comes
+  straight off that chapter's tyre-size table (525/80 R25 column, this
+  fleet's standard tyre per company policy/WA axle regulation - confirmed
+  by the person, no need to track the other two tyre options at all,
+  unlike Driving w/ Equipment's tyre-agnostic table which the fleet
+  policy doesn't help simplify). The radius figures are NOT plain text -
+  they're hand-drawn CAD leader-line labels on the chapter's plan-view
+  figure, rotated 180° (same "scrambled" presentation as every dimension
+  figure encountered this session, e.g. 1110's Fig.154887 back in the
+  outrigger work) - read by rendering the PDF page to a high-DPI PNG and
+  eyeballing the rotated digits, same method as always for this kind of
+  figure.
+
+  This went through a full report-and-confirm cycle before any number was
+  trusted, because the CAD figures turned out to vary far more than
+  expected - worth recording in full since it's a cautionary example of
+  why "looks like the same pattern as the last crane" cannot be assumed:
+  - LTM 1110/1130/1300: a clean two-radius pattern (inner = one
+    component, outer = the other) - but 1110/1130 have CWT as the
+    SMALLER/inner radius and Winch 2 as the larger/outer, while 1300 is
+    the reverse (Winch 2 smaller, CWT larger) - confirmed directly by the
+    person, not an assumption carried over from 1110/1130's pattern. Do
+    NOT assume inner-vs-outer position predicts which component it is on
+    a crane not yet checked.
+  - LRT 1100: three radius labels near the superstructure (R4180, R7135,
+    R7920) with no way to tell from the line art alone which was the
+    CWT's rear-swing radius versus something unrelated (turned out R7135/
+    R7920 were NOT superstructure-swing radii at all - sent crops to the
+    person rather than guess, who confirmed the actual CWT figure was the
+    smaller one I'd initially half-suspected was a red herring, R4190,
+    off by 10mm from my own rotated-digit misread of R4180). This crane
+    also has a real second winch (FLEET_BLOCK_SPEC already carries
+    separate w1/p1 vs w2/p2 rope specs for it) but the person confirmed
+    it sits entirely within the CWT's radius, so it's tracked as a single
+    fixed point, not a pair.
+  - LTM 1160/1250: THREE radius labels near the CWT, not two - initially
+    unexplained (three points along the tray's non-circular outline?
+    three unrelated features?). Sent crops rather than guess. Turned out
+    both cranes have a genuine "vario ballast" (extended counterweight
+    tray) option, same concept already modeled for the Load Chart
+    Finder's ballastRadiusMode:'combo' cranes (section 15.5) but this is
+    a DIFFERENT chapter/figure with its own independent radius numbers,
+    not the same 4.8m/5.3m figures already in the load chart JSON - do
+    not assume the two are interchangeable. Resolved to: 1160 standard
+    tray radius (4730mm) coincides with Winch 2's own radius so only one
+    figure is needed for the "standard" case, plus a second figure
+    (5230mm) if the vario tray is fitted; 1250 keeps Winch 2 as its own
+    separate fixed point (4975mm) alongside standard (4780mm) and vario
+    (5580mm) CWT tray radii - three genuinely independent numbers, not
+    two.
+  - LTM 1650: the radius labels found (R7950, R7300) traced a long curve
+    running most of the vehicle's length rather than a tight corner near
+    the slew center, and didn't fit the pattern at all - the person
+    redirected to reuse the SAME 6.4/7.4/8.4m site-clearance radii
+    already established for this crane's Load Chart Finder ballast
+    selector (section 15.8) rather than extracting anything new, since
+    it's the same physical vario-ballast positions being described.
+  - LTR 1220 (crawler): explicitly excluded by the person - no 525/80
+    tyres (it runs on tracks), out of scope for this feature entirely.
+    Its counterweight-tab task in the tracker is unrelated/separate work.
+  - LRT 1100 also has no 525/80 tyre option (single fixed tyre, 29.5
+    R25), but unlike 1220 it's still an on-road-relevant crane for this
+    feature, so its carrierWidthB (3300mm) is read directly off its own
+    dimension figure's front-view width dimension instead of a tyre-size
+    table lookup - flagged in the UI (widthNote) so the fleet-wide
+    "525/80 R25" disclaimer text doesn't silently misrepresent this one
+    crane's actual figure as a tyre-size substitute.
+
+  Data model: SLEW_CLEARANCE_DATA, keyed the same as CARRIER_MODELS/
+  CARRIER_CALIBRATION (bare crane key, e.g. '1650' not '1650-t3' - this
+  feature isn't boom-mode-specific the way the Load Chart Finder is).
+  Each entry has `fixed` (points whose radius never changes) and
+  `variants` (null, or a {label, options[]} pair for cranes with a
+  selectable tray/ballast radius - only one is ever physically fitted at
+  a time, rendered as a mode-toggle, defaulting to index 0/first option
+  on every crane switch rather than remembering the last selection across
+  different cranes).
+
+  UI: new "Crane & Configuration" card (crane select + variant toggle
+  when applicable) and a "360° Slew Clearance" results card (radius +
+  computed clearance per point, in meters, plus a "limiting point" line
+  picking whichever point has the largest radius - that's the one that
+  actually governs how much stand-off is needed). A third card links
+  over to the Crane Positioning tab for the eventual 3D visualization
+  (see below) rather than embedding a second 3D viewer inline.
+
+  3D radius-circle toggle (the person's original "would be good to see"
+  ask, alongside the numeric table) is DEFERRED, not shipped in this
+  pass - vendor/carrier3d.js's viewer is a single hardcoded-canvas module-
+  level instance (one scene/camera/renderer, tied to
+  #carrier-3d-canvas-wrap in the Crane Positioning tab specifically), so
+  a second concurrent 3D view on a different tab isn't a drop-in reuse -
+  it needs either a small refactor to parameterize which DOM element the
+  viewer renders into, or a scene-graph clone() of the already-cached GLB
+  for a second concurrent instance. Rather than half-build this under
+  time pressure, shipped the fully-correct numeric feature now (it's the
+  actual clearance figure that matters) and left the 3D piece as a
+  visible fast-follow via the "3D Visualization" card's link + explanatory
+  text, instead of silently dropping it or shipping a rushed version.
+
+  Tested via Playwright across all 7 in-scope cranes (1100/1110/1130/
+  1160/1250/1300/1650): every clearance figure hand-verified against
+  radius minus half the carrier width, variant toggle switches correctly
+  (1160/1250/1650), the "no variant" cranes correctly hide that card
+  section, and the Crane Positioning cross-link correctly activates that
+  tab/button pair without leaving two tabs simultaneously marked active -
+  0 console errors throughout.
+
 ================================================================================
