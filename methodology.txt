@@ -6586,4 +6586,65 @@ cranes get their own subsections as they're built.
   3582mm" / "C2 inside: 582mm") without touching the 3D toggle; table
   cells read whole mm throughout; 0 console errors.
 
+17. HEADER SHARE BUTTON + QR CODE
+  New icon button in the header, beside the existing update-check refresh
+  icon - opens a small panel with a QR code, the app's own URL as plain
+  text, a "Copy Link" button, and a native Share… button (only shown when
+  navigator.share exists) - lets a crew member hand the app straight to
+  someone else on site (open camera, scan, tap the link) without them
+  having to type a URL in.
+  Person asked for "a share button like you did for my norwest forms
+  pwa" - that other project isn't in this session's repo scope, so rather
+  than guess at its exact implementation, asked two quick clarifying
+  questions instead: how to source the QR image (their own pasted image,
+  which this session has no file-path access to and no tool to extract
+  raw bytes from a chat-inline image; vs generating a fresh one), and what
+  the button should actually do. Answered: generate the QR code fresh
+  (encoding the app's own URL, not a static image), header icon opening a
+  small panel with QR + Copy Link + native share.
+  QR generation: vendored vendor/qrcode.js - Kazuhiko Arase's
+  "qrcode-generator" (MIT-licensed, dependency-free, ~56KB, no build
+  step) - same "no CDN, no external service" approach already used for
+  three.js/GLTFLoader/DRACOLoader elsewhere in this app, for the same
+  reason: the app needs to keep working offline once cached, and a QR
+  code generated locally from window.location is always correct - it
+  can't silently point at a stale image someone forgot to regenerate
+  after the URL changed, the way a static uploaded QR image could.
+  Loaded lazily via a manually-created <script> tag (not dynamic
+  import() - qrcode.js is a plain classic script, not an ES module) the
+  first time the share panel opens, rather than paying its ~56KB on every
+  page load for a feature most visits never touch - same lazy-load
+  reasoning as carrier3d.js/cwt3d.js, just via a different mechanism since
+  the underlying file isn't a module.
+  qrcode(0, 'M') - type 0 lets the library auto-pick the smallest QR
+  version that fits the URL (confirmed by reading the library's own
+  make() - it only auto-detects when typeNumber < 1, tries versions 1-39
+  until the data fits), error-correction level M (15% recovery, the
+  standard middle-ground default). createSvgTag({ scalable: true }) emits
+  a viewBox-only SVG (no fixed pixel size) so the panel's own CSS
+  (#share-qr-wrap svg { width: 180px; height: 180px }) controls the
+  on-screen size instead.
+  shareUrl() strips any query string/hash from window.location - the
+  app's own canonical URL is always the meaningful thing to share, not
+  whatever incidental state (a scroll anchor, a future deep link) happens
+  to be in the address bar at the moment the panel opens.
+  Copy Link reuses navigator.clipboard.writeText() where available,
+  falling back to the classic hidden-textarea + document.execCommand('copy')
+  trick for older/unusual browsers that lack the Clipboard API entirely -
+  and reuses the app's own existing showToast() (originally built for the
+  update-check button) for the "Link copied." confirmation, rather than
+  inventing a second toast mechanism.
+  Panel is a simple fixed-position card with a click-to-dismiss backdrop
+  (#share-backdrop), not a full modal library - consistent with how
+  small, occasional-use UI elsewhere in this app (the update-check toast,
+  the update-available banner) is built directly rather than reached for
+  a dependency.
+  Verified via Playwright: panel opens with a valid QR SVG rendered,
+  correct URL shown as text, native-share button correctly hidden in a
+  browser context without navigator.share, backdrop click closes the
+  panel; Copy Link (tested with clipboard permissions granted) copies the
+  exact URL and shows the "Link copied." toast; header layout checked at
+  a 360px-wide viewport - QR button, refresh button and the wordmark all
+  sit clear of each other with no overlap; 0 console errors throughout.
+
 ================================================================================
