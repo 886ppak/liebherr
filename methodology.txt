@@ -6132,4 +6132,48 @@ cranes get their own subsections as they're built.
   outrigger pad-toggle/compare-mode controls came back clean - 0 console
   errors throughout every check.
 
+  UPDATE (same day): reordered Crane Layout's cards (3D Carrier Preview
+  now above 360° Slew Clearance's numeric table, not below it - person's
+  preference, no functional change) and added the dimension-line
+  annotation from the earlier "hypothetically is this possible" mockup -
+  confirmed as a real ask, not just a concept, with a toggle ("Show
+  clearance measurement") sitting under the existing per-point radius
+  checkboxes.
+  When on, draws a real 3D dimension line for every currently-checked
+  circle: a line from the carrier's own side (half the carrier width from
+  the slew centre) straight out to that circle along world +X - the same
+  "parked parallel to the structure" direction the numeric clearance
+  figure itself already assumes - with a short perpendicular tick at each
+  end (standard dimension-line convention) and a text label at the
+  midpoint showing the same clearance figure as the numeric table, so the
+  two can be cross-checked against each other directly.
+  The label is a THREE.Sprite billboard (a canvas-texture quad that
+  always faces the camera), not an HTML overlay tracking a projected
+  screen position every frame the way the transient "Loading 3D model…"
+  label does - simpler, and correct at any camera angle/zoom without
+  needing to run projection math on every OrbitControls frame, since it's
+  a real object living in the 3D scene rather than a DOM element
+  shadowing one.
+  Implementation: applySlewCircles() (vendor/carrier3d.js) gained a
+  carrierWidthMm param - when present, draws the line/ticks/label
+  alongside each circle instead of just the ring on its own.
+  __carrier3dSetSlewCircles()'s pendingSlewCircleContext also carries
+  carrierWidthMm through to the async-model-still-loading replay path,
+  same as footprint/calibration already did. index.html's
+  onSlewCircleToggle() reads the new checkbox and passes
+  SLEW_CLEARANCE_DATA[modelKey].carrierWidthB through only when it's
+  checked (null otherwise, which the vendor code treats as "circles only,
+  no dimension line" - unchecking removes the line/label but leaves any
+  ticked circles alone, confirmed by inspection: unticking only removes
+  the dimension-line geometry, the LineLoop circles are separate objects
+  in the same group and untouched).
+  Verified via direct function invocation + screenshots (same testing
+  approach as the previous update, for the same Playwright/WebGL-click
+  reason): dimension line for LTM 1650's 6.4m circle renders with a
+  "4.85m" label exactly matching the numeric table's own clearance figure
+  for that point, ticks visible at both ends; unchecking the box removes
+  the line/label while the circle itself stays drawn; full regression
+  sweep across all 7 top-level tabs afterward - 0 console errors
+  throughout.
+
 ================================================================================
