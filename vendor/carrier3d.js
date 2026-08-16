@@ -366,15 +366,22 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
   } else {
     // Same model, but a different card just took ownership of the shared
     // canvas - drop whatever overlays the PREVIOUS context had drawn
-    // (outrigger markers if Pad Placement had it open, or slew circles if
-    // Layout did) without touching the model itself, which is still
-    // correct and already in the scene. The card that just activated
-    // will push its own fresh overlay state (sync or circles) right after
-    // this call returns, same as it always does - see toggleCarrier3D()/
-    // toggleCarrier3DLayout() in index.html - so nothing needs replaying
-    // from here for the synchronous case; only the pendingSync/
-    // pendingSlewCircles replay below (for a model still mid-fetch) is
-    // this function's own responsibility.
+    // (outrigger markers if Pad Placement had it open, ground layout marks
+    // if Layout did, etc) without touching the model itself, which is
+    // still correct and already in the scene. The card that just activated
+    // will push its own fresh overlay state right after this call returns,
+    // same as it always does - see toggleCarrier3D()/toggleCarrier3DLayout()
+    // in index.html - so nothing needs replaying from here for the
+    // synchronous (already-cached) case below; deliberately does NOT fall
+    // through to a pendingX replay the way the async/still-loading branch
+    // does. A real bug lived here once: the cached branch replayed every
+    // pendingX map unconditionally, which undid this exact clearing one
+    // line later - whichever overlay the PREVIOUS card had toggled on (say,
+    // Crane Layout's ground layout marks) would silently reappear on
+    // whichever card just took over (Support Pad Placement), even though
+    // that card owns no matching toggle to have asked for it and its own
+    // checkbox read unchecked the whole time. Confirmed by a person
+    // actually hitting it - see methodology.txt.
     clearOutriggers();
     clearSlewCircles();
     clearLegDimensions();
@@ -387,23 +394,6 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     scene.add(cached); // safe even if already a child of this scene
     frameCamera(cached);
     setLabel('');
-    if (pendingSync[modelKey]) applySync(modelKey, cached, pendingSync[modelKey]);
-    if (pendingSlewCircles[modelKey]) {
-      const ctx = pendingSlewCircleContext[modelKey] || {};
-      applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm);
-    }
-    if (pendingLegDimensions[modelKey]) {
-      const ctx = pendingLegDimensionContext[modelKey] || {};
-      applyLegDimensions(modelKey, cached, pendingLegDimensions[modelKey], ctx.footprint, ctx.calibration);
-    }
-    if (pendingGroundLayoutMarks[modelKey]) {
-      const ctx = pendingGroundLayoutContext[modelKey] || {};
-      applyGroundLayoutMarks(modelKey, cached, pendingGroundLayoutMarks[modelKey], ctx.footprint, ctx.calibration);
-    }
-    if (pendingMatEdgeMarks[modelKey]) {
-      const ctx = pendingMatEdgeContext[modelKey] || {};
-      applyMatEdgeMarks(modelKey, cached, pendingMatEdgeMarks[modelKey], ctx.footprint, ctx.calibration);
-    }
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
