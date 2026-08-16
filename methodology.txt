@@ -6021,4 +6021,14 @@ cranes get their own subsections as they're built.
   outrigger pad-toggle/compare-mode controls afterward - 0 console
   errors throughout.
 
+  UPDATE (same day): removed the Crane Setup sub-tab's "3D Visualization"
+  card. It was only ever a one-line pointer ("see this on the Support Pad
+  Placement sub-tab") written back when Crane Setup was still its own
+  top-level tab with no easy way over to the 3D view - once it became a
+  sub-tab of the same parent as Support Pad Placement, that card was just
+  telling the person to use the mode-toggle sitting directly above it.
+  Person asked not to have it duplicated across sub-tabs; removed
+  entirely rather than kept as dead weight, since the toggle buttons
+  already make switching obvious with no card needed.
+
 ================================================================================
