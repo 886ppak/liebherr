@@ -43,6 +43,17 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #update-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1c1e22; border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; z-index: 9999; box-shadow: 0 4px 14px rgba(0,0,0,0.45); display: none; max-width: 90vw; text-align: center; }
 
+    #share-btn { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-gold); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+    #share-btn svg { width: 17px; height: 17px; }
+    #share-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; }
+    #share-panel { display: none; position: fixed; top: 62px; right: 14px; left: 14px; max-width: 320px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; z-index: 201; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+    #share-panel .card-title { margin-bottom: 12px; }
+    #share-qr-wrap { display: flex; justify-content: center; background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    #share-qr-wrap svg { display: block; width: 180px; height: 180px; }
+    #share-url-text { font-size: 0.78rem; color: var(--text-muted); word-break: break-all; text-align: center; margin-bottom: 12px; }
+    .share-actions { display: flex; gap: 8px; }
+    .share-actions .toolbar-btn { flex: 1; }
+
     .nav-tabs { display: flex; justify-content: flex-start; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
     /* Centering only kicks in once there's enough width for all 4 tabs to
        fit without needing to scroll. Applying justify-content:center to a
@@ -195,7 +206,7 @@
       body { background: #fff; color: #000; padding-bottom: 0; }
       header { background: #fff; border-bottom: 2px solid #000; position: static; }
       header h1 { color: #000; }
-      #update-check-btn { display: none; }
+      #update-check-btn, #share-btn { display: none; }
       .card { background: #fff; border: 1px solid #999; break-inside: avoid; }
       .card-title { color: #000; border-bottom: 1px solid #999; }
       input, select { background: #fff; color: #000; border: 1px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -249,11 +260,25 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.28</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.29</span></h1>
+    <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+    </button>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
   </header>
+
+  <div id="share-backdrop" onclick="closeSharePanel()"></div>
+  <div id="share-panel">
+    <div class="card-title">Share MYSLEWER</div>
+    <div id="share-qr-wrap"></div>
+    <div id="share-url-text"></div>
+    <div class="share-actions">
+      <button class="toolbar-btn" onclick="copyShareLink()">Copy Link</button>
+      <button class="toolbar-btn" id="share-native-btn" onclick="nativeShare()" style="display:none;">Share…</button>
+    </div>
+  </div>
 
   <nav class="nav-tabs">
     <button class="tab-btn active" onclick="switchTab('welcome-tab', event)">Welcome</button>
@@ -5793,6 +5818,101 @@
       toast.style.display = 'block';
       clearTimeout(toast._hideTimer);
       toast._hideTimer = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
+    // Share panel: a QR code + copy-link + native share, so a crew member
+    // can hand the app to someone else on site without them having to type
+    // a URL in. The QR code is generated locally (vendor/qrcode.js, a
+    // small dependency-free MIT-licensed encoder - same "no CDN, vendored
+    // locally" approach as three.js/GLTFLoader/DRACOLoader elsewhere in
+    // this app) rather than pointed at a hosted QR image generator, so it
+    // still works offline once cached and can never point at a stale
+    // image someone forgot to regenerate after the URL changed - it's
+    // encoded fresh from window.location every time the panel opens.
+    // Lazily loaded via a plain <script> tag (qrcode.js isn't an ES module,
+    // so dynamic import() doesn't apply) rather than always paying its
+    // ~56KB on every page load for a feature most visits never open.
+    let qrcodeLibLoading = null;
+    function loadQrcodeLib() {
+      if (window.qrcode) return Promise.resolve();
+      if (qrcodeLibLoading) return qrcodeLibLoading;
+      qrcodeLibLoading = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = './vendor/qrcode.js';
+        script.onload = resolve;
+        script.onerror = () => { qrcodeLibLoading = null; reject(new Error('qrcode.js failed to load')); };
+        document.head.appendChild(script);
+      });
+      return qrcodeLibLoading;
+    }
+
+    // Strips any query string/hash - the app's own URL is always the
+    // meaningful thing to share, not whatever incidental state (a scroll
+    // anchor, a future deep link) happens to be in the address bar.
+    function shareUrl() {
+      return window.location.origin + window.location.pathname;
+    }
+
+    function toggleSharePanel() {
+      const panel = document.getElementById('share-panel');
+      if (panel.style.display === 'block') { closeSharePanel(); return; }
+      panel.style.display = 'block';
+      document.getElementById('share-backdrop').style.display = 'block';
+      document.getElementById('share-url-text').textContent = shareUrl();
+      document.getElementById('share-native-btn').style.display = navigator.share ? '' : 'none';
+      renderShareQR();
+    }
+
+    function closeSharePanel() {
+      document.getElementById('share-panel').style.display = 'none';
+      document.getElementById('share-backdrop').style.display = 'none';
+    }
+
+    function renderShareQR() {
+      const wrap = document.getElementById('share-qr-wrap');
+      loadQrcodeLib().then(() => {
+        // Type 0 = let the library pick the smallest version that fits;
+        // error correction M (15% recovery) - the same middle-ground level
+        // most QR generators default to, plenty for a plain https URL.
+        const qr = qrcode(0, 'M');
+        qr.addData(shareUrl());
+        qr.make();
+        wrap.innerHTML = qr.createSvgTag({ scalable: true });
+      }).catch(() => {
+        wrap.innerHTML = '<div style="color:#111; font-size:0.75rem; padding:20px; text-align:center;">QR code failed to load — check your connection.</div>';
+      });
+    }
+
+    function copyShareLink() {
+      const url = shareUrl();
+      const done = () => showToast('Link copied.');
+      const failed = () => {
+        // Clipboard API needs a secure context and, on some browsers, a
+        // direct user gesture - both already true here (this only ever
+        // runs from a button's own onclick), but older/unusual browsers
+        // may still lack navigator.clipboard entirely. Fall back to the
+        // classic hidden-textarea + execCommand trick rather than leaving
+        // the button silently do nothing.
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); }
+        catch (e) { showToast('Couldn’t copy — long-press the link above instead.'); }
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(failed);
+      } else {
+        failed();
+      }
+    }
+
+    function nativeShare() {
+      if (!navigator.share) return;
+      navigator.share({ title: 'MYSLEWER', url: shareUrl() }).catch(() => {});
     }
 
     // Manual "check for update" button. Cache-first service workers (this
