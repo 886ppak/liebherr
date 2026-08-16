@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.14</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.15</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -223,7 +223,8 @@
     <button class="tab-btn" onclick="switchTab('loadchart-tab', event)">Load Chart Finder</button>
     <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
-    <button class="tab-btn" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
+    <button class="tab-btn" id="cad-tab-btn" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
+    <button class="tab-btn" onclick="switchTab('slewclear-tab', event)">Crane Setup</button>
     <button class="tab-btn" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
   </nav>
 
@@ -540,6 +541,43 @@
       </div>
 
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
+    </div>
+
+    <!-- ================= TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ================= -->
+    <div id="slewclear-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Crane &amp; Configuration</div>
+        <div class="form-group">
+          <label>Select Crane Model</label>
+          <select id="sc-crane" onchange="onSlewClearanceCraneChange()"></select>
+        </div>
+        <div class="form-group" id="sc-variant-group" style="margin-top:14px; display:none;">
+          <label id="sc-variant-label">Counterweight Tray</label>
+          <div class="mode-toggle" id="sc-variant-toggle" style="margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">360° Slew Clearance</div>
+        <div id="sc-width-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Point</th>
+              <th>Radius<br><span style="font-weight:400;text-transform:none;">from slew center</span></th>
+              <th>Clearance<br><span style="font-weight:400;text-transform:none;">beyond side of carrier</span></th>
+            </tr>
+          </thead>
+          <tbody id="sc-results"></tbody>
+        </table>
+        <div class="disclaimer" id="sc-limiting-note"></div>
+        <div class="disclaimer">Assumes the crane is parked with its centerline parallel to whatever it needs to clear (wall, stockpile, fence, etc.) — the true worst case, since at that parking angle the swing radius becomes pure sideways distance. Park at an angle to the structure and the real clearance is larger than shown here. Carrier width is this fleet's standard 525/80 R25 tyre (see the crane operating instructions, chapter 1.03, for other tyre options) except where noted. Reference tool only — cross-check against the current OEM documentation and the actual site before slewing near a structure.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">3D Visualization</div>
+        <div style="font-size:0.85rem; color:var(--text-muted);">See these radii drawn around the crane on the 3D carrier model, on the <a href="#" onclick="goToCadTab(); return false;" style="color:var(--accent-gold);">Crane Positioning</a> tab.</div>
+      </div>
     </div>
 
     <!-- ================= TAB 4: REEVING PLAN ================= -->
@@ -873,10 +911,94 @@
 
       if (tabId === 'cad-tab') calcCAD();
       if (tabId === 'reeve-tab') initReeveTab();
+      if (tabId === 'slewclear-tab') initSlewClearanceTab();
       // Re-checked on every visit, not just after the button runs - content
       // also gets cached one file at a time just by viewing it, so the
       // tick/cross needs to reflect that too, not only a full-download run.
       if (['reeve-tab', 'cwt-tab', 'driveeq-tab', 'loadchart-tab'].includes(tabId)) checkOfflineContentStatus();
+    }
+
+    // Jumps to the Crane Positioning tab from the Crane Setup tab's "see it
+    // in 3D" link - switchTab() needs a real .tab-btn as evt.target to mark
+    // active correctly, which a plain <a> click doesn't provide, so this
+    // drives it directly off the button's own id instead.
+    function goToCadTab() {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById('cad-tab-btn').classList.add('active');
+      document.getElementById('cad-tab').classList.add('active');
+      calcCAD();
+    }
+
+    // --- TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ---
+    let slewClearanceVariantIdx = 0;
+
+    function initSlewClearanceTab() {
+      const select = document.getElementById('sc-crane');
+      if (!select.options.length) {
+        buildSelect(
+          select,
+          Object.keys(SLEW_CLEARANCE_DATA).map(key => ({ key, label: SLEW_CLEARANCE_DATA[key].label })),
+          c => c.label,
+          c => c.key
+        );
+        select.value = '1110';
+      }
+      onSlewClearanceCraneChange();
+    }
+
+    function onSlewClearanceCraneChange() {
+      slewClearanceVariantIdx = 0;
+      renderSlewClearanceResults();
+    }
+
+    function setSlewClearanceVariant(idx) {
+      slewClearanceVariantIdx = idx;
+      renderSlewClearanceResults();
+    }
+
+    function renderSlewClearanceResults() {
+      const modelKey = document.getElementById('sc-crane').value;
+      const data = SLEW_CLEARANCE_DATA[modelKey];
+      if (!data) return;
+
+      const halfWidth = data.carrierWidthB / 2;
+      document.getElementById('sc-width-info').innerHTML =
+        `Carrier width (B): <strong>${data.carrierWidthB} mm</strong>` +
+        (data.widthNote ? ` — ${data.widthNote}` : '');
+
+      const variantGroup = document.getElementById('sc-variant-group');
+      const points = data.fixed.slice();
+      if (data.variants) {
+        variantGroup.style.display = '';
+        document.getElementById('sc-variant-label').textContent = data.variants.label;
+        const toggle = document.getElementById('sc-variant-toggle');
+        toggle.innerHTML = data.variants.options.map((opt, i) =>
+          `<button class="mode-btn${i === slewClearanceVariantIdx ? ' active' : ''}" onclick="setSlewClearanceVariant(${i})">${opt.label}</button>`
+        ).join('');
+        const chosen = data.variants.options[slewClearanceVariantIdx];
+        points.push({ label: chosen.label, radius: chosen.radius });
+      } else {
+        variantGroup.style.display = 'none';
+      }
+
+      const rows = points.map(p => {
+        const clearance = p.radius - halfWidth;
+        return { ...p, clearance };
+      });
+
+      document.getElementById('sc-results').innerHTML = rows.map(r => `
+        <tr>
+          <td style="text-align:left;">${r.label}</td>
+          <td>${(r.radius / 1000).toFixed(2)} m</td>
+          <td>${(r.clearance / 1000).toFixed(2)} m</td>
+        </tr>
+      `).join('');
+
+      const limiting = rows.reduce((max, r) => r.radius > max.radius ? r : max, rows[0]);
+      document.getElementById('sc-limiting-note').textContent = limiting
+        ? `Limiting point: ${limiting.label} — needs ${(limiting.clearance / 1000).toFixed(2)} m clear beyond the side of the carrier for a full 360° slew.`
+        : '';
     }
 
     // Shared helper: fill a <select> from an array, options built via textFn/valueFn.
@@ -1812,6 +1934,100 @@
       '1250': { frontAtMinZ: true, lateralSign: 1 },
       '1300': { frontAtMinZ: true, lateralSign: 1 },
       '1650': { frontAtMinZ: true, lateralSign: 1, uncertain: true }
+    };
+
+    // 360-degree slew clearance: how far the superstructure's widest
+    // rear-swing point(s) oversail the side of the carrier, so a crew can
+    // tell whether a structure running alongside the crane (wall, stack,
+    // fence) will clash during a full slew, or how far off it the crane
+    // needs to park. Source: each crane's own Operating Instructions
+    // manual, chapter 1.03 Technical Data > 1 Dimensions - carrierWidthB
+    // is the plain-text tyre-size table figure (525/80 R25 column, this
+    // fleet's standard fit per company policy - see methodology.txt), the
+    // radius figures are read directly off that same chapter's plan-view
+    // CAD figure (rotated/CAD-font text, cross-checked against the
+    // person's own copy of each manual before being trusted - see
+    // methodology.txt for the per-crane confirmation notes and the two
+    // corrections that came out of that check: LTM 1300's inner/outer
+    // radii are the REVERSE of every other crane in this list (Winch 2 is
+    // the smaller radius, Counterweight the larger), and LTM 1100's Winch
+    // 2 sits entirely within the Counterweight's radius so isn't tracked
+    // as its own point at all.
+    //
+    // clearance beyond the carrier's side = radius - (carrierWidthB / 2),
+    // valid when the crane is parked with its centerline parallel to the
+    // structure being cleared - see the disclaimer rendered with the
+    // results.
+    //
+    // fixed: points whose radius never changes. variants: for cranes that
+    // offer a selectable counterweight tray/ballast radius (this fleet's
+    // "vario ballast" option, or LTM 1650's site-clearance radius/angle
+    // pairs already used by the Load Chart Finder) - only one of these is
+    // ever physically fitted/selected at a time.
+    const SLEW_CLEARANCE_DATA = {
+      '1100': {
+        label: 'LRT 1100-2.1',
+        carrierWidthB: 3300,
+        widthNote: 'This crane only runs one tyre size (29.5 R25) — there is no 525/80 R25 option, so this is its actual carrier width, not a fleet-standard substitute.',
+        fixed: [{ label: 'Counterweight', radius: 4190 }],
+        variants: null
+      },
+      '1110': {
+        label: 'LTM 1110-5.1',
+        carrierWidthB: 2850,
+        fixed: [{ label: 'Counterweight', radius: 4100 }, { label: 'Winch 2', radius: 4310 }],
+        variants: null
+      },
+      '1130': {
+        label: 'LTM 1130-5.1',
+        carrierWidthB: 2850,
+        fixed: [{ label: 'Counterweight', radius: 4200 }, { label: 'Winch 2', radius: 4880 }],
+        variants: null
+      },
+      '1160': {
+        label: 'LTM 1160-5.2',
+        carrierWidthB: 2850,
+        fixed: [],
+        variants: {
+          label: 'Counterweight Tray',
+          options: [
+            { label: 'Standard (= Winch 2 radius)', radius: 4730 },
+            { label: 'Vario Ballast', radius: 5230 }
+          ]
+        }
+      },
+      '1250': {
+        label: 'LTM 1250-5.1',
+        carrierWidthB: 3100,
+        fixed: [{ label: 'Winch 2', radius: 4975 }],
+        variants: {
+          label: 'Counterweight Tray',
+          options: [
+            { label: 'Standard', radius: 4780 },
+            { label: 'Vario Ballast', radius: 5580 }
+          ]
+        }
+      },
+      '1300': {
+        label: 'LTM 1300-6.2',
+        carrierWidthB: 3100,
+        // Reversed vs every other crane here - confirmed directly, not a typo.
+        fixed: [{ label: 'Winch 2', radius: 5020 }, { label: 'Counterweight', radius: 5600 }],
+        variants: null
+      },
+      '1650': {
+        label: 'LTM 1650-8.1',
+        carrierWidthB: 3100,
+        fixed: [],
+        variants: {
+          label: 'Ballast Radius (Site Clearance)',
+          options: [
+            { label: '6.4m @ 135°', radius: 6400 },
+            { label: '7.4m @ 90°', radius: 7400 },
+            { label: '8.4m @ 45°', radius: 8400 }
+          ]
+        }
+      }
     };
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
