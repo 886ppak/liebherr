@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.27</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.28</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -636,18 +636,21 @@
 
       <div class="card">
         <div class="card-title" style="color:var(--success);">All Four Legs — Reference Frames</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Outrigger</th>
-              <th>If Moved<br><span style="font-weight:400;text-transform:none;">from current position</span></th>
-              <th>If Left in Place<br><span style="font-weight:400;text-transform:none;">from new center</span></th>
-              <th>Baseline<br><span style="font-weight:400;text-transform:none;">standard target offset</span></th>
-            </tr>
-          </thead>
-          <tbody id="cad-results"></tbody>
-        </table>
-        <div class="disclaimer">MUST MOVE = its current spot would sit under the crane's own chassis once this shift is complete, checked per leg against the actual footprint and shift — not just which side of the crane it's on, so a diagonal shift can require a front or rear leg to move too. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway — and flags NOT POSSIBLE if that spot is currently under the crane's own chassis, before it moves. On the site plan, the blue outlined dot for an optional leg shows that same target spot.</div>
+        <button class="toolbar-btn" id="cad-legs-toggle-btn" style="width:100%;" onclick="toggleLegsTable()">Show All Four Legs</button>
+        <div id="cad-legs-wrap" style="display:none; margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Outrigger</th>
+                <th>If Moved<br><span style="font-weight:400;text-transform:none;">from current position</span></th>
+                <th>If Left in Place<br><span style="font-weight:400;text-transform:none;">from new center</span></th>
+                <th>Baseline<br><span style="font-weight:400;text-transform:none;">standard target offset</span></th>
+              </tr>
+            </thead>
+            <tbody id="cad-results"></tbody>
+          </table>
+          <div class="disclaimer">MUST MOVE = its current spot would sit under the crane's own chassis once this shift is complete, checked per leg against the actual footprint and shift — not just which side of the crane it's on, so a diagonal shift can require a front or rear leg to move too. Optional legs don't need to move, but "If Moved" still shows where their standard spot would be if you choose to relocate them anyway — and flags NOT POSSIBLE if that spot is currently under the crane's own chassis, before it moves. On the site plan, the blue outlined dot for an optional leg shows that same target spot.</div>
+        </div>
       </div>
 
       <div class="card" id="cad-mat-marking-card" style="display:none;">
@@ -2056,7 +2059,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 30;
+    const CARRIER3D_VERSION = 31;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -5262,6 +5265,14 @@
       drawCADCanvas(shiftX, shiftYinput, mappedOutriggers, fp);
       syncCarrier3DOutriggers();
       renderMatMarking();
+      // Keeps the 3D mat edge marks live against every pad size/shift/
+      // toggle change, same as syncCarrier3DOutriggers() already does for
+      // the pad meshes themselves - without this, changing Pad Width (e.g.
+      // 2.4m -> 3m) only updated the 2D table above, and the 3D lines kept
+      // showing the OLD figures until the 3D view was closed and reopened
+      // (which happens to re-trigger onMatEdgeToggle() via activateCarrier3D's
+      // own self-heal call, masking the gap rather than actually fixing it).
+      onMatEdgeToggle();
     }
 
     // Bog mat marking: for each leg that currently has a pad toggled on,
@@ -5303,15 +5314,20 @@
       });
     }
 
+    // mm, not m - person's own reasoning: a tape measure in Australia
+    // reads in mm, and this table exists specifically to be read off a
+    // tape on site, same unit choice already made for every other 3D
+    // dimension label in this app (ground layout marks, mat edge marks
+    // themselves, clearance measurement).
     function renderMatMarking() {
       const card = document.getElementById('cad-mat-marking-card');
       const tbody = document.getElementById('cad-mat-marking-results');
       const rows = computeMatMarkingData().map(m => `
           <tr>
             <td><b>C${m.id}</b></td>
-            <td>${(m.edgeToCenterMm / 1000).toFixed(2)} m</td>
-            <td>${(m.insideMm / 1000).toFixed(2)} m</td>
-            <td>${(m.outsideMm / 1000).toFixed(2)} m</td>
+            <td>${Math.round(m.edgeToCenterMm)} mm</td>
+            <td>${Math.round(m.insideMm)} mm</td>
+            <td>${Math.round(m.outsideMm)} mm</td>
           </tr>`).join('');
       card.style.display = rows ? '' : 'none';
       tbody.innerHTML = rows;
@@ -5561,6 +5577,17 @@
       document.getElementById('cad-siteplan-toggle-btn').textContent = sitePlanActive ? 'Hide Visual Site Plan' : 'Show Visual Site Plan';
       document.getElementById('cad-siteplan-wrap').style.display = sitePlanActive ? '' : 'none';
       if (sitePlanActive) calcCAD();
+    }
+
+    // Same hidden-by-default pattern, but the table itself (#cad-results)
+    // is plain HTML text - unlike the canvas, it's already kept correctly
+    // up to date by calcCAD() regardless of whether this wrap is visible,
+    // so showing it is a plain display toggle with no recalc needed.
+    let legsTableActive = false;
+    function toggleLegsTable() {
+      legsTableActive = !legsTableActive;
+      document.getElementById('cad-legs-toggle-btn').textContent = legsTableActive ? 'Hide All Four Legs' : 'Show All Four Legs';
+      document.getElementById('cad-legs-wrap').style.display = legsTableActive ? '' : 'none';
     }
 
     function updateZoomReadout() {

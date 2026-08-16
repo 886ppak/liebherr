@@ -6515,4 +6515,75 @@ cranes get their own subsections as they're built.
   legible and non-overlapping, figures matching the 2D table exactly
   (C3: 3282mm outside / 882mm inside); 0 console errors throughout.
 
+  UPDATE (same day): person reported ground layout marks "leaking" from
+  Crane Layout into Support Pad Placement's own 3D view - reproduced
+  exactly: open Crane Layout's 3D, turn on ground layout marks, switch to
+  Support Pad Placement, open ITS 3D (mat edges unchecked, no pads
+  toggled) - the ground layout lines showed up anyway.
+  Root cause, found in __carrier3dActivate() (vendor/carrier3d.js): the
+  function's own comment already said the right thing - "nothing needs
+  replaying from here for the synchronous case; only the pendingX replay
+  ... for a model still mid-fetch is this function's own responsibility" -
+  but the CODE didn't match the comment. The `if (cached)` branch (i.e.
+  the model's already loaded, no async fetch needed) unconditionally
+  replayed every pendingX map right after the "different card took
+  ownership" branch had JUST cleared those exact groups a few lines
+  earlier - directly undoing its own clearing. Whichever overlay the
+  PREVIOUS card had toggled on would silently reappear on whichever card
+  just took over, even though that card owns no matching checkbox and its
+  own toggle read unchecked. A genuinely old bug (same shape existed for
+  slew circles/leg dimensions since the very first dual-3D-card build,
+  see the "single-3D-card misunderstanding" fix earlier in this file) -
+  just not surfaced/reported until ground layout marks made it visible.
+  Fix: removed the pendingX replay entirely from the `if (cached)` branch
+  (all five: sync, slewCircles, legDimensions, groundLayoutMarks,
+  matEdgeMarks), keeping it ONLY in the async loadModel() callback branch,
+  where it's genuinely needed - a model still being fetched over the
+  network when a toggle fires can't apply immediately (each toggle
+  setter's own `if (!root) return` early-exit confirms this), so must be
+  replayed once loading finishes. Confirmed safe to remove from the cached
+  branch because every one of the five toggle setter functions
+  (__carrier3dSyncOutriggers, __carrier3dSetSlewCircles,
+  __carrier3dSetLegDimensions, __carrier3dSetGroundLayoutMarks,
+  __carrier3dSetMatEdgeMarks) already has its own "apply immediately if
+  root is cached and currentModelKey matches" fallback built in - which is
+  exactly what each card's own activate() wrapper in index.html calls
+  synchronously right after __carrier3dActivate returns. The replay in the
+  cached branch was therefore not just wrong but entirely redundant.
+  Verified via Playwright, both directions: Layout's ground layout marks
+  no longer appear on Pad Placement's 3D view after switching (unchecked
+  mat-edges box, no pads toggled, screenshot clean); Pad Placement's own
+  outrigger pad markers + mat edge marks likewise don't leak onto Layout's
+  view when switching the other way; switching back to Layout afterward
+  still renders its own toggles correctly when re-checked - 0 console
+  errors throughout.
+
+  UPDATE (same day): three smaller fixes landed together.
+  1. "All Four Legs — Reference Frames" table is now hidden by default
+  behind a "Show All Four Legs" button, same collapsed-by-default pattern
+  as Visual Site Plan and the 3D Carrier Preview cards. New
+  toggleLegsTable() - simpler than toggleSitePlan() since the table
+  content itself (#cad-results) is plain HTML already kept correctly
+  up to date by calcCAD() regardless of visibility, so no recalc-on-show
+  step is needed, just a display toggle.
+  2. Fixed a real staleness bug: changing Pad Width or Pad Length only
+  updated the 2D Bog Mat Marking table - the 3D mat edge marks kept
+  showing the OLD figures until the 3D view was closed and reopened
+  (which happened to mask the bug, since activateCarrier3D()'s own
+  self-heal call re-triggers onMatEdgeToggle()). calcCAD() already called
+  syncCarrier3DOutriggers() on every recalc to keep the pad MESHES
+  themselves live, but never called onMatEdgeToggle() to keep the
+  DIMENSION LINES live too - added that call alongside it.
+  3. Bog Mat Marking table now reads in mm instead of m - person's own
+  reasoning: a tape measure in Australia reads in mm, and this table
+  exists specifically to be read directly off a tape on site. Matches the
+  unit already used by every other 3D dimension label in the app (ground
+  layout marks, mat edge marks, clearance measurement) - only the 2D
+  table itself was still in metres.
+  Verified via Playwright: legs table starts hidden, expands correctly;
+  changing Pad Width from 2.4m to 3m live-updates BOTH the 2D table (582mm
+  inside / 3582mm outside) AND the 3D labels (screenshotted, "C2 outside:
+  3582mm" / "C2 inside: 582mm") without touching the 3D toggle; table
+  cells read whole mm throughout; 0 console errors.
+
 ================================================================================
