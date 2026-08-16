@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.29</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.30</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -246,9 +246,10 @@
     <button class="tab-btn active" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
     <button class="tab-btn" onclick="switchTab('cwt-tab', event)">CWT Combinations</button>
     <button class="tab-btn" onclick="switchTab('loadchart-tab', event)">Load Chart Finder</button>
+    <button class="tab-btn" id="cad-tab-btn" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
     <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
-    <button class="tab-btn" id="cad-tab-btn" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
+    <button class="tab-btn" onclick="switchTab('chain-tab', event)">Chain Shortening</button>
     <button class="tab-btn" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
   </nav>
 
@@ -426,6 +427,31 @@
           <div id="h-altblock" style="margin-top:6px;">Enter boom length and reeving above...</div>
         </div>
         <div class="disclaimer">G = L × M × n × F. Confirm this formula's basis against the manufacturer's chart before relying on it.</div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 2B: CHAIN SHORTENING ================= -->
+    <div id="chain-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Chain Shortening Calculator</div>
+        <div class="form-group">
+          <label>Chain Diameter (mm)</label>
+          <select id="chain-diameter" onchange="calcChainShortening()"></select>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>Current Length (mm)</label>
+          <input type="number" id="chain-current" value="6000" step="1" min="0" oninput="calcChainShortening()">
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>Desired Length (mm)</label>
+          <input type="number" id="chain-desired" value="5500" step="1" min="0" oninput="calcChainShortening()">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:var(--success);">Result</div>
+        <div id="chain-result"></div>
+        <div class="disclaimer">Pitch per link is looked up from chain diameter (8/10/13/16/19/22/26mm), same table as the reference shortening calculator. Links to remove is rounded to the nearest whole link, so the actual finished length can land a few mm off the desired length — that's the "Difference from Target" figure below. Cross-check against the chain's own data plate/certification before cutting.</div>
       </div>
     </div>
 
@@ -4548,6 +4574,67 @@
       }
     }
 
+    // --- TAB 2B: CHAIN SHORTENING CALCULATOR ---
+    // Diameter (mm) -> pitch per link (mm), from the person's own reference
+    // spreadsheet (Chain_Length_Calculator.xlsx) - every row happens to be
+    // exactly 3x the diameter for this particular chain range, but kept as
+    // an explicit lookup table matching the source sheet's own values
+    // rather than assumed/hardcoded as a multiplier, in case that stops
+    // holding for a diameter added later.
+    const CHAIN_PITCH_TABLE = { 8: 24, 10: 30, 13: 39, 16: 48, 19: 57, 22: 66, 26: 78 };
+
+    function initChainTab() {
+      const select = document.getElementById('chain-diameter');
+      buildSelect(
+        select,
+        Object.keys(CHAIN_PITCH_TABLE).map(Number),
+        d => `${d} mm`,
+        d => d
+      );
+      select.value = '8';
+      calcChainShortening();
+    }
+
+    // Same formula as the reference spreadsheet, same field names:
+    //   Amount to Shorten = Current - Desired
+    //   Links to Remove = ROUND(Amount to Shorten / Pitch per Link, 0)
+    //   Actual Finished Length = Current - (Links to Remove x Pitch per Link)
+    //   Difference from Target = Actual Finished Length - Desired
+    // Links to Remove rounds to the nearest whole link (a chain can't be
+    // shortened by a fraction of one), so the actual finished length can
+    // land a few mm off the desired length - Difference from Target is
+    // exactly that gap, shown rather than hidden, so a person isn't
+    // surprised when the finished chain doesn't land bang on the number
+    // they typed in.
+    function calcChainShortening() {
+      const diameter = parseFloat(document.getElementById('chain-diameter').value);
+      const current = parseFloat(document.getElementById('chain-current').value);
+      const desired = parseFloat(document.getElementById('chain-desired').value);
+      const resultEl = document.getElementById('chain-result');
+
+      if (isNaN(current) || isNaN(desired) || isNaN(diameter)) {
+        resultEl.innerHTML = '<div class="disclaimer">Enter a chain diameter, current length, and desired length above.</div>';
+        return;
+      }
+
+      const pitch = CHAIN_PITCH_TABLE[diameter];
+      const amountToShorten = current - desired;
+      const linksToRemove = Math.round(amountToShorten / pitch);
+      const actualFinished = current - (linksToRemove * pitch);
+      const diffFromTarget = actualFinished - desired;
+
+      resultEl.innerHTML = `
+        <table>
+          <tbody>
+            <tr><td style="text-align:left;">Pitch per Link</td><td>${pitch} mm</td></tr>
+            <tr><td style="text-align:left;">Amount to Shorten</td><td>${amountToShorten} mm</td></tr>
+            <tr><td style="text-align:left;"><b>Links to Remove</b></td><td><b>${linksToRemove}</b></td></tr>
+            <tr><td style="text-align:left;">Actual Finished Length</td><td>${actualFinished} mm</td></tr>
+            <tr><td style="text-align:left;">Difference from Target</td><td>${diffFromTarget > 0 ? '+' : ''}${diffFromTarget} mm</td></tr>
+          </tbody>
+        </table>`;
+    }
+
     // --- TAB 3: OUTRIGGER SUPPORT POSITIONING LOGIC ---
     const cadFleetData = {
       "1650": {
@@ -7014,6 +7101,7 @@
     // Initialize Page Controls
     loadRopeModel();
     calcHook();
+    initChainTab();
     calcCAD();
     initCwtTab();
     initDriveEqTab();
