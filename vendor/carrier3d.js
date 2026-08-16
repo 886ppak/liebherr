@@ -783,20 +783,23 @@ function applySync(modelKey, root, args) {
 
     if (!leg.pad) return;
 
-    // Ghosted (mostly transparent) rather than the near-solid 0.9 this used
-    // to be - the mat edge dimension lines (applyMatEdgeMarks) run right
-    // through the pad's own footprint at this same height, and a near-
-    // opaque fill buried them. A crisp solid outline (same convention as
-    // addGhostBox's dashed one for the "if moved" pad) keeps the pad's own
-    // footprint legible even at low fill opacity.
+    // Ghosted (mostly transparent, dashed outline) rather than the
+    // near-solid 0.9 this used to be - the mat edge dimension lines
+    // (applyMatEdgeMarks) run right through the pad's own footprint at this
+    // same height, and a near-opaque fill buried them. Dashed rather than
+    // solid outline, same convention as addGhostBox's own "if moved" pad -
+    // person's own request, to read as clearly a ghost/reference shape
+    // rather than something solidly there. 0.12 fill opacity - low enough
+    // to genuinely fade into the background, not just lighten.
     const padGeo = new THREE.BoxGeometry(leg.pad.width / 1000, 0.08, leg.pad.length / 1000);
-    const padMat = new THREE.MeshStandardMaterial({ color: PAD_CURRENT_COLOR, transparent: true, opacity: 0.28 });
+    const padMat = new THREE.MeshStandardMaterial({ color: PAD_CURRENT_COLOR, transparent: true, opacity: 0.12 });
     const padMesh = new THREE.Mesh(padGeo, padMat);
     padMesh.position.set(pos.x, pos.y + 0.04, pos.z);
     outriggerGroup.add(padMesh);
 
-    const padWire = new THREE.LineSegments(new THREE.EdgesGeometry(padGeo), new THREE.LineBasicMaterial({ color: PAD_CURRENT_COLOR }));
+    const padWire = new THREE.LineSegments(new THREE.EdgesGeometry(padGeo), new THREE.LineDashedMaterial({ color: PAD_CURRENT_COLOR, dashSize: 0.15, gapSize: 0.1 }));
     padWire.position.copy(padMesh.position);
+    padWire.computeLineDistances();
     outriggerGroup.add(padWire);
 
     // Ghost "if moved" pad, for every leg - not just the ones the 2D
@@ -1187,33 +1190,37 @@ function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
   marks.forEach((mark) => {
     const sign = Math.sign(mark.yMm || 1);
     const insideYMm = mark.yMm - sign * OFFSET_MM;
-    const outsideYMm = mark.yMm + sign * OFFSET_MM;
     const edgePos = siteToWorld(cal, mark.edgeXMm, mark.yMm);
     const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
     const insideEdgePos = siteToWorld(cal, mark.edgeXMm, insideYMm);
     const pInsideEdge = new THREE.Vector3(insideEdgePos.x, y, insideEdgePos.z);
     const insidePos = siteToWorld(cal, mark.insideXMm, insideYMm);
     const pInside = new THREE.Vector3(insidePos.x, y, insidePos.z);
-    const outsideEdgePos = siteToWorld(cal, mark.edgeXMm, outsideYMm);
-    const pOutsideEdge = new THREE.Vector3(outsideEdgePos.x, y, outsideEdgePos.z);
-    const outsidePos = siteToWorld(cal, mark.outsideXMm, outsideYMm);
-    const pOutside = new THREE.Vector3(outsidePos.x, y, outsidePos.z);
 
     addWitnessLine(matEdgeGroup, pEdge, pInsideEdge, mark.color);
     addDimensionLine(matEdgeGroup, pInsideEdge, pInside, mark.color, `${mark.label} inside: ${mark.insideMm}mm`);
-    addWitnessLine(matEdgeGroup, pEdge, pOutsideEdge, mark.color);
-    // The outside line's true endpoints have to stay at the crane edge and
-    // the mat's outer edge (that full span IS the 3525mm-type figure being
-    // labelled), but its label defaults to that span's own midpoint - which
-    // falls well short of the mat itself, since the mat's own footprint
-    // only starts at insideXMm, partway along. Bias the label to the
-    // midpoint of the MAT's own footprint instead (between insideXMm and
-    // outsideXMm) so it reads sitting on the mat's outer half, not in the
-    // gap between the crane and the mat. Person's own request: "on the
-    // actual outside of the bog mat".
-    const matMidXMm = (mark.insideXMm + mark.outsideXMm) / 2;
-    const outsideLabelT = (matMidXMm - mark.edgeXMm) / (mark.outsideXMm - mark.edgeXMm);
-    addDimensionLine(matEdgeGroup, pOutsideEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`, outsideLabelT);
+
+    // Outside: drawn running ALONG the mat's own outer edge (a vertical
+    // line at X = outsideXMm, spanning most of the mat's own length) rather
+    // than crossing laterally in from the crane's edge - person's own
+    // sketch (a line traced down the outer edge of the C3 mat) asking for
+    // exactly this. 0.45 rather than 0.5 leaves a small margin off the
+    // mat's own front/rear edge so the dimension ticks don't sit flush on
+    // the box's corners. A short witness line still ties it back to the
+    // crane's own edge - the true reference point outsideMm is measured
+    // from - same convention as inside's own witness line; the dimension
+    // line's own label now naturally lands at its midpoint, which is
+    // mark.yMm - dead centre of the mat's outer edge.
+    const halfSpanMm = (mark.padLengthMm || 0) * 0.45;
+    const outsideTopPos = siteToWorld(cal, mark.outsideXMm, mark.yMm - halfSpanMm);
+    const pOutsideTop = new THREE.Vector3(outsideTopPos.x, y, outsideTopPos.z);
+    const outsideBottomPos = siteToWorld(cal, mark.outsideXMm, mark.yMm + halfSpanMm);
+    const pOutsideBottom = new THREE.Vector3(outsideBottomPos.x, y, outsideBottomPos.z);
+    const outsideMidPos = siteToWorld(cal, mark.outsideXMm, mark.yMm);
+    const pOutsideMid = new THREE.Vector3(outsideMidPos.x, y, outsideMidPos.z);
+
+    addWitnessLine(matEdgeGroup, pEdge, pOutsideMid, mark.color);
+    addDimensionLine(matEdgeGroup, pOutsideTop, pOutsideBottom, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`);
   });
 
   scene.add(matEdgeGroup);
