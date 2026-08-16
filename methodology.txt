@@ -6183,4 +6183,57 @@ cranes get their own subsections as they're built.
   straight from the mm radius rather than round-tripping through metres)
   since c.radius already arrives in mm from index.html's own circle data.
 
+  UPDATE (same day): added a third Crane Layout toggle - "Show outrigger
+  distances (C1-C4, baseline position)" - OEM-drawing-style dimension
+  lines from the slew centre out to each of the 4 outrigger legs' own
+  baseline position, labelled with the real distance (e.g. "C1: 5049mm").
+  Person's own framing of the two Crane Positioning sub-tabs, which
+  explains why this belongs on Crane Layout and not Support Pad
+  Placement: Crane Layout is "will I be able to feasibly set up the crane
+  in this position at all" (their company also has access to a Franna -
+  a smaller pick-and-carry crane - on SOME but not all jobs, to help move
+  bog mats/pads into place; this tab's job is deciding whether the crane
+  fits before anyone's committed to a spot), Support Pad Placement is the
+  physical "if I have to place these mats myself, here's exactly where"
+  execution tool. Confirmed against a real OEM drawing crop the person
+  sent (rotated dimension text, arrow+label style) - matches what this
+  session already had to read constantly for LTM 1650/1160/1250's own
+  swing-radius figures (section 16 above), same convention.
+  Reused the SAME line+ticks+label drawing code the clearance measurement
+  already built, generalized: addDimensionLine(group, p1, p2, color,
+  labelText) now takes two arbitrary ground-plane points instead of
+  assuming the line always runs along world +X - the clearance line still
+  does (it's a real physical constraint of that measurement), but each
+  outrigger leg sits at its own distinct angle from the slew centre, so
+  the tick marks needed to be genuinely perpendicular to whatever
+  direction that specific line runs, not hardcoded to the Z axis. Uses
+  each leg's BASELINE (unshifted) r/angle straight from cadFleetData - the
+  exact same figures already shown in the "Baseline" column of Support Pad
+  Placement's own "All Four Legs" table - not Support Pad Placement's
+  current shift/pad state, since Crane Layout has no shift inputs of its
+  own at all (matches "deciding if you'll be able to feasibly set up" -
+  a planning question, not "where did I put the mat this time").
+  New third pending/context map pair (pendingLegDimensions/
+  pendingLegDimensionContext) mirroring pendingSlewCircles' own replay-on-
+  model-still-loading pattern, its own legDimensionGroup (cleared
+  alongside outriggerGroup/slewCircleGroup on every wrap-change - a person
+  with BOTH Support Pad Placement's outrigger markers AND Crane Layout's
+  leg-dimension lines toggled on at different times must never see one
+  bleed into the other's context), and its own line in sceneBox() so Fit
+  View accounts for it too.
+  Also fixed a real (if minor) memory-leak gap noticed while touching this
+  code: material.dispose() alone does NOT dispose a texture the material
+  holds (e.g. the dimension labels' canvas-texture Sprites) - Three.js
+  doesn't cascade that automatically. Added a shared disposeGroup() helper
+  (geometry + material + material.map) used by all three clearXxx()
+  functions now, not just the new one.
+  Verified via Playwright + screenshots (LTM 1110): all 4 legs render
+  correctly-labelled dimension lines matching the "All Four Legs" table's
+  own Baseline figures exactly (C1 5049mm, C2 6098mm, C3 5857mm, C4
+  5267mm); toggling a slew-radius circle on at the same time coexists
+  cleanly with no visual or state interference; unticking the outrigger-
+  distances checkbox removes only those lines, leaving any active circle
+  untouched; a full regression sweep across all 7 top-level tabs came back
+  clean - 0 console errors throughout.
+
 ================================================================================
