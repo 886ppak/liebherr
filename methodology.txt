@@ -6236,4 +6236,113 @@ cranes get their own subsections as they're built.
   untouched; a full regression sweep across all 7 top-level tabs came back
   clean - 0 console errors throughout.
 
+  UPDATE (same day): added a fourth Crane Layout toggle - "Show ground
+  layout marks (paint-out dimensions)" - genuinely different from the
+  "outrigger distances" toggle directly above, despite both being C1-C4
+  dimension lines on the same tab. The outrigger-distances toggle draws
+  each leg's diagonal ("as the crow flies") distance from the slew centre
+  - exactly what's needed once the crane is already parked, to place
+  support pads (Support Pad Placement's own job). This new toggle is for
+  BEFORE the crane arrives: the figures a crew uses to mark the crane's
+  whole footprint out on bare soil with a tape measure and line-marking
+  paint, so they know exactly where to park it. Person walked through
+  their own real-world procedure step by step with worked numbers (find
+  the outrigger's own edge-of-carrier line via (span-B)/2, walk that line
+  the leg's longitudinal offset, mark the leg's centre; separately confirm
+  the slew centre by measuring in from that same line) and provided an
+  annotated OEM drawing screenshot showing the convention: a line
+  projected from the slew centre out to meet the straight line between two
+  outriggers. A diagonal alone can't be marked out on soil with a tape
+  measure and no other reference - there's no way to know what bearing to
+  swing the tape at, you'd be guessing (person's own words) - hence
+  needing the offsets decomposed into two independently-measurable,
+  right-angle components instead.
+  Data model (GROUND_LAYOUT_DATA, index.html): per crane, rearSpan/
+  frontSpan (the OEM's own printed total support width between that
+  pair's two outriggers, fully extended) plus each leg's own longitudinal
+  offset (C1-C4, mm, along the carrier's centreline from the slew centre
+  to that leg's own "station", read directly off the OEM Dimensions
+  sheet's vertical witness-line dimension chains). Lateral position is
+  DERIVED, not stored separately: full distance from centreline = span/2;
+  distance from the carrier's own edge (what a crew actually measures in
+  the field, since it's a physical reference locatable without knowing
+  where the slew centre is) = (span - carrierWidthB) / 2, reusing
+  FOOTPRINTS[modelKey].width for B rather than duplicating it (confirmed
+  identical to SLEW_CLEARANCE_DATA's own carrierWidthB for all 7 cranes).
+  Genuinely asymmetric left/right per leg (not a mirrored pair) - same as
+  the existing "as the crow flies" r/angle data already was, confirmed
+  against the real OEM drawings rather than assumed symmetric.
+  Extraction (LTM 1110-5.1, 1130-5.1, 1160-5.2, 1250-5.1, 1300-6.2,
+  1650-8.1, LRT 1100-2.1 - all 7 slew-clearance cranes except LTR 1220,
+  a crawler crane with no outriggers in this sense, per explicit "not the
+  LTR" instruction): read from each crane's own cached OEM Operating
+  Instructions PDF (Nextcloud WebDAV source, Load_chart_manual's sibling
+  Operating_instructions_Crane folder), "1.03 Technical Data > 1
+  Dimensions" figure, same rotated-text/high-zoom-crop reading technique
+  established earlier in this session for the swing-radius figures.
+  Cross-validated every single leg on every crane via Pythagoras against
+  cadFleetData's own trusted r values (longitudinal^2 + (span/2)^2 should
+  equal r^2) BEFORE trusting any reading - this caught two real reading
+  mistakes during extraction (LTM 1160: misread a decimal-adjacent digit
+  producing a ~40-60mm-off prediction that was still directionally
+  consistent enough to trust once re-verified via a tighter crop; LRT
+  1100: initially grabbed the SIDE-ELEVATION view's own vertical dimension
+  chain instead of the PLAN view's - the two numerically overlap for one
+  side by coincidence, since the side view happens to align with one
+  specific track, which made a wrong reading look plausible until the
+  actual plan-view crop was found and gave a much better cross-check
+  match). Match quality varied by crane but every leg on every crane
+  landed within 66mm of the trusted r value (most within 1-30mm, several
+  cranes - LTM 1250/1300/1650 - within 2mm on every leg), confirming both
+  the readings and the leg-pairing convention (page-left bracket =
+  vehicle-right legs, page-right = vehicle-left; upper chain value = rear
+  leg, lower = front leg - consistent across all 7 cranes checked).
+  Drawing (vendor/carrier3d.js): two dimension lines per leg, not one -
+  deliberately mirrors the two numbers a crew actually uses, not a single
+  combined figure they'd have to do their own subtraction on.
+    1. Slew centre -> station point on the centreline (0, stationYMm) -
+       the longitudinal figure, labelled "C1 fwd/back: 3059mm" etc.
+    2. Carrier edge (edgeXMm, stationYMm) -> leg (legXMm, stationYMm) -
+       the lateral figure, labelled "C1 out from edge: 2733mm" etc. Starts
+       at the carrier's own edge, not the centreline - the short gap
+       between centreline and edge is deliberately left undrawn, since
+       it's just half the carrier's own known/fixed width, not something
+       to remeasure on site.
+  Own fourth pending/context map pair (pendingGroundLayoutMarks/
+  pendingGroundLayoutContext) and groundLayoutGroup, mirroring the
+  outrigger-distances toggle's own pattern exactly - cleared alongside the
+  other three overlay groups on every wrap-change, included in sceneBox()
+  for Fit View, replayed from the pending map if the model was still
+  mid-fetch when the toggle was flipped. index.html's onGroundLayoutToggle()
+  computes each leg's stationYMm/edgeXMm/legXMm/lonMm/latMm from
+  GROUND_LAYOUT_DATA + FOOTPRINTS and hands them to
+  window.__carrier3dSetGroundLayoutMarks(); reused GROUND_LAYOUT_COLORS
+  (same 4-colour cycle as the slew circles) purely so each leg reads as a
+  visually distinct line when several toggles are on at once.
+  Also noticed while touching activateCarrier3DLayout() that the existing
+  "outrigger distances" toggle's own checked state wasn't being replayed
+  on Crane Layout <-> Support Pad Placement sub-tab switches (only
+  onSlewCircleToggle() was called there) - harmless in practice, since
+  switching sub-tabs always runs through renderCarrier3DSlewToggles()
+  first anyway (via initSlewClearanceTab -> onSlewClearanceCraneChange ->
+  renderSlewClearanceResults -> updateCarrier3DLayoutAvailability), which
+  rebuilds the whole toggle panel from scratch and unchecks everything
+  regardless - but added onLegDimensionToggle()/onGroundLayoutToggle()
+  calls alongside onSlewCircleToggle() there anyway for consistency, so
+  all three toggles are replayed the same way if that rebuild-on-every-
+  switch behaviour is ever changed later.
+  Verified via Playwright + screenshots (same direct-function-invocation
+  workaround as every other 3D toggle test this session, since native
+  .click() hangs once a WebGL canvas is actively rendering in this sandbox
+  - see earlier entries in this section): LTM 1110 renders all 8 lines
+  (2 per leg x 4 legs) with labels matching the extracted data exactly
+  (C3 fwd/back 4680mm, C4 fwd/back 3235mm, C1/C4 out from edge 2733mm,
+  C2/C3 out from edge 2082mm - matches the (7013/2-1425)=2081.5mm figure
+  confirmed earlier against the person's own field-measured number,
+  rounding to 2082 here); LTM 1650 (the Y-outrigger design, structurally
+  different beam geometry from the other 6 cranes) also renders correctly
+  with all four "out from edge" labels reading the expected 3239mm
+  (9578/2-1550); unchecking clears the group cleanly with 0 console errors
+  throughout both runs.
+
 ================================================================================

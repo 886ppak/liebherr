@@ -40,6 +40,7 @@ let animating = false;
 let outriggerGroup = null;
 let slewCircleGroup = null;
 let legDimensionGroup = null;
+let groundLayoutGroup = null;
 // Which DOM wrap/label the single shared canvas is currently parented
 // into - there are two possible mount points now (Support Pad Placement's
 // own 3D card, and Crane Layout's own 3D card), never both showing at
@@ -80,6 +81,14 @@ const pendingSlewCircleContext = {};
 // switch the person flips independently of the radius circles.
 const pendingLegDimensions = {};
 const pendingLegDimensionContext = {};
+// Same replay-once-loaded pattern again, for the Crane Layout tab's ground
+// layout marks (paint-it-out-on-soil dimensions - see
+// __carrier3dSetGroundLayoutMarks below). A fourth independent toggle, own
+// pair of maps, same reasoning as pendingLegDimensions above - it's a
+// genuinely separate on/off switch from the diagonal C1-C4 lines, even
+// though both are Crane Layout-only and both key off the same crane.
+const pendingGroundLayoutMarks = {};
+const pendingGroundLayoutContext = {};
 
 // Creates the renderer on first-ever call; every call after that just
 // re-parents the existing canvas into whichever wrapId was requested (a
@@ -167,6 +176,7 @@ function clearScene() {
   outriggerGroup = null;
   slewCircleGroup = null;
   legDimensionGroup = null;
+  groundLayoutGroup = null;
 }
 
 function clearOutriggers() {
@@ -188,6 +198,13 @@ function clearLegDimensions() {
   scene.remove(legDimensionGroup);
   disposeGroup(legDimensionGroup);
   legDimensionGroup = null;
+}
+
+function clearGroundLayoutMarks() {
+  if (!groundLayoutGroup) return;
+  scene.remove(groundLayoutGroup);
+  disposeGroup(groundLayoutGroup);
+  groundLayoutGroup = null;
 }
 
 function loadGLTFAsync(url) {
@@ -231,6 +248,7 @@ function sceneBox() {
   if (outriggerGroup) box.union(new THREE.Box3().setFromObject(outriggerGroup));
   if (slewCircleGroup) box.union(new THREE.Box3().setFromObject(slewCircleGroup));
   if (legDimensionGroup) box.union(new THREE.Box3().setFromObject(legDimensionGroup));
+  if (groundLayoutGroup) box.union(new THREE.Box3().setFromObject(groundLayoutGroup));
   return box;
 }
 
@@ -343,6 +361,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     clearOutriggers();
     clearSlewCircles();
     clearLegDimensions();
+    clearGroundLayoutMarks();
   }
 
   const cached = modelCache[modelKey];
@@ -359,6 +378,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       const ctx = pendingLegDimensionContext[modelKey] || {};
       applyLegDimensions(modelKey, cached, pendingLegDimensions[modelKey], ctx.footprint, ctx.calibration);
     }
+    if (pendingGroundLayoutMarks[modelKey]) {
+      const ctx = pendingGroundLayoutContext[modelKey] || {};
+      applyGroundLayoutMarks(modelKey, cached, pendingGroundLayoutMarks[modelKey], ctx.footprint, ctx.calibration);
+    }
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
@@ -372,6 +395,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingLegDimensions[modelKey]) {
         const ctx = pendingLegDimensionContext[modelKey] || {};
         applyLegDimensions(modelKey, root, pendingLegDimensions[modelKey], ctx.footprint, ctx.calibration);
+      }
+      if (pendingGroundLayoutMarks[modelKey]) {
+        const ctx = pendingGroundLayoutContext[modelKey] || {};
+        applyGroundLayoutMarks(modelKey, root, pendingGroundLayoutMarks[modelKey], ctx.footprint, ctx.calibration);
       }
     });
   }
@@ -985,4 +1012,61 @@ window.__carrier3dSetLegDimensions = function (modelKey, legs, footprint, calibr
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
   applyLegDimensions(modelKey, root, legs, footprint, calibration);
+};
+
+// Crane Layout's "ground layout marks" toggle - the paint-it-out-on-soil
+// dimensions a crew uses to lay a crane's footprint out BEFORE it arrives
+// (index.html's GROUND_LAYOUT_DATA), genuinely different from the diagonal
+// "as the crow flies" C1-C4 lines above (which is what support-pad
+// placement needs once the crane is already parked). marks is an array of
+// {label, color, stationYMm, edgeXMm, legXMm, lonMm, latMm} - all x/y
+// already resolved to site-plan mm by index.html's onGroundLayoutToggle(),
+// same convention siteToWorld expects everywhere else.
+//
+// Two dimension lines per leg, deliberately NOT one single line from the
+// slew center straight to the leg (that's what the diagonal toggle already
+// draws) and deliberately NOT one line covering the full lateral throw
+// either:
+//   1. Slew center -> station point on the centerline (stationYMm) -
+//      the longitudinal figure a crew reads directly off the OEM sheet.
+//   2. Carrier edge (edgeXMm) -> leg (legXMm), BOTH at the same
+//      stationYMm - the lateral figure a crew actually measures, starting
+//      from the carrier's own edge line (a physical reference they can
+//      find without knowing where the slew center is), not from the
+//      centerline. The short unmarked gap between the centerline and the
+//      edge point is deliberately left undrawn - it's just half the
+//      carrier's own (known, fixed) width, not something to remeasure.
+function applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration) {
+  clearGroundLayoutMarks();
+  if (!marks || !marks.length) return;
+  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
+  if (!cal) return;
+
+  groundLayoutGroup = new THREE.Group();
+  const center = siteToWorld(cal, 0, 0);
+  const y = center.y + 0.04;
+  const p0 = new THREE.Vector3(center.x, y, center.z);
+
+  marks.forEach((mark) => {
+    const stationPos = siteToWorld(cal, 0, mark.stationYMm);
+    const pStation = new THREE.Vector3(stationPos.x, y, stationPos.z);
+    const edgePos = siteToWorld(cal, mark.edgeXMm, mark.stationYMm);
+    const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
+    const legPos = siteToWorld(cal, mark.legXMm, mark.stationYMm);
+    const pLeg = new THREE.Vector3(legPos.x, y, legPos.z);
+
+    addDimensionLine(groundLayoutGroup, p0, pStation, mark.color, `${mark.label} fwd/back: ${mark.lonMm}mm`);
+    addDimensionLine(groundLayoutGroup, pEdge, pLeg, mark.color, `${mark.label} out from edge: ${mark.latMm}mm`);
+  });
+
+  scene.add(groundLayoutGroup);
+}
+
+window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, calibration) {
+  pendingGroundLayoutMarks[modelKey] = marks;
+  pendingGroundLayoutContext[modelKey] = { footprint, calibration };
+  if (currentModelKey !== modelKey || !scene) return;
+  const root = modelCache[modelKey];
+  if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
+  applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration);
 };
