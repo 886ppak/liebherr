@@ -2011,7 +2011,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 36;
+    const CARRIER3D_VERSION = 37;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -5321,7 +5321,7 @@
         const edgeToCenterMm = Math.abs(leg.accurateX) - halfB;
         const halfPadMm = leg.pad.width / 2;
         return {
-          id: leg.id, side, y: leg.y, edgeXMm: side * halfB,
+          id: leg.id, side, y: leg.y, edgeXMm: side * halfB, padLengthMm: leg.pad.length,
           edgeToCenterMm, insideMm: edgeToCenterMm - halfPadMm, outsideMm: edgeToCenterMm + halfPadMm
         };
       });
@@ -5368,6 +5368,7 @@
         insideXMm: m.side * (Math.abs(m.edgeXMm) + m.insideMm),
         outsideXMm: m.side * (Math.abs(m.edgeXMm) + m.outsideMm),
         yMm: m.y,
+        padLengthMm: m.padLengthMm,
         insideMm: Math.round(m.insideMm),
         outsideMm: Math.round(m.outsideMm)
       }));
