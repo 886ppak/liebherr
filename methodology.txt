@@ -6698,4 +6698,49 @@ cranes get their own subsections as they're built.
   exact / 0mm difference; a full click-through of all 8 tabs afterward
   came back with 0 console errors throughout.
 
+18. 3D CARRIER PREVIEW: FIT VIEW SCROLL + BOG MAT GHOSTING/DIMENSIONS
+  Batch of small 3D-view refinements, iterated with the person over several
+  rounds before landing, held as local commits (not pushed) until the
+  whole batch was settled - see each commit's own message for the
+  blow-by-blow.
+  Fit View (both 3D cards - Support Pad Placement and Crane Layout) now
+  smooth-scrolls the card itself to the vertical centre of the viewport in
+  addition to reframing the camera, via document.getElementById(
+  currentWrapId).scrollIntoView({block:'center'}) - carrier3d.js already
+  tracks currentWrapId internally (which of the two cards currently owns
+  the shared canvas), so no new plumbing needed. Confirmed via Playwright:
+  wrap's own bounding-box midpoint lands exactly on the viewport's
+  midpoint after clicking Fit View.
+  Bog mat pads (the "current" pad mesh drawn per leg in applySync) went
+  from a near-solid 0.9 fill opacity down to 0.12, with the outline
+  switched from solid to dashed (matching the "if moved" ghost pad's own
+  established dashed convention) - the mat edge dimension lines drawn
+  through the pad's own footprint were getting buried under the old
+  near-opaque fill. The dashed outline itself then needed its own opacity
+  set explicitly (0.45) in a follow-up round - it had no transparent/
+  opacity property at all, so it defaulted fully opaque and was
+  out-competing the dimension lines for attention even after the fill
+  itself was ghosted down.
+  Mat edge dimension lines (inside/outside per leg) went through three
+  attempts before landing: (1) offset onto parallel lines by a flat
+  400mm to stop their labels overlapping near the mat's inner corner: (2)
+  misread a follow-up sketch as asking for the whole line to run vertical
+  along the mat's outer edge - corrected by the person: "I want the txt
+  moved not the line showing what the txt represents", reverted to the
+  original line geometry with only the label's own position along it
+  biased via a new labelT param on addDimensionLine (0=start, 1=end,
+  default 0.5); (3) person's actual reference, an OEM outrigger dimension
+  sheet photo showing two lines offset onto the object's own two opposite
+  ends for separation, not chained through the same station - final
+  version offsets inside/outside onto their own parallel lines at roughly
+  the mat's own near/far ends (0.4x pad length each direction, leaving a
+  small margin off the true corner) rather than a flat 400mm or a label
+  trick - real geometric separation, matching the reference photo's own
+  style.
+  Verified via Playwright/screenshot at each round; final state: 0 console
+  errors across a full click-through of all 8 tabs, dimension lines
+  visually confirmed sitting at the mat's own two ends with a clean gap,
+  ghost pad fill and outline both visibly faded below the dimension
+  lines' own full opacity.
+
 ================================================================================
