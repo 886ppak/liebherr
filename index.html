@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.25</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.26</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -558,7 +558,7 @@
           </thead>
           <tbody id="cad-mat-marking-results"></tbody>
         </table>
-        <div class="disclaimer">Measured laterally from the crane's own side (carrier edge, not centerline) out to the pad — mark the inside edge first, then the outside edge, to lay the mat out square before the crane arrives. Only shown for legs with a pad currently toggled on above; uses that leg's current position (same spot the solid pad above is drawn at).</div>
+        <div class="disclaimer">Measured laterally from the crane's own side (carrier edge, not centerline) out to the pad — mark the inside edge first, then the outside edge, to lay the mat out square before the crane arrives. Only shown for legs with a pad currently toggled on above; uses that leg's current (possibly shifted) position, same OEM-sourced span figures as Crane Layout's own ground layout marks — precise enough that a mirrored pair (e.g. C2/C3) always reads the same distance from the edge when unshifted.</div>
       </div>
 
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
@@ -5056,15 +5056,38 @@
       let resultsHtml = '';
       let mappedOutriggers = [];
 
+      // Accurate lateral (X-only) position for the Bog Mat Marking table
+      // below, kept separate from baseX/plotX above rather than replacing
+      // them - baseX (r*sin(angle)) is precise enough for its existing
+      // jobs (clash detection, canvas/3D drawing, the "All Four Legs"
+      // table) since those only care about the overall reach, but a
+      // marking figure that's supposed to isolate the LATERAL component
+      // alone exposed a real inaccuracy: cadFleetData's angle is rounded
+      // to one decimal place, so C2 and C3 - a genuinely mirrored pair
+      // with an identical physical outrigger span - came out reading
+      // meaningfully different distances from the crane's edge, which
+      // isn't physically true. GROUND_LAYOUT_DATA's own span figures (read
+      // directly off the OEM dimension chain, not derived from a rounded
+      // angle) give an exact, identical lateral figure for both legs of a
+      // pair instead - span/2, signed by which side that leg is on.
+      const gld = GROUND_LAYOUT_DATA[modelKey];
+      function accurateLateralX(item) {
+        if (!gld) return item.r * Math.sin(item.angle * (Math.PI / 180));
+        const side = item.quadrant.endsWith('R') ? 1 : -1;
+        const span = item.quadrant.startsWith('F') ? gld.frontSpan : gld.rearSpan;
+        return side * (span / 2);
+      }
+
       baseData.forEach(item => {
         const rad = item.angle * (Math.PI / 180);
         const baseX = item.r * Math.sin(rad);
         const baseY = item.r * Math.cos(rad);
         const legPad = padEnabledFor(item.id) ? sharedPad : null;
+        const accurateBaseX = accurateLateralX(item);
 
         if (shiftX === 0 && shiftYinput === 0) {
           mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, clash: false, pad: legPad,
-            x: baseX, y: baseY, movedX: baseX, movedY: baseY,
+            x: baseX, y: baseY, movedX: baseX, movedY: baseY, accurateX: accurateBaseX,
             r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
             <tr>
@@ -5102,10 +5125,13 @@
         const isRequired = checkClash(relX, relY, fp, legPad);
         const plotX = isRequired ? newX : baseX;
         const plotY = isRequired ? newY : baseY;
+        // Same required/shift logic as plotX above, applied to the
+        // accurate baseline instead of the r/angle-derived one.
+        const accuratePlotX = isRequired ? accurateBaseX + shiftX : accurateBaseX;
 
         mappedOutriggers.push({
           id: item.id, quadrant: item.quadrant, required: isRequired, clash, pad: legPad,
-          x: plotX, y: plotY, movedX: newX, movedY: newY,
+          x: plotX, y: plotY, movedX: newX, movedY: newY, accurateX: accuratePlotX,
           r: isRequired ? movedR : stayR, dir: isRequired ? movedDir : stayDir, relAngle: isRequired ? movedAngle : stayAngle,
           posX: Math.round(plotX), posY: Math.round(plotY)
         });
@@ -5144,18 +5170,23 @@
     // the crane) at 4 - 2/2 = 3m out, and the outside edge at
     // 4 + 2/2 = 5m out - lets a crew square the mat up on bare ground with
     // just a tape and paint, without needing to first find the pad's own
-    // centre point. leg.x already reflects whichever position the rest of
-    // this tab is currently showing for that leg (baseX, or the shifted
-    // newX once a "must move" shift makes that the real target) - same
-    // value the solid "current" pad rectangle is drawn from elsewhere on
-    // this tab, so this table always matches what's on screen.
+    // centre point. Uses leg.accurateX, NOT leg.x - the same required/
+    // shift logic as leg.x (baseX, or the shifted newX once a "must move"
+    // shift makes that the real target), but built from GROUND_LAYOUT_DATA's
+    // own span figures rather than r*sin(angle). cadFleetData's angle is
+    // only stored to one decimal place, which is precise enough for the
+    // pad drawn on the canvas/3D view (leg.x, unchanged) but not for a
+    // marking figure meant to isolate the lateral component alone - it
+    // was making a mirrored pair (e.g. C2/C3, identical physical
+    // outrigger span) read as different distances from the crane's edge,
+    // which isn't physically real. See accurateLateralX() in calcCAD().
     function renderMatMarking() {
       const card = document.getElementById('cad-mat-marking-card');
       const tbody = document.getElementById('cad-mat-marking-results');
       if (!lastMapped || !lastFp) { card.style.display = 'none'; tbody.innerHTML = ''; return; }
       const halfB = lastFp.width / 2;
       const rows = lastMapped.filter(leg => leg.pad).map(leg => {
-        const edgeToCenterMm = Math.abs(leg.x) - halfB;
+        const edgeToCenterMm = Math.abs(leg.accurateX) - halfB;
         const halfPadMm = leg.pad.width / 2;
         const insideMm = edgeToCenterMm - halfPadMm;
         const outsideMm = edgeToCenterMm + halfPadMm;

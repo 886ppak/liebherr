@@ -6427,4 +6427,42 @@ cranes get their own subsections as they're built.
   unset/visible), sc-crane already populated with all 7 cranes; 0 console
   errors.
 
+  UPDATE (same day): person caught a real accuracy bug in the Bog Mat
+  Marking table above, within minutes of it shipping - LTM 1110's C2 and
+  C3 read meaningfully different "to pad center" distances (2.89m vs
+  2.10m) despite being a mirrored pair with an identical physical
+  outrigger span, so they should always read the same when unshifted.
+  Root cause: the table was built from leg.x, which comes from
+  cadFleetData's r/angle (r*sin(angle)) - fine for its EXISTING jobs
+  (clash detection, canvas/3D drawing, the "All Four Legs" table), all of
+  which only care about the overall reach, but cadFleetData's angle is
+  only stored to one decimal place, which isn't precise enough to isolate
+  the LATERAL component alone - exactly the same class of imprecision this
+  session already worked around once before, when GROUND_LAYOUT_DATA had
+  to be extracted fresh from each crane's own OEM dimension chain instead
+  of being derived from r/angle (see the "ground layout marks" entries
+  above).
+  Fix: added a second, accurate lateral-only position (accurateX) to each
+  mappedOutriggers entry, computed via a new accurateLateralX() helper -
+  side * (span/2), where span is GROUND_LAYOUT_DATA[modelKey].frontSpan or
+  .rearSpan (exact, OEM-sourced, identical for both legs of a mirrored
+  pair) rather than r*sin(angle). Deliberately does NOT touch leg.x itself
+  or any of its existing consumers - kept as a parallel field so the pad
+  drawn on the canvas/3D view is unchanged, only the marking table's own
+  calculation moved onto the more accurate figure. Mirrors the exact same
+  required-to-move/shift logic plotX already uses (accuratePlotX =
+  isRequired ? accurateBaseX + shiftX : accurateBaseX) so it still
+  responds correctly to a lateral shift - verified a +3m shift moves only
+  the two legs actually required to move (by the full 3m, exactly), while
+  the two legs that aren't required stay at their own unchanged figure,
+  same as the "All Four Legs" table's own optional-vs-required behavior.
+  renderMatMarking() updated to read leg.accurateX instead of leg.x; card's
+  own on-page disclaimer text corrected to describe this instead of
+  claiming it matches the drawn pad's own position.
+  Verified via Playwright (LTM 1110, all four pads on): unshifted, C2 and
+  C3 now both read 2.08m/0.88m/3.28m exactly (previously 2.89m vs 2.10m to
+  centre), C1 and C4 both read 2.73m/1.53m/3.93m exactly; a +3m lateral
+  shift correctly moves only the two required legs by the full 3m each,
+  leaving the other two unchanged; 0 console errors.
+
 ================================================================================
