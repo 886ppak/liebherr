@@ -6345,4 +6345,37 @@ cranes get their own subsections as they're built.
   (9578/2-1550); unchecking clears the group cleanly with 0 console errors
   throughout both runs.
 
+  UPDATE (same day): two people flagged the same real problem within a
+  minute of the ship above landing, both about the longitudinal ("fwd/
+  back") line specifically - it ran straight down the carrier's own
+  centerline (X=0) from the slew centre to each leg's station, same as an
+  OEM drawing's own vertical witness line does on paper, but on a 3D model
+  viewed from above that line sits directly UNDER the carrier body, so its
+  label was unreadable; and because all four legs' longitudinal lines
+  shared that one centerline, a right-side leg's own figure was visually
+  indistinguishable from a left-side one stacked on the same line.
+  Fixed by moving the longitudinal dimension line off the centerline
+  entirely - drawn at X = that leg's own full lateral offset (legXMm, the
+  same X the leg itself sits at) instead of X = 0, running from a point
+  level with the slew centre out at that offset, straight down/up to the
+  leg's own position (which is exactly where legXMm/stationYMm already
+  point - no separate "station on the centerline" concept needed any
+  more). This puts each leg's own longitudinal line beside the carrier on
+  its own respective side - matches how a real OEM drawing actually lays
+  the vertical chain out (offset beside the plan view, not through it) -
+  clear of the carrier body the whole way, and visually separates left
+  from right since the two sides no longer share a line.
+  Added a new addWitnessLine() helper (thin, dashed, no end ticks, no
+  label - LineDashedMaterial, deliberately styled differently from
+  addDimensionLine's solid+tick+label look) so the short reference
+  connector from the true slew centre out to each leg's own offset line
+  reads as "this is where it's measured from", not as a third measurement
+  a crew would need to go verify - same reasoning that already justified
+  leaving the centerline-to-edge half-carrier-width gap undrawn in the
+  lateral line.
+  Verified via Playwright + screenshots (LTM 1110): all four legs now
+  render on their own respective side (C1/C2 right, C3/C4 left), every
+  label fully clear of the carrier body and readable, dashed witness lines
+  visible connecting back to the slew centre; 0 console errors.
+
 ================================================================================
