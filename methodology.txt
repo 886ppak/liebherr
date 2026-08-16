@@ -5962,4 +5962,63 @@ cranes get their own subsections as they're built.
   tab/button pair without leaving two tabs simultaneously marked active -
   0 console errors throughout.
 
+  UPDATE (same day): restructured into a Crane Positioning sub-tab, and
+  the deferred 3D radius circle shipped after all.
+  Person clarified the original ask right after the first ship: "Crane
+  Setup" was meant to be a SUB-tab of Crane Positioning, not a sibling
+  top-level nav tab - and the pre-existing outrigger/site-plan/3D-carrier/
+  bog-mat content needed its own sub-tab name too ("Support Pad
+  Placement") rather than staying as Crane Positioning's only content.
+  Removed the standalone "Crane Setup" nav button and slewclear-tab div;
+  reused the exact mode-toggle/panel-show-hide pattern already
+  established by the Load Chart Finder's Find/Compare sub-tabs
+  (setLoadChartSubTab) for a new setCadSubTab('pads'|'setup'), with
+  cad-panel-pads holding everything that used to be cad-tab's entire
+  content and cad-panel-setup holding the slew-clearance UI. The "3D
+  Visualization" card's cross-link now just calls setCadSubTab('pads')
+  (same-tab sub-tab switch) instead of switchTab() to a different
+  top-level tab.
+  This also removed the original reason for deferring the 3D radius-
+  circle overlay: once Crane Setup and the 3D carrier viewer are sub-tabs
+  of the SAME parent tab, there's no second concurrent viewer instance to
+  build at all - the existing single carrier3d.js viewer just needs a new
+  capability, not a second instance. Added window.__carrier3dSetSlewCircles
+  (vendor/carrier3d.js) alongside the existing __carrier3dSyncOutriggers:
+  draws a flat ring on the ground plane per requested radius, centred on
+  siteToWorld(cal, 0, 0) (the same slew-centre point the outrigger pads
+  already anchor to) using whichever calibration computeCalibration()
+  already cached for that model - no new calibration math needed, since
+  the slew centre doesn't depend on which feature is asking for it. Ring
+  radius is drawn directly in world metres (radius_mm/1000), not run
+  through cal.xSlope/zSlope, since those carry the site-plan's own
+  approximate-footprint mm->model mapping while the CAD model itself is
+  already dimensionally accurate - a real physical radius just needs the
+  plain unit conversion, same as every other physical size already drawn
+  (pad boxes, etc). Bumped CARRIER3D_VERSION (21->22) since the vendor
+  file changed.
+  UI: a "360° Slew Radius" checkbox row was added to the existing 3D
+  Carrier Preview card's toolbar (index.html's
+  renderCarrier3DSlewToggles(), called from updateCarrier3DAvailability()
+  on every crane switch) - one checkbox per SLEW_CLEARANCE_DATA point,
+  including every variant option shown side by side (not behind a
+  selector) so both "Standard" and "Vario Ballast" can be ticked at once
+  to compare directly on the model. Distinct colours per point
+  (SLEW_CIRCLE_COLORS, red/purple/green/orange) deliberately different
+  from the gold/cyan/white already used for pad markers/ghosts, so a
+  slew ring is never mistaken for one of those. Checkboxes rebuild from
+  scratch (and reset to unticked) on every crane switch; the rebuild
+  fires onSlewCircleToggle() once at the end specifically so the 3D
+  view's own pendingSlewCircles[modelKey] state (in carrier3d.js) can't
+  keep showing a stale circle from a previous crane if the person
+  switches back to it later without re-ticking anything.
+  Verified via Playwright + screenshots (LTM 1110): both Counterweight
+  and Winch 2 circles render as concentric rings centred correctly on the
+  slew axis (Winch 2's larger ring visibly containing Counterweight's
+  smaller one, matching their real radii), unticking one removes only
+  that ring, and switching to LTM 1160 correctly rebuilds the checkbox
+  list to its own Standard/Vario Ballast pair with both unticked. Full
+  regression sweep across all 7 top-level tabs plus the existing
+  outrigger pad-toggle/compare-mode controls afterward - 0 console
+  errors throughout.
+
 ================================================================================

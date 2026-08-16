@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.15</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.16</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -224,7 +224,6 @@
     <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
     <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" id="cad-tab-btn" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
-    <button class="tab-btn" onclick="switchTab('slewclear-tab', event)">Crane Setup</button>
     <button class="tab-btn" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
   </nav>
 
@@ -405,8 +404,14 @@
       </div>
     </div>
 
-    <!-- ================= TAB 3: OUTRIGGER SUPPORT POSITIONING ================= -->
+    <!-- ================= TAB 3: CRANE POSITIONING ================= -->
     <div id="cad-tab" class="tab-content">
+      <div class="mode-toggle" id="cad-subtab-toggle" style="margin-bottom:14px;">
+        <button class="mode-btn active" id="cad-subtab-pads" onclick="setCadSubTab('pads')">Support Pad Placement</button>
+        <button class="mode-btn" id="cad-subtab-setup" onclick="setCadSubTab('setup')">Crane Setup</button>
+      </div>
+
+      <div id="cad-panel-pads">
       <div class="grid">
         <div class="card">
           <div class="card-title">Crane Selection &amp; Shift</div>
@@ -517,6 +522,7 @@
             <input type="checkbox" id="carrier-3d-pad-4-toggle" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> C4
           </label>
         </div>
+        <div id="carrier-3d-slew-toggles" style="display:none; margin-top:10px;"></div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
           <div id="carrier-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
@@ -541,10 +547,10 @@
       </div>
 
       <button class="btn" onclick="window.print()">📄 Export / Print Setup Plan PDF</button>
-    </div>
+      </div>
+      <!-- /cad-panel-pads -->
 
-    <!-- ================= TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ================= -->
-    <div id="slewclear-tab" class="tab-content">
+      <div id="cad-panel-setup" style="display:none;">
       <div class="card">
         <div class="card-title">Crane &amp; Configuration</div>
         <div class="form-group">
@@ -576,8 +582,10 @@
 
       <div class="card">
         <div class="card-title">3D Visualization</div>
-        <div style="font-size:0.85rem; color:var(--text-muted);">See these radii drawn around the crane on the 3D carrier model, on the <a href="#" onclick="goToCadTab(); return false;" style="color:var(--accent-gold);">Crane Positioning</a> tab.</div>
+        <div style="font-size:0.85rem; color:var(--text-muted);">See these radii drawn around the crane on the 3D carrier model, on the <a href="#" onclick="setCadSubTab('pads'); return false;" style="color:var(--accent-gold);">Support Pad Placement</a> sub-tab.</div>
       </div>
+      </div>
+      <!-- /cad-panel-setup -->
     </div>
 
     <!-- ================= TAB 4: REEVING PLAN ================= -->
@@ -909,25 +917,30 @@
       }
       document.getElementById(tabId).classList.add('active');
 
-      if (tabId === 'cad-tab') calcCAD();
+      if (tabId === 'cad-tab') {
+        calcCAD();
+        // Crane Setup sub-tab has its own crane select, independent of
+        // cad-crane above - lazy-inits the first time it's ever shown,
+        // same pattern as the Load Chart Finder's Compare sub-tab.
+        if (document.getElementById('cad-subtab-setup').classList.contains('active')) initSlewClearanceTab();
+      }
       if (tabId === 'reeve-tab') initReeveTab();
-      if (tabId === 'slewclear-tab') initSlewClearanceTab();
       // Re-checked on every visit, not just after the button runs - content
       // also gets cached one file at a time just by viewing it, so the
       // tick/cross needs to reflect that too, not only a full-download run.
       if (['reeve-tab', 'cwt-tab', 'driveeq-tab', 'loadchart-tab'].includes(tabId)) checkOfflineContentStatus();
     }
 
-    // Jumps to the Crane Positioning tab from the Crane Setup tab's "see it
-    // in 3D" link - switchTab() needs a real .tab-btn as evt.target to mark
-    // active correctly, which a plain <a> click doesn't provide, so this
-    // drives it directly off the button's own id instead.
-    function goToCadTab() {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      document.getElementById('cad-tab-btn').classList.add('active');
-      document.getElementById('cad-tab').classList.add('active');
-      calcCAD();
+    // Crane Positioning's two sub-tabs: Support Pad Placement (all the
+    // pre-existing outrigger/site-plan/3D-carrier/bog-mat content) and
+    // Crane Setup (360 slew clearance). Same show/hide + active-class
+    // pattern as setLoadChartSubTab().
+    function setCadSubTab(mode) {
+      document.getElementById('cad-subtab-pads').classList.toggle('active', mode === 'pads');
+      document.getElementById('cad-subtab-setup').classList.toggle('active', mode === 'setup');
+      document.getElementById('cad-panel-pads').style.display = mode === 'pads' ? '' : 'none';
+      document.getElementById('cad-panel-setup').style.display = mode === 'setup' ? '' : 'none';
+      if (mode === 'setup') initSlewClearanceTab();
     }
 
     // --- TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ---
@@ -1901,7 +1914,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 21;
+    const CARRIER3D_VERSION = 22;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -4667,6 +4680,51 @@
       document.getElementById('carrier-3d-wrap').style.display = 'none';
       document.getElementById('carrier-3d-hint').style.display = 'none';
       document.getElementById('carrier-3d-toolbar').style.display = 'none';
+      renderCarrier3DSlewToggles(modelKey);
+    }
+
+    // Distinct from the gold/cyan/white already used for pad markers/
+    // ghosts above, so a slew-radius ring never gets mistaken for one of
+    // those. Cycles if a crane ever has more than 4 points (none do today
+    // - 1250 is the max at 3).
+    const SLEW_CIRCLE_COLORS = ['#ff3b30', '#a855f7', '#22c55e', '#f97316'];
+
+    // Builds one checkbox per SLEW_CLEARANCE_DATA point (fixed points plus
+    // every variant option, e.g. both "Standard" and "Vario Ballast" for
+    // 1160/1250/1650 - shown side by side rather than behind a selector,
+    // so a person can toggle both on at once to compare them directly on
+    // the model). Rebuilt from scratch on every crane switch, which also
+    // resets every checkbox to unticked - onSlewCircleToggle() is called
+    // once at the end to push that cleared state into the 3D view too, so
+    // a stale circle from the previous crane can't linger after switching
+    // (see carrier3d.js's own pendingSlewCircles comment for why that
+    // matters - it remembers the last state per model key, not just the
+    // currently visible one).
+    function renderCarrier3DSlewToggles(modelKey) {
+      const wrap = document.getElementById('carrier-3d-slew-toggles');
+      const data = SLEW_CLEARANCE_DATA[modelKey];
+      if (!data) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+
+      const points = data.fixed.concat(data.variants ? data.variants.options : []);
+      wrap.style.display = '';
+      wrap.innerHTML = `<div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">360° Slew Radius</div>` +
+        points.map((p, i) => {
+          const color = SLEW_CIRCLE_COLORS[i % SLEW_CIRCLE_COLORS.length];
+          return `
+          <label style="display:flex; align-items:center; gap:6px; margin-bottom:4px; cursor:pointer; font-size:0.75rem;">
+            <input type="checkbox" data-radius="${p.radius}" data-color="${color}" onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
+            <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
+            ${p.label} (${(p.radius / 1000).toFixed(2)}m)
+          </label>`;
+        }).join('');
+      onSlewCircleToggle();
+    }
+
+    function onSlewCircleToggle() {
+      const modelKey = document.getElementById('cad-crane').value;
+      const checks = Array.from(document.querySelectorAll('#carrier-3d-slew-toggles input[type="checkbox"]:checked'));
+      const circles = checks.map(el => ({ radius: parseFloat(el.dataset.radius), color: el.dataset.color }));
+      if (window.__carrier3dSetSlewCircles) window.__carrier3dSetSlewCircles(modelKey, circles);
     }
 
     function toggleCarrier3D() {

@@ -38,6 +38,7 @@ let renderer = null, scene = null, camera = null, controls = null;
 let currentModelKey = null;
 let animating = false;
 let outriggerGroup = null;
+let slewCircleGroup = null;
 
 // modelKey -> THREE.Object3D (the loaded scene root)
 const modelCache = {};
@@ -48,6 +49,13 @@ const loadingInProgress = {};
 // happen around the same time) would otherwise silently do nothing and
 // never get another chance until the next unrelated input change.
 const pendingSync = {};
+// Same replay-once-loaded reasoning as pendingSync, for the 360 slew
+// clearance radius circles (index.html's Crane Setup sub-tab toggles -
+// see __carrier3dSetSlewCircles below). Kept as its own map, not merged
+// into pendingSync, since the two are toggled completely independently
+// (outrigger sync fires automatically on every calcCAD() recalc; slew
+// circles only change when the person explicitly checks/unchecks one).
+const pendingSlewCircles = {};
 
 function ensureRenderer() {
   if (renderer) return;
@@ -101,6 +109,7 @@ function clearScene() {
     scene.remove(obj);
   });
   outriggerGroup = null;
+  slewCircleGroup = null;
 }
 
 function clearOutriggers() {
@@ -111,6 +120,16 @@ function clearOutriggers() {
     if (o.material) o.material.dispose();
   });
   outriggerGroup = null;
+}
+
+function clearSlewCircles() {
+  if (!slewCircleGroup) return;
+  scene.remove(slewCircleGroup);
+  slewCircleGroup.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  slewCircleGroup = null;
 }
 
 function loadGLTFAsync(url) {
@@ -244,12 +263,14 @@ window.__carrier3dActivate = function (modelKey, url) {
     frameCamera(cached);
     setLabel('');
     if (pendingSync[modelKey]) applySync(modelKey, cached, pendingSync[modelKey]);
+    if (pendingSlewCircles[modelKey]) applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey]);
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
       scene.add(root);
       frameCamera(root);
       if (pendingSync[modelKey]) applySync(modelKey, root, pendingSync[modelKey]);
+      if (pendingSlewCircles[modelKey]) applySlewCircles(modelKey, root, pendingSlewCircles[modelKey]);
     });
   }
 };
@@ -649,4 +670,64 @@ window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, l
   const root = modelCache[modelKey];
   if (!root) return; // still loading - applySync() replays this once it's in
   applySync(modelKey, root, pendingSync[modelKey]);
+};
+
+// 360 slew clearance radius circles (index.html's Crane Setup sub-tab,
+// see SLEW_CLEARANCE_DATA) - draws a flat ring on the ground plane at
+// each requested radius, centred on the slew axis, so a person can see
+// at a glance whether a nearby wall/stockpile/fence sits inside or
+// outside the counterweight/Winch 2's own swing envelope. Reuses
+// whatever calibration the outrigger sync already computed for this
+// model (calibrationCache, populated by computeCalibration() inside
+// applySync above) rather than requiring its own footprint/calibration/
+// baseLegs args - the slew centre and ground height don't depend on
+// which feature asked for them, and outrigger sync always runs first
+// (calcCAD() fires it on every tab load/recalc, before a person could
+// realistically reach the checkbox). If no calibration is cached yet
+// (sync genuinely hasn't run once for this model), the circles simply
+// don't draw rather than guessing a centre - the checkboxes will re-fire
+// this once calcCAD() runs.
+//
+// Circle radius is drawn directly in world metres (radius_mm / 1000),
+// NOT scaled through cal.xSlope/zSlope - those carry the mm-to-model-
+// space TRANSLATION mapping for the site plan's own approximate
+// footprint figures, but the model itself is dimensionally accurate CAD
+// (methodology.txt 10.77), so a real physical radius in mm converts to
+// this model's world units by the plain /1000 unit conversion, same as
+// every other physical dimension already drawn (pad sizes, etc).
+function applySlewCircles(modelKey, root, circles) {
+  clearSlewCircles();
+  if (!circles || !circles.length) return;
+  const cal = calibrationCache[modelKey];
+  if (!cal) return;
+
+  slewCircleGroup = new THREE.Group();
+  const center = siteToWorld(cal, 0, 0);
+  const SEGMENTS = 96;
+
+  circles.forEach((c) => {
+    const radiusM = c.radius / 1000;
+    const points = [];
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const theta = (i / SEGMENTS) * Math.PI * 2;
+      points.push(new THREE.Vector3(
+        center.x + radiusM * Math.cos(theta),
+        center.y + 0.03,
+        center.z + radiusM * Math.sin(theta)
+      ));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({ color: c.color || 0xff3b30 });
+    slewCircleGroup.add(new THREE.LineLoop(geo, mat));
+  });
+
+  scene.add(slewCircleGroup);
+}
+
+window.__carrier3dSetSlewCircles = function (modelKey, circles) {
+  pendingSlewCircles[modelKey] = circles;
+  if (currentModelKey !== modelKey || !scene) return;
+  const root = modelCache[modelKey];
+  if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
+  applySlewCircles(modelKey, root, circles);
 };
