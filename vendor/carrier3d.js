@@ -893,6 +893,19 @@ function addDimensionLine(group, p1, p2, color, labelText) {
   group.add(label);
 }
 
+// Plain reference connector - a thin, dashed, unlabelled line with no end
+// ticks, distinct on purpose from addDimensionLine's own solid+tick+label
+// styling so it doesn't read as a third measurement. Used only by the
+// ground layout marks below, to show which point on the centerline a
+// longitudinal figure is actually measured from without implying that
+// short stretch is itself a dimension a crew needs to go remeasure.
+function addWitnessLine(group, p1, p2, color) {
+  const mat = new THREE.LineDashedMaterial({ color, transparent: true, opacity: 0.45, dashSize: 0.12, gapSize: 0.08 });
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), mat);
+  line.computeLineDistances();
+  group.add(line);
+}
+
 // 360 slew clearance radius circles (index.html's Crane Layout sub-tab,
 // see SLEW_CLEARANCE_DATA) - draws a flat ring on the ground plane at
 // each requested radius, centred on the slew axis, so a person can see
@@ -1023,18 +1036,33 @@ window.__carrier3dSetLegDimensions = function (modelKey, legs, footprint, calibr
 // already resolved to site-plan mm by index.html's onGroundLayoutToggle(),
 // same convention siteToWorld expects everywhere else.
 //
-// Two dimension lines per leg, deliberately NOT one single line from the
-// slew center straight to the leg (that's what the diagonal toggle already
-// draws) and deliberately NOT one line covering the full lateral throw
-// either:
-//   1. Slew center -> station point on the centerline (stationYMm) -
-//      the longitudinal figure a crew reads directly off the OEM sheet.
-//   2. Carrier edge (edgeXMm) -> leg (legXMm), BOTH at the same
-//      stationYMm - the lateral figure a crew actually measures, starting
-//      from the carrier's own edge line (a physical reference they can
-//      find without knowing where the slew center is), not from the
-//      centerline. The short unmarked gap between the centerline and the
-//      edge point is deliberately left undrawn - it's just half the
+// The longitudinal ("fwd/back") line is drawn OFFSET to that leg's own
+// side - at X = legXMm, the leg's own lateral position, not X = 0 - rather
+// than straight down the centerline. Two people flagged the centerline
+// version in quick succession: the label sat directly under the carrier
+// body (unreadable, since the centerline runs straight through it) AND
+// all four legs' longitudinal lines stacked on top of each other on that
+// one shared line, so a right-side leg's own figure was indistinguishable
+// from a left-side one. Offsetting to each leg's own X fixes both at once
+// - matches real OEM drawings too, which run the vertical dimension chain
+// beside the plan view, not through it. Three pieces per leg, mirroring
+// the two-figure OEM convention plus one plain reference connector:
+//   1. A thin, dashed, UNLABELLED witness line from the slew centre
+//      (0, 0) out to (legXMm, 0) - point level with the slew centre, but
+//      already out at this leg's own lateral offset. Shows what the
+//      longitudinal figure is measured from without implying it's a
+//      distance to go remeasure itself.
+//   2. The longitudinal dimension line itself, (legXMm, 0) ->
+//      (legXMm, stationYMm) - which is to say, straight to the leg's own
+//      position, since legXMm/stationYMm already IS that leg's real
+//      site-plan coordinate. Clear of the carrier body the entire way,
+//      labelled with the figure a crew reads off the OEM sheet.
+//   3. The lateral dimension line, carrier edge (edgeXMm) -> leg
+//      (legXMm), same stationYMm - the figure a crew actually measures in
+//      the field, starting from the carrier's own edge line (a physical
+//      reference locatable without knowing where the slew centre is), not
+//      the centerline. The short unmarked gap between the centerline and
+//      the edge point is deliberately left undrawn - it's just half the
 //      carrier's own (known, fixed) width, not something to remeasure.
 function applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration) {
   clearGroundLayoutMarks();
@@ -1048,14 +1076,15 @@ function applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration) {
   const p0 = new THREE.Vector3(center.x, y, center.z);
 
   marks.forEach((mark) => {
-    const stationPos = siteToWorld(cal, 0, mark.stationYMm);
-    const pStation = new THREE.Vector3(stationPos.x, y, stationPos.z);
+    const refPos = siteToWorld(cal, mark.legXMm, 0);
+    const pRef = new THREE.Vector3(refPos.x, y, refPos.z);
     const edgePos = siteToWorld(cal, mark.edgeXMm, mark.stationYMm);
     const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
     const legPos = siteToWorld(cal, mark.legXMm, mark.stationYMm);
     const pLeg = new THREE.Vector3(legPos.x, y, legPos.z);
 
-    addDimensionLine(groundLayoutGroup, p0, pStation, mark.color, `${mark.label} fwd/back: ${mark.lonMm}mm`);
+    addWitnessLine(groundLayoutGroup, p0, pRef, mark.color);
+    addDimensionLine(groundLayoutGroup, pRef, pLeg, mark.color, `${mark.label} fwd/back: ${mark.lonMm}mm`);
     addDimensionLine(groundLayoutGroup, pEdge, pLeg, mark.color, `${mark.label} out from edge: ${mark.latMm}mm`);
   });
 
