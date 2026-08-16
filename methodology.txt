@@ -6378,4 +6378,40 @@ cranes get their own subsections as they're built.
   label fully clear of the carrier body and readable, dashed witness lines
   visible connecting back to the slew centre; 0 console errors.
 
+  UPDATE (same day): two smaller, unrelated requests landed together.
+  First, swapped the Crane Positioning sub-tab button order - Crane Layout
+  now sits on the left, Support Pad Placement on the right (was the other
+  way round) - a pure DOM reorder of the two <button> elements, default
+  landing tab (Support Pad Placement) unchanged.
+  Second, added a "Bog Mat Marking" card to Support Pad Placement - the
+  same inside-edge/outside-edge-from-the-crane concept the ground layout
+  marks toggle already uses on Crane Layout, but applied here to a pad's
+  own CURRENT (possibly shifted) position instead of the crane's fixed
+  baseline, since this is the execution tab. Person's own worked example:
+  a leg whose own edge-to-pad-centre distance is 4m, with a 2m-wide pad,
+  marks as inside edge (closer to the crane) at 4 - 2/2 = 3m out, outside
+  edge at 4 + 2/2 = 5m out - lets a crew square a mat up on bare ground
+  with just a tape and paint, without needing to first find the pad's own
+  centre point.
+  New renderMatMarking() function, called at the end of calcCAD() (so it
+  stays live across every shift/pad-toggle/pad-size change, same as every
+  other calcCAD()-driven result on this tab): for each leg with a pad
+  currently toggled on, edgeToCenterMm = abs(leg.x) - carrierWidthB/2
+  (leg.x is whatever position the rest of the tab is already showing for
+  that leg - baseX, or the shifted newX once a "must move" shift makes
+  that the real target - same value the solid "current" pad rectangle is
+  already drawn from), then inside/outside = that +/- half the pad's own
+  WIDTH (not length - Pad Width is the lateral dimension per its own
+  label, "runs inline with carrier length" is Pad Length instead). New
+  card (cad-mat-marking-card), hidden whenever no leg currently has a pad
+  toggled on, a 4-column table (Outrigger / To Pad Center / Inside Edge /
+  Outside Edge) matching the existing "All Four Legs" table's own style -
+  deliberately its own separate compact card rather than two more columns
+  bolted onto that existing table, which is already dense enough on a
+  narrow mobile viewport.
+  Verified via Playwright (LTM 1110): single-leg (C2) and all-four-legs
+  cases both render correct figures (C2: 2.89m to centre, 1.69m inside,
+  4.09m outside, matching abs(4312mm x) - 1425mm halfB = 2887mm exactly);
+  unchecking every pad toggle hides the card entirely; 0 console errors.
+
 ================================================================================
