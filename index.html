@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.21</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.22</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -1935,7 +1935,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 27;
+    const CARRIER3D_VERSION = 28;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -4559,6 +4559,43 @@
       "1100": { width: 3300, front: 4300,  rear: 4388 }
     };
 
+    // Ground-marking layout dimensions (OEM Dimensions-sheet sourced,
+    // methodology.txt 16.x "ground layout marks"): the figures a crew
+    // actually uses to lay a crane's footprint out on soil with paint and a
+    // tape, BEFORE the crane arrives - genuinely different from cadFleetData
+    // above (which gives each leg's "as the crow flies" diagonal from the
+    // slew center, exactly what's needed for support-pad placement once the
+    // crane is already parked). Ground marking instead needs each leg
+    // decomposed into two independently-measurable, right-angle components:
+    //   1. Longitudinal offset - distance along the carrier's own centerline
+    //      from the slew center to that leg's own "station" (read directly
+    //      off the OEM's vertical dimension-chain witness lines).
+    //   2. Lateral offset FROM THE CARRIER'S OWN EDGE (not centerline) -
+    //      derived as (pair's total support width - carrierWidthB) / 2,
+    //      i.e. how far the outrigger stroke extends beyond the parked
+    //      carrier's own side. Matches how a crew actually measures it in
+    //      the field: find the carrier edge line first (a physical
+    //      reference they can locate without knowing where the slew center
+    //      is), then measure outward from there - see methodology.txt for
+    //      the full worked example this was validated against.
+    // rearSpan/frontSpan = the OEM's own printed total span between that
+    // pair's two outriggers (fully extended/vario position); C1-C4 = that
+    // leg's own longitudinal offset in mm. Genuinely asymmetric left/right
+    // (not a mirrored pair) - confirmed against the real OEM drawings, not
+    // assumed. Cross-validated for all 7 cranes via Pythagoras against
+    // cadFleetData's own trusted r values (longitudinal^2 + (span/2)^2 ~=
+    // r^2) - within a few mm on most legs, worst case ~65mm (LRT 1100),
+    // still well within real-world ground-marking tolerance.
+    const GROUND_LAYOUT_DATA = {
+      '1110': { rearSpan: 8315, frontSpan: 7013, C1: 2859,   C2: 4982, C3: 4680, C4: 3235 },
+      '1130': { rearSpan: 7500, frontSpan: 7500, C1: 3059,   C2: 4987, C3: 4629, C4: 3441 },
+      '1160': { rearSpan: 8306, frontSpan: 8314, C1: 3366.5, C2: 5818, C3: 5442, C4: 3762 },
+      '1250': { rearSpan: 8294, frontSpan: 8294, C1: 3423,   C2: 5885, C3: 5521, C4: 3807 },
+      '1300': { rearSpan: 8532, frontSpan: 8532, C1: 3500,   C2: 5416, C3: 5022, C4: 3910 },
+      '1650': { rearSpan: 9578, frontSpan: 9578, C1: 4000.5, C2: 6530, C3: 6042, C4: 4528.5 },
+      '1100': { rearSpan: 7300, frontSpan: 7300, C1: 3923,   C2: 3554, C3: 3880, C4: 3597 }
+    };
+
     // Is point (x,y) under the crane's CURRENT (unshifted) chassis footprint?
     // front = negative Y in this convention, rear = positive Y.
     function clashesWithFootprint(x, y, fp) {
@@ -4766,9 +4803,14 @@
         <label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
           <input type="checkbox" id="carrier-3d-show-legs" onchange="onLegDimensionToggle()" style="width:auto; cursor:pointer;">
           Show outrigger distances (C1-C4, baseline position)
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
+          <input type="checkbox" id="carrier-3d-show-ground-layout" onchange="onGroundLayoutToggle()" style="width:auto; cursor:pointer;">
+          Show ground layout marks (paint-out dimensions)
         </label>`;
       onSlewCircleToggle();
       onLegDimensionToggle();
+      onGroundLayoutToggle();
     }
 
     // Outrigger distances (C1-C4, OEM-drawing style: slew centre to each
@@ -4801,6 +4843,57 @@
         };
       });
       window.__carrier3dSetLegDimensions(modelKey, legs, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+    }
+
+    // Colors reused from SLEW_CIRCLE_COLORS - purely cosmetic, no meaning
+    // shared with the slew circles or the C1-C4 baseline distances above,
+    // just keeps each leg visually distinct in a scene that can have all
+    // three toggles on at once.
+    const GROUND_LAYOUT_COLORS = { C1: '#ff3b30', C2: '#a855f7', C3: '#22c55e', C4: '#f97316' };
+
+    // Ground layout marks toggle: for each leg, draws the SAME two-segment,
+    // right-angle "paint it out on soil" dimension a crew actually uses
+    // (methodology.txt), genuinely different from the "Show outrigger
+    // distances" diagonal above. GROUND_LAYOUT_DATA gives each leg's
+    // longitudinal offset (along the carrier's own centerline, from the
+    // slew center) directly; the lateral component is derived here as
+    // (pair's total support width / 2) for the leg's own full site-plan X
+    // position, and separately as ((span - carrierWidthB) / 2) for the
+    // "from carrier edge" figure a crew actually measures in the field -
+    // see GROUND_LAYOUT_DATA's own comment for why edge, not centerline, is
+    // the practical reference. carrier3d.js draws the longitudinal segment
+    // from the slew center to the leg's own station point on the
+    // centerline, then a SEPARATE segment from the carrier's edge (at that
+    // same station) out to the leg - deliberately not one single line from
+    // the slew center, so the two numbers a crew actually uses (forward/
+    // back, then out from the edge) are the two labelled segments, not some
+    // third combined figure they'd have to subtract out themselves.
+    function onGroundLayoutToggle() {
+      const modelKey = document.getElementById('sc-crane').value;
+      const checkEl = document.getElementById('carrier-3d-show-ground-layout');
+      const show = checkEl ? checkEl.checked : false;
+      if (!window.__carrier3dSetGroundLayoutMarks) return;
+      if (!show) { window.__carrier3dSetGroundLayoutMarks(modelKey, []); return; }
+      const data = GROUND_LAYOUT_DATA[modelKey];
+      const fp = FOOTPRINTS[modelKey];
+      if (!data || !fp) return;
+      const halfB = fp.width / 2;
+      const legSpecs = [
+        { label: 'C1', side: 1,  front: false, lon: data.C1, span: data.rearSpan },
+        { label: 'C2', side: 1,  front: true,  lon: data.C2, span: data.frontSpan },
+        { label: 'C3', side: -1, front: true,  lon: data.C3, span: data.frontSpan },
+        { label: 'C4', side: -1, front: false, lon: data.C4, span: data.rearSpan }
+      ];
+      const marks = legSpecs.map(leg => ({
+        label: leg.label,
+        color: GROUND_LAYOUT_COLORS[leg.label],
+        stationYMm: leg.front ? -leg.lon : leg.lon, // site convention: front = negative Y
+        edgeXMm: leg.side * halfB,
+        legXMm: leg.side * (leg.span / 2),
+        lonMm: leg.lon,
+        latMm: Math.round(leg.span / 2 - halfB)
+      }));
+      window.__carrier3dSetGroundLayoutMarks(modelKey, marks, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
     }
 
     function onSlewCircleToggle() {
@@ -4885,6 +4978,8 @@
       const activate = () => {
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap-layout', 'carrier-3d-label-layout');
         onSlewCircleToggle();
+        onLegDimensionToggle();
+        onGroundLayoutToggle();
       };
       if (window.__carrier3dActivate) activate();
       else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
