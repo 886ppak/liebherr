@@ -6465,4 +6465,54 @@ cranes get their own subsections as they're built.
   shift correctly moves only the two required legs by the full 3m each,
   leaving the other two unchanged; 0 console errors.
 
+  UPDATE (same day): two more requests landed together - person asked
+  whether an earlier message about the Visual Site Plan card had come
+  through (it hadn't been actioned yet), plus a new request for a 3D
+  toggle showing the bog mat inside/outside edge marks.
+  First: Visual Site Plan (the 2D canvas card on Support Pad Placement) is
+  now hidden by default behind a "Show Visual Site Plan" button, same
+  pattern as the 3D Carrier Preview card right below it - keeps the panel
+  shorter to scroll past when the canvas isn't wanted. New toggleSitePlan()
+  wraps the toolbar/canvas/legend in a single #cad-siteplan-wrap, toggling
+  its display and re-running calcCAD() on reveal - needed because
+  drawCADCanvas() sizes itself off canvas.parentElement.clientWidth/Height,
+  which reads 0 the whole time the wrap is display:none, so a plain
+  re-show without a fresh draw would leave the canvas blank until the next
+  unrelated input change.
+  Second: added a "Show mat edge marks" checkbox to Support Pad
+  Placement's own 3D toolbar - the 3D counterpart of the Bog Mat Marking
+  table, drawing both the inside-edge and outside-edge dimension lines
+  directly on the model for every leg that currently has a pad toggled
+  on. New computeMatMarkingData() helper factored out of renderMatMarking()
+  so the table and the new 3D toggle read from exactly one shared
+  calculation - can't quietly drift apart from each other. Wired through
+  the same fifth pending/context map pair pattern as every other toggle on
+  this shared canvas (pendingMatEdgeMarks/pendingMatEdgeContext,
+  matEdgeGroup, clearMatEdgeMarks() - included in clearScene(), sceneBox(),
+  both branches of __carrier3dActivate()), plus a self-heal call in
+  activateCarrier3D() alongside syncCarrier3DOutriggers() so switching
+  away to Crane Layout and back doesn't leave the marks blank even though
+  the checkbox still shows checked.
+  First attempt drew both lines starting at the SAME point (the carrier's
+  own edge) running out along the exact same ray - inside line fully
+  contained within outside line's own span - with each label placed at its
+  own line's midpoint, same as every other dimension line in this app.
+  Looked right in isolation but wasn't: screenshotted and found the two
+  labels overlapping into unreadable stacked text at any reasonable zoom,
+  since the label sprites are wide relative to how close together their
+  two midpoints land when collinear. Fixed by offsetting the INSIDE line
+  onto its own separate parallel line (400mm toward the vehicle's own
+  centre, sign-flipped so it's genuinely "inward" for both front and rear
+  legs) rather than collinear with the outside line - matches how the real
+  OEM dimension chains already read throughout this app: nested
+  measurements drawn as separate parallel lines, not chained end to end
+  along one. A thin dashed addWitnessLine() connects the true edge point
+  to where the offset inside line begins, same visual language as the
+  ground layout marks' own witness connector.
+  Verified via Playwright (LTM 1110, all four pads on): Visual Site Plan
+  starts hidden, canvas is correctly sized (non-zero) once shown; 3D mat
+  edge marks render for all four legs with both labels per leg fully
+  legible and non-overlapping, figures matching the 2D table exactly
+  (C3: 3282mm outside / 882mm inside); 0 console errors throughout.
+
 ================================================================================

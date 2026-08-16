@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.26</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.27</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -471,32 +471,35 @@
               Compare old/new position
             </label>
           </div>
-          <div class="toolbar-row">
-            <button class="toolbar-btn" onclick="adjustZoom(0.8)">−</button>
-            <span id="zoomReadout" class="toolbar-readout">100%</span>
-            <button class="toolbar-btn" onclick="adjustZoom(1.25)">+</button>
-            <div id="compassDial" class="compass-dial">
-              <div id="compassNeedle" class="compass-needle"></div>
-              <div class="compass-center-dot"></div>
+          <button class="toolbar-btn" id="cad-siteplan-toggle-btn" style="width:100%;" onclick="toggleSitePlan()">Show Visual Site Plan</button>
+          <div id="cad-siteplan-wrap" style="display:none;">
+            <div class="toolbar-row" style="margin-top:10px;">
+              <button class="toolbar-btn" onclick="adjustZoom(0.8)">−</button>
+              <span id="zoomReadout" class="toolbar-readout">100%</span>
+              <button class="toolbar-btn" onclick="adjustZoom(1.25)">+</button>
+              <div id="compassDial" class="compass-dial">
+                <div id="compassNeedle" class="compass-needle"></div>
+                <div class="compass-center-dot"></div>
+              </div>
+              <span id="rotationReadout" class="toolbar-readout">0°</span>
+              <button class="toolbar-btn" onclick="snapRotate(-90)">⟲</button>
+              <button class="toolbar-btn" onclick="snapRotate(90)">⟳</button>
+              <button class="toolbar-btn" onclick="resetRotation()">Reset</button>
+              <button class="toolbar-btn" onclick="fitView()">Fit</button>
             </div>
-            <span id="rotationReadout" class="toolbar-readout">0°</span>
-            <button class="toolbar-btn" onclick="snapRotate(-90)">⟲</button>
-            <button class="toolbar-btn" onclick="snapRotate(90)">⟳</button>
-            <button class="toolbar-btn" onclick="resetRotation()">Reset</button>
-            <button class="toolbar-btn" onclick="fitView()">Fit</button>
-          </div>
-          <div class="canvas-container">
-            <canvas id="siteMap"></canvas>
-          </div>
-          <div class="legend-row">
-            <span class="legend-item"><span class="legend-swatch" style="background:#10b981;"></span>must move</span>
-            <span class="legend-item"><span class="legend-swatch" style="background:#f59e0b;"></span>optional</span>
-            <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#38bdf8;"></span>target</span>
-            <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#ef4444;"></span>clash</span>
-            <span class="legend-item"><span class="legend-swatch-dashed"></span>footprint</span>
-            <span class="legend-item"><span class="legend-swatch-arrow"></span>front</span>
-            <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(229,169,0,0.25); border:1.5px solid #e5a900;"></span>pad (current)</span>
-            <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(56,189,248,0.15); border:1.5px dashed #38bdf8;"></span>pad (if moved)</span>
+            <div class="canvas-container">
+              <canvas id="siteMap"></canvas>
+            </div>
+            <div class="legend-row">
+              <span class="legend-item"><span class="legend-swatch" style="background:#10b981;"></span>must move</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#f59e0b;"></span>optional</span>
+              <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#38bdf8;"></span>target</span>
+              <span class="legend-item"><span class="legend-swatch-ring" style="border-color:#ef4444;"></span>clash</span>
+              <span class="legend-item"><span class="legend-swatch-dashed"></span>footprint</span>
+              <span class="legend-item"><span class="legend-swatch-arrow"></span>front</span>
+              <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(229,169,0,0.25); border:1.5px solid #e5a900;"></span>pad (current)</span>
+              <span class="legend-item"><span style="width:12px; height:9px; display:inline-block; background:rgba(56,189,248,0.15); border:1.5px dashed #38bdf8;"></span>pad (if moved)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -520,6 +523,9 @@
           </label>
           <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:0.75rem; text-transform:none;">
             <input type="checkbox" id="carrier-3d-pad-4-toggle" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> C4
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none; margin-left:8px;">
+            <input type="checkbox" id="carrier-3d-show-mat-edges" onchange="onMatEdgeToggle()" style="width:auto; cursor:pointer;"> Show mat edge marks
           </label>
         </div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
@@ -1951,7 +1957,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 29;
+    const CARRIER3D_VERSION = 30;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -4969,6 +4975,7 @@
       const activate = () => {
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap', 'carrier-3d-label');
         syncCarrier3DOutriggers();
+        onMatEdgeToggle();
       };
       if (window.__carrier3dActivate) activate();
       else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
@@ -5180,26 +5187,63 @@
     // was making a mirrored pair (e.g. C2/C3, identical physical
     // outrigger span) read as different distances from the crane's edge,
     // which isn't physically real. See accurateLateralX() in calcCAD().
+    // Shared by renderMatMarking()'s table below and onMatEdgeToggle()'s 3D
+    // version of the same marks - one computation, two presentations, so
+    // they can never quietly drift apart from each other.
+    function computeMatMarkingData() {
+      if (!lastMapped || !lastFp) return [];
+      const halfB = lastFp.width / 2;
+      return lastMapped.filter(leg => leg.pad).map(leg => {
+        const side = leg.accurateX >= 0 ? 1 : -1;
+        const edgeToCenterMm = Math.abs(leg.accurateX) - halfB;
+        const halfPadMm = leg.pad.width / 2;
+        return {
+          id: leg.id, side, y: leg.y, edgeXMm: side * halfB,
+          edgeToCenterMm, insideMm: edgeToCenterMm - halfPadMm, outsideMm: edgeToCenterMm + halfPadMm
+        };
+      });
+    }
+
     function renderMatMarking() {
       const card = document.getElementById('cad-mat-marking-card');
       const tbody = document.getElementById('cad-mat-marking-results');
-      if (!lastMapped || !lastFp) { card.style.display = 'none'; tbody.innerHTML = ''; return; }
-      const halfB = lastFp.width / 2;
-      const rows = lastMapped.filter(leg => leg.pad).map(leg => {
-        const edgeToCenterMm = Math.abs(leg.accurateX) - halfB;
-        const halfPadMm = leg.pad.width / 2;
-        const insideMm = edgeToCenterMm - halfPadMm;
-        const outsideMm = edgeToCenterMm + halfPadMm;
-        return `
+      const rows = computeMatMarkingData().map(m => `
           <tr>
-            <td><b>C${leg.id}</b></td>
-            <td>${(edgeToCenterMm / 1000).toFixed(2)} m</td>
-            <td>${(insideMm / 1000).toFixed(2)} m</td>
-            <td>${(outsideMm / 1000).toFixed(2)} m</td>
-          </tr>`;
-      }).join('');
+            <td><b>C${m.id}</b></td>
+            <td>${(m.edgeToCenterMm / 1000).toFixed(2)} m</td>
+            <td>${(m.insideMm / 1000).toFixed(2)} m</td>
+            <td>${(m.outsideMm / 1000).toFixed(2)} m</td>
+          </tr>`).join('');
       card.style.display = rows ? '' : 'none';
       tbody.innerHTML = rows;
+    }
+
+    // 3D counterpart of the Bog Mat Marking table above - two dimension
+    // lines per leg, both starting at the crane's own edge (not the leg's
+    // centre, and not the centerline), same reference point a crew
+    // actually measures from in the field: one out to the inside edge,
+    // one out to the outside edge. The two lines are collinear (outside is
+    // just further along the same ray than inside), so on screen they read
+    // as a single line with two labels at different points along it,
+    // matching how the OEM dimension chains already read elsewhere in this
+    // app - not two separate, disconnected measurements.
+    function onMatEdgeToggle() {
+      const checkEl = document.getElementById('carrier-3d-show-mat-edges');
+      const show = checkEl ? checkEl.checked : false;
+      const modelKey = document.getElementById('cad-crane').value;
+      if (!window.__carrier3dSetMatEdgeMarks) return;
+      if (!show) { window.__carrier3dSetMatEdgeMarks(modelKey, []); return; }
+      const marks = computeMatMarkingData().map(m => ({
+        label: `C${m.id}`,
+        color: GROUND_LAYOUT_COLORS[`C${m.id}`] || '#f8fafc',
+        edgeXMm: m.edgeXMm,
+        insideXMm: m.side * (Math.abs(m.edgeXMm) + m.insideMm),
+        outsideXMm: m.side * (Math.abs(m.edgeXMm) + m.outsideMm),
+        yMm: m.y,
+        insideMm: Math.round(m.insideMm),
+        outsideMm: Math.round(m.outsideMm)
+      }));
+      window.__carrier3dSetMatEdgeMarks(modelKey, marks, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
     }
 
     function drawCADCanvas(shiftX, shiftY, outriggers, fp) {
@@ -5402,6 +5446,22 @@
       document.getElementById('cad-shiftx').value = 0;
       document.getElementById('cad-shifty').value = 0;
       calcCAD();
+    }
+
+    // Hidden by default, same "Show X" pattern as the 3D Carrier Preview
+    // card right below it - the canvas isn't the first thing a person
+    // needs on this tab every time, and this keeps the panel shorter to
+    // scroll past when it's not wanted. drawCADCanvas() sizes itself off
+    // canvas.parentElement.clientWidth/Height, which reads 0 while the
+    // wrap is display:none, so a plain re-show wouldn't actually draw
+    // anything until the next unrelated input change - re-running calcCAD()
+    // here forces a fresh, correctly-sized draw the moment it's revealed.
+    let sitePlanActive = false;
+    function toggleSitePlan() {
+      sitePlanActive = !sitePlanActive;
+      document.getElementById('cad-siteplan-toggle-btn').textContent = sitePlanActive ? 'Hide Visual Site Plan' : 'Show Visual Site Plan';
+      document.getElementById('cad-siteplan-wrap').style.display = sitePlanActive ? '' : 'none';
+      if (sitePlanActive) calcCAD();
     }
 
     function updateZoomReadout() {

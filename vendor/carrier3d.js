@@ -41,6 +41,7 @@ let outriggerGroup = null;
 let slewCircleGroup = null;
 let legDimensionGroup = null;
 let groundLayoutGroup = null;
+let matEdgeGroup = null;
 // Which DOM wrap/label the single shared canvas is currently parented
 // into - there are two possible mount points now (Support Pad Placement's
 // own 3D card, and Crane Layout's own 3D card), never both showing at
@@ -89,6 +90,13 @@ const pendingLegDimensionContext = {};
 // though both are Crane Layout-only and both key off the same crane.
 const pendingGroundLayoutMarks = {};
 const pendingGroundLayoutContext = {};
+// Same replay-once-loaded pattern again, for Support Pad Placement's own
+// mat edge marks toggle (see __carrier3dSetMatEdgeMarks below) - a fifth
+// independent toggle, own pair of maps, same reasoning as every other one
+// above: it's flipped independently of everything else drawn on this
+// shared canvas.
+const pendingMatEdgeMarks = {};
+const pendingMatEdgeContext = {};
 
 // Creates the renderer on first-ever call; every call after that just
 // re-parents the existing canvas into whichever wrapId was requested (a
@@ -177,6 +185,7 @@ function clearScene() {
   slewCircleGroup = null;
   legDimensionGroup = null;
   groundLayoutGroup = null;
+  matEdgeGroup = null;
 }
 
 function clearOutriggers() {
@@ -205,6 +214,13 @@ function clearGroundLayoutMarks() {
   scene.remove(groundLayoutGroup);
   disposeGroup(groundLayoutGroup);
   groundLayoutGroup = null;
+}
+
+function clearMatEdgeMarks() {
+  if (!matEdgeGroup) return;
+  scene.remove(matEdgeGroup);
+  disposeGroup(matEdgeGroup);
+  matEdgeGroup = null;
 }
 
 function loadGLTFAsync(url) {
@@ -249,6 +265,7 @@ function sceneBox() {
   if (slewCircleGroup) box.union(new THREE.Box3().setFromObject(slewCircleGroup));
   if (legDimensionGroup) box.union(new THREE.Box3().setFromObject(legDimensionGroup));
   if (groundLayoutGroup) box.union(new THREE.Box3().setFromObject(groundLayoutGroup));
+  if (matEdgeGroup) box.union(new THREE.Box3().setFromObject(matEdgeGroup));
   return box;
 }
 
@@ -362,6 +379,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     clearSlewCircles();
     clearLegDimensions();
     clearGroundLayoutMarks();
+    clearMatEdgeMarks();
   }
 
   const cached = modelCache[modelKey];
@@ -382,6 +400,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       const ctx = pendingGroundLayoutContext[modelKey] || {};
       applyGroundLayoutMarks(modelKey, cached, pendingGroundLayoutMarks[modelKey], ctx.footprint, ctx.calibration);
     }
+    if (pendingMatEdgeMarks[modelKey]) {
+      const ctx = pendingMatEdgeContext[modelKey] || {};
+      applyMatEdgeMarks(modelKey, cached, pendingMatEdgeMarks[modelKey], ctx.footprint, ctx.calibration);
+    }
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
@@ -399,6 +421,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingGroundLayoutMarks[modelKey]) {
         const ctx = pendingGroundLayoutContext[modelKey] || {};
         applyGroundLayoutMarks(modelKey, root, pendingGroundLayoutMarks[modelKey], ctx.footprint, ctx.calibration);
+      }
+      if (pendingMatEdgeMarks[modelKey]) {
+        const ctx = pendingMatEdgeContext[modelKey] || {};
+        applyMatEdgeMarks(modelKey, root, pendingMatEdgeMarks[modelKey], ctx.footprint, ctx.calibration);
       }
     });
   }
@@ -1098,4 +1124,71 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
   applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration);
+};
+
+// Support Pad Placement's "mat edge marks" toggle - the 3D counterpart of
+// the Bog Mat Marking table (index.html), for a leg that currently has a
+// pad toggled on. marks is an array of {label, color, edgeXMm, insideXMm,
+// outsideXMm, yMm, insideMm, outsideMm} - all x already resolved to
+// site-plan mm by index.html's onMatEdgeToggle() (sharing the exact same
+// computeMatMarkingData() the 2D table itself reads from, so the two can
+// never drift apart).
+//
+// Two dimension lines per leg, both starting at the SAME point (the
+// carrier's own edge, at that leg's own station) rather than at the leg's
+// centre or the centerline - mirrors how a crew actually measures it in
+// the field, two separate tape pulls from one reference point. Since
+// insideXMm sits between edgeXMm and outsideXMm on the same ray, the two
+// lines are collinear - they read on screen as a single line with two
+// labels at different points along it (the inside figure closer to the
+// carrier, the outside figure further out), not as two disconnected
+// segments.
+function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
+  clearMatEdgeMarks();
+  if (!marks || !marks.length) return;
+  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
+  if (!cal) return;
+
+  matEdgeGroup = new THREE.Group();
+  const center = siteToWorld(cal, 0, 0);
+  const y = center.y + 0.04;
+
+  // insideYMm is offset off the pad's own true Y (mark.yMm, which the
+  // OUTSIDE line still uses unchanged) by a fixed 400mm toward the
+  // vehicle's own centre - otherwise the inside and outside lines are
+  // perfectly collinear (inside is fully contained within outside's own
+  // span), and their labels - each sitting at its own line's midpoint -
+  // land close enough together at any reasonable zoom to overlap into
+  // unreadable stacked text. Offsetting inside onto its own PARALLEL line
+  // instead fixes that at any camera angle, including the near-top-down
+  // Fit View this is mostly viewed from, and matches how the real OEM
+  // dimension chains already read elsewhere in this app - nested
+  // measurements drawn as separate parallel lines, not chained along one.
+  const OFFSET_MM = 400;
+  marks.forEach((mark) => {
+    const insideYMm = mark.yMm - Math.sign(mark.yMm || 1) * OFFSET_MM;
+    const edgePos = siteToWorld(cal, mark.edgeXMm, mark.yMm);
+    const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
+    const insideEdgePos = siteToWorld(cal, mark.edgeXMm, insideYMm);
+    const pInsideEdge = new THREE.Vector3(insideEdgePos.x, y, insideEdgePos.z);
+    const insidePos = siteToWorld(cal, mark.insideXMm, insideYMm);
+    const pInside = new THREE.Vector3(insidePos.x, y, insidePos.z);
+    const outsidePos = siteToWorld(cal, mark.outsideXMm, mark.yMm);
+    const pOutside = new THREE.Vector3(outsidePos.x, y, outsidePos.z);
+
+    addWitnessLine(matEdgeGroup, pEdge, pInsideEdge, mark.color);
+    addDimensionLine(matEdgeGroup, pInsideEdge, pInside, mark.color, `${mark.label} inside: ${mark.insideMm}mm`);
+    addDimensionLine(matEdgeGroup, pEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`);
+  });
+
+  scene.add(matEdgeGroup);
+}
+
+window.__carrier3dSetMatEdgeMarks = function (modelKey, marks, footprint, calibration) {
+  pendingMatEdgeMarks[modelKey] = marks;
+  pendingMatEdgeContext[modelKey] = { footprint, calibration };
+  if (currentModelKey !== modelKey || !scene) return;
+  const root = modelCache[modelKey];
+  if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
+  applyMatEdgeMarks(modelKey, root, marks, footprint, calibration);
 };
