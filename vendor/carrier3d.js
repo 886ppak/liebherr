@@ -1150,20 +1150,19 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
 // computeMatMarkingData() the 2D table itself reads from, so the two can
 // never drift apart).
 //
-// Two dimension lines per leg, both starting at the SAME point (the
-// carrier's own edge, at that leg's own station) rather than at the leg's
-// centre or the centerline - mirrors how a crew actually measures it in
-// the field, two separate tape pulls from one reference point. Since
-// insideXMm sits between edgeXMm and outsideXMm on the same ray, the two
-// lines are collinear - they read on screen as a single line with two
-// labels at different points along it, matching how the OEM dimension
-// chains already read elsewhere in this app - not two separate,
-// disconnected segments. The LINES stay true to the actual measured span
-// (crane edge to whichever edge they're naming) - only each label's own
-// position along its line moves (see labelT below), never the line
-// itself. Person's own correction after an earlier attempt moved the line
-// geometry instead: "I want the txt moved not the line showing what the
-// txt represents".
+// Two dimension lines per leg, each its own full, honest span from the
+// carrier's own edge out to the edge it's naming (inside or outside) -
+// same reference point a crew actually measures from in the field, two
+// separate tape pulls. Person's own OEM-style reference photo (an
+// outrigger dimension sheet: a short "2039mm" line down the LEFT side of
+// a support square to its near corner, a long "4439mm" line down the
+// RIGHT side to its far corner - separated by sitting at the square's own
+// two opposite ends, not by any label trick): rather than both lines
+// running through the same station and needing their LABEL positions
+// nudged apart, each one is offset onto its own parallel line at one of
+// the mat's own two ends - inside toward the near end, outside toward the
+// far end - so the lines themselves read as cleanly separate, same as the
+// reference photo, with a real gap between the two labels for free.
 function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
   clearMatEdgeMarks();
   if (!marks || !marks.length) return;
@@ -1174,45 +1173,26 @@ function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
   const center = siteToWorld(cal, 0, 0);
   const y = center.y + 0.04;
 
-  // insideYMm is offset off the pad's own true Y (mark.yMm, which the
-  // OUTSIDE line still uses unchanged) by a fixed 400mm toward the
-  // vehicle's own centre - otherwise the inside and outside lines are
-  // perfectly collinear (inside is fully contained within outside's own
-  // span), and their labels would land close enough together at any
-  // reasonable zoom to overlap into unreadable stacked text. Offsetting
-  // inside onto its own PARALLEL line instead fixes that at any camera
-  // angle, including the near-top-down Fit View this is mostly viewed
-  // from, and matches how the real OEM dimension chains already read
-  // elsewhere in this app - nested measurements drawn as separate parallel
-  // lines, not chained along one.
-  const OFFSET_MM = 400;
   marks.forEach((mark) => {
-    const insideYMm = mark.yMm - Math.sign(mark.yMm || 1) * OFFSET_MM;
-    const edgePos = siteToWorld(cal, mark.edgeXMm, mark.yMm);
-    const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
+    const sign = Math.sign(mark.yMm || 1);
+    // 0.4 rather than 0.5 (true half-length) leaves a small margin off the
+    // mat's own front/rear edge, so each dimension line's end tick sits
+    // just inside the mat's own corner rather than flush on top of it.
+    const endOffsetMm = (mark.padLengthMm || 0) * 0.4;
+    const insideYMm = mark.yMm - sign * endOffsetMm;
+    const outsideYMm = mark.yMm + sign * endOffsetMm;
+
     const insideEdgePos = siteToWorld(cal, mark.edgeXMm, insideYMm);
     const pInsideEdge = new THREE.Vector3(insideEdgePos.x, y, insideEdgePos.z);
     const insidePos = siteToWorld(cal, mark.insideXMm, insideYMm);
     const pInside = new THREE.Vector3(insidePos.x, y, insidePos.z);
-    const outsidePos = siteToWorld(cal, mark.outsideXMm, mark.yMm);
+    const outsideEdgePos = siteToWorld(cal, mark.edgeXMm, outsideYMm);
+    const pOutsideEdge = new THREE.Vector3(outsideEdgePos.x, y, outsideEdgePos.z);
+    const outsidePos = siteToWorld(cal, mark.outsideXMm, outsideYMm);
     const pOutside = new THREE.Vector3(outsidePos.x, y, outsidePos.z);
 
-    addWitnessLine(matEdgeGroup, pEdge, pInsideEdge, mark.color);
     addDimensionLine(matEdgeGroup, pInsideEdge, pInside, mark.color, `${mark.label} inside: ${mark.insideMm}mm`);
-
-    // Outside's own LINE runs the full, actually-measured span (crane edge
-    // to the mat's outer edge) exactly as it always has - that span IS the
-    // 3525mm-type figure being labelled, so the line itself has to stay
-    // put to still honestly represent it. Only the TEXT LABEL moves: it
-    // defaults to the line's own geometric midpoint, which falls well
-    // short of the mat (the mat's own footprint only starts at insideXMm,
-    // partway along), so it's biased instead to the midpoint of the MAT's
-    // own footprint (between insideXMm and outsideXMm) - reads sitting on
-    // the mat's outer half, not stacked with "inside" back in the gap
-    // between the crane and the mat.
-    const matMidXMm = (mark.insideXMm + mark.outsideXMm) / 2;
-    const outsideLabelT = (matMidXMm - mark.edgeXMm) / (mark.outsideXMm - mark.edgeXMm);
-    addDimensionLine(matEdgeGroup, pEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`, outsideLabelT);
+    addDimensionLine(matEdgeGroup, pOutsideEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`);
   });
 
   scene.add(matEdgeGroup);
