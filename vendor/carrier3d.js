@@ -797,7 +797,13 @@ function applySync(modelKey, root, args) {
     padMesh.position.set(pos.x, pos.y + 0.04, pos.z);
     outriggerGroup.add(padMesh);
 
-    const padWire = new THREE.LineSegments(new THREE.EdgesGeometry(padGeo), new THREE.LineDashedMaterial({ color: PAD_CURRENT_COLOR, dashSize: 0.15, gapSize: 0.1 }));
+    // The dashed outline itself defaulted to fully opaque (no transparent/
+    // opacity set), so it was competing with - sometimes outweighing - the
+    // mat edge dimension lines for visual attention, even with the fill
+    // ghosted down. Faded to 0.45 so it still reads as "here's the mat's
+    // own boundary" without out-competing the dimension lines, which stay
+    // fully opaque and are meant to be the dominant thing on screen.
+    const padWire = new THREE.LineSegments(new THREE.EdgesGeometry(padGeo), new THREE.LineDashedMaterial({ color: PAD_CURRENT_COLOR, dashSize: 0.15, gapSize: 0.1, transparent: true, opacity: 0.45 }));
     padWire.position.copy(padMesh.position);
     padWire.computeLineDistances();
     outriggerGroup.add(padWire);
