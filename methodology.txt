@@ -6647,4 +6647,55 @@ cranes get their own subsections as they're built.
   a 360px-wide viewport - QR button, refresh button and the wordmark all
   sit clear of each other with no overlap; 0 console errors throughout.
 
+18. NAV REORDER + NEW CHAIN SHORTENING TAB
+  Two requests: move Crane Positioning to sit between Load Chart Finder
+  and Driving with Equipment in Place (was between Minimum Hook Block
+  Weights and Rope Retentioning); add a brand new tab, Chain Shortening,
+  between Minimum Hook Block Weights and Rope Retentioning.
+  Nav order is purely a DOM order of the .nav-tabs <button> elements -
+  switchTab() shows/hides tab-content divs by id regardless of button
+  order, and confirmed the tab-content divs themselves were ALREADY in a
+  different physical order than the nav buttons even before this change
+  (rope-tab's own <div> sits earlier in the file than hook-tab's, despite
+  hook-tab appearing first in the nav) - so reordering the buttons alone
+  was sufficient, no risk of breaking anything by leaving the content
+  divs' own file order untouched.
+  Chain Shortening: person provided their own reference spreadsheet
+  (Chain_Length_Calculator.xlsx) to match exactly. Read it directly via
+  openpyxl (both the formulas themselves and their computed example
+  values, to cross-check): a lookup table of diameter (mm) -> pitch per
+  link (mm) - 8->24, 10->30, 13->39, 16->48, 19->57, 22->66, 26->78 (every
+  row happens to be exactly 3x the diameter for this chain range, but kept
+  as an explicit table matching the source sheet rather than assumed as a
+  general multiplier, in case that stops holding for a diameter added
+  later) - plus the shortening formula itself: Amount to Shorten =
+  Current - Desired; Links to Remove = ROUND(Amount to Shorten / Pitch per
+  Link, 0); Actual Finished Length = Current - (Links to Remove x Pitch);
+  Difference from Target = Actual Finished Length - Desired. The rounding
+  step means a chain often can't land exactly on the requested desired
+  length (can't remove a fractional link) - Difference from Target is
+  surfaced directly in the result table rather than hidden, so a person
+  isn't surprised the finished chain is a few mm off what they typed in.
+  Person's own two example phrasings ("I need to remove X amount, how
+  many links" and "I have an 8m chain, I need it to be 5.6m, how much to
+  remove") both reduce to the exact same current+desired -> links flow the
+  reference sheet already implements, so built the one mode that matches
+  the sheet exactly rather than two separate input paths.
+  New CHAIN_PITCH_TABLE constant + calcChainShortening()/initChainTab()
+  functions, in the "TAB 2B" spot in the JS (mirroring the "TAB 3B: CRANE
+  SETUP" naming precedent already used for the earlier Crane Layout
+  sub-tab, since this is also a small satellite feature bolted on beside
+  an existing numbered tab rather than a completely new "TAB 8"), wired
+  into the page's own init block alongside the other tabs' startup calc
+  calls.
+  Verified via Playwright: nav renders in the exact requested order
+  (Reeving Plans, CWT Combinations, Load Chart Finder, Crane Positioning,
+  Driving with Equipment in Place, Minimum Hook Block Weights, Chain
+  Shortening, Rope Retentioning); diameter dropdown lists all 7 sizes;
+  default inputs (8mm, 6000mm, 5500mm) reproduce the reference sheet's own
+  worked example exactly (21 links, 5496mm actual, -4mm difference); the
+  person's own 8m->5.6m example at 8mm gives a clean 100 links / 5600mm
+  exact / 0mm difference; a full click-through of all 8 tabs afterward
+  came back with 0 console errors throughout.
+
 ================================================================================
