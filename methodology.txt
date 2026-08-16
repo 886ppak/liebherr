@@ -6414,4 +6414,17 @@ cranes get their own subsections as they're built.
   4.09m outside, matching abs(4312mm x) - 1425mm halfB = 2887mm exactly);
   unchecking every pad toggle hides the card entirely; 0 console errors.
 
+  UPDATE (same day): Crane Layout is now the sub-tab that opens by default
+  when landing on Crane Positioning (was Support Pad Placement). Swapped
+  which button carries the "active" class and which panel's inline style
+  starts as display:none (cad-panel-layout now visible by default,
+  cad-panel-pads now display:none by default) - switchTab()'s own cad-tab
+  handling already checked cad-subtab-layout's own "active" class to
+  decide whether to lazy-init the Crane Layout sub-tab's crane selector,
+  so no logic changes were needed there, just the two static defaults.
+  Verified via Playwright: landing on Crane Positioning now shows Crane
+  Layout's panel immediately (pads panel display:none, layout panel
+  unset/visible), sc-crane already populated with all 7 cranes; 0 console
+  errors.
+
 ================================================================================

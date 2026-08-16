@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.24</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.25</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -407,11 +407,11 @@
     <!-- ================= TAB 3: CRANE POSITIONING ================= -->
     <div id="cad-tab" class="tab-content">
       <div class="mode-toggle" id="cad-subtab-toggle" style="margin-bottom:14px;">
-        <button class="mode-btn" id="cad-subtab-layout" onclick="setCadSubTab('layout')">Crane Layout</button>
-        <button class="mode-btn active" id="cad-subtab-pads" onclick="setCadSubTab('pads')">Support Pad Placement</button>
+        <button class="mode-btn active" id="cad-subtab-layout" onclick="setCadSubTab('layout')">Crane Layout</button>
+        <button class="mode-btn" id="cad-subtab-pads" onclick="setCadSubTab('pads')">Support Pad Placement</button>
       </div>
 
-      <div id="cad-panel-pads">
+      <div id="cad-panel-pads" style="display:none;">
       <div class="grid">
         <div class="card">
           <div class="card-title">Crane Selection &amp; Shift</div>
@@ -565,7 +565,7 @@
       </div>
       <!-- /cad-panel-pads -->
 
-      <div id="cad-panel-layout" style="display:none;">
+      <div id="cad-panel-layout">
       <div class="card">
         <div class="card-title">Crane &amp; Configuration</div>
         <div class="form-group">
