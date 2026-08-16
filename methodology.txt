@@ -5802,4 +5802,32 @@ cranes get their own subsections as they're built.
   was completely unaffected (separate state, separate cache) with a
   full regression sweep across all seven cranes - 0 console errors.
 
+15.11 Driving w/ Equipment: relabeled the duplicate-row "Option A"/
+      "Option B" per the OEM explanation found in 10.41's update
+  Person confirmed wanting the relabel after the OEM-note discovery
+  logged in 10.41's update (LTM 1160-5.2's own manual: Example 1 =
+  permissible boom angle without axle-load optimization, Example 2 =
+  optimal angle with optimized/lower axle load, same physical setup).
+  Before relabeling unconditionally by position (index 0 / index 1),
+  checked this actually holds across DRIVING_EQ_DATA's real rows rather
+  than assuming the OEM's stated example order survived extraction
+  unchanged - spot-checked every duplicate-weight pair in LTM 1110's
+  own front-direction table (8.8/7.7/7.2/6.9/3.6/1.1/0.8/0.0t, 8 pairs)
+  and found the SECOND row's axle-B figure lower than (or equal to) the
+  first in every single case, several also showing a lower axle-A too -
+  consistent with "index 1 = optimized, always" holding as extracted,
+  not just usually.
+  Changed the label generator (previously `Option
+  ${String.fromCharCode(65+i)}`, i.e. literal "Option A"/"Option B") to
+  "Permissible Angle" for index 0 and "Optimized Angle (Reduced Axle
+  Load)" for index 1, falling back to the old lettered label for a
+  hypothetical 3rd+ row (never seen in practice - the OEM's own chart
+  structure only ever pairs two examples per weight - but kept as a
+  defensive fallback rather than assuming it can never happen).
+  Verified via Playwright (LTM 1110, front, 8.8t): renders "PERMISSIBLE
+  ANGLE" first (boom angle 6°...29°, axle B 17t) then "OPTIMIZED ANGLE
+  (REDUCED AXLE LOAD)" second (6°...27°, axle B 16t) - matches the
+  OEM's own example order and the spot-check above exactly - 0 console
+  errors.
+
 ================================================================================

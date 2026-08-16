@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.13</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.14</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -3268,7 +3268,7 @@
           : (outriggerPct !== null ? ` (${outriggerPct}% extension)` : '');
         return `
         <div style="${i > 0 ? 'border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;' : ''}">
-          ${rows.length > 1 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">Option ${String.fromCharCode(65 + i)}</div>` : ''}
+          ${rows.length > 1 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:8px;">${i === 0 ? 'Permissible Angle' : i === 1 ? 'Optimized Angle (Reduced Axle Load)' : `Option ${String.fromCharCode(65 + i)}`}</div>` : ''}
           <table>
             <tbody>
               ${usingVehicle ? `<tr><td style="text-align:left;">Counterweight on superstructure</td><td>${r.weight.toFixed(1)} t</td></tr>` : ''}
