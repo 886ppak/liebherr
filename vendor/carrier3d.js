@@ -312,6 +312,13 @@ function fitView() {
 
 window.__carrier3dFitView = function () {
   if (modelCache[currentModelKey]) fitView();
+  // Scroll the 3D card itself to the middle of the viewport, not just
+  // reframe the camera - on a phone the card can easily sit mostly below
+  // the fold (toolbar row above it pushes it down), so "Fit" alone can
+  // leave the person still having to scroll manually to actually see the
+  // view it just fit.
+  const wrap = document.getElementById(currentWrapId);
+  if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
 
 // Only ever shown for a transient loading/error state now - the
@@ -776,11 +783,21 @@ function applySync(modelKey, root, args) {
 
     if (!leg.pad) return;
 
+    // Ghosted (mostly transparent) rather than the near-solid 0.9 this used
+    // to be - the mat edge dimension lines (applyMatEdgeMarks) run right
+    // through the pad's own footprint at this same height, and a near-
+    // opaque fill buried them. A crisp solid outline (same convention as
+    // addGhostBox's dashed one for the "if moved" pad) keeps the pad's own
+    // footprint legible even at low fill opacity.
     const padGeo = new THREE.BoxGeometry(leg.pad.width / 1000, 0.08, leg.pad.length / 1000);
-    const padMat = new THREE.MeshStandardMaterial({ color: PAD_CURRENT_COLOR, transparent: true, opacity: 0.9 });
+    const padMat = new THREE.MeshStandardMaterial({ color: PAD_CURRENT_COLOR, transparent: true, opacity: 0.28 });
     const padMesh = new THREE.Mesh(padGeo, padMat);
     padMesh.position.set(pos.x, pos.y + 0.04, pos.z);
     outriggerGroup.add(padMesh);
+
+    const padWire = new THREE.LineSegments(new THREE.EdgesGeometry(padGeo), new THREE.LineBasicMaterial({ color: PAD_CURRENT_COLOR }));
+    padWire.position.copy(padMesh.position);
+    outriggerGroup.add(padWire);
 
     // Ghost "if moved" pad, for every leg - not just the ones the 2D
     // canvas itself happens to ghost (it only ghosts "optional" legs,
