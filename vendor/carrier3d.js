@@ -877,8 +877,8 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration, carri
       slewCircleGroup.add(new THREE.Line(tick, mat));
     });
 
-    const clearanceM = radiusM - halfWidthM;
-    const label = makeTextSprite(`${clearanceM.toFixed(2)}m`, color);
+    const clearanceMm = Math.round(c.radius - halfWidthM * 1000);
+    const label = makeTextSprite(`${clearanceMm}mm`, color);
     label.position.set((innerX + outerX) / 2, y + 0.35, center.z);
     slewCircleGroup.add(label);
   });

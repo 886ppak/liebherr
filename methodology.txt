@@ -6176,4 +6176,11 @@ cranes get their own subsections as they're built.
   sweep across all 7 top-level tabs afterward - 0 console errors
   throughout.
 
+  UPDATE (same day): the 3D dimension line's label now reads in mm
+  ("4850mm") instead of metres ("4.85m") - person's preference, the
+  numeric table above it stays in metres. One-line change
+  (clearanceMm = Math.round(c.radius - halfWidthM * 1000), computed
+  straight from the mm radius rather than round-tripping through metres)
+  since c.radius already arrives in mm from index.html's own circle data.
+
 ================================================================================
