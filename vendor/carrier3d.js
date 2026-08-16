@@ -326,7 +326,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     if (pendingSync[modelKey]) applySync(modelKey, cached, pendingSync[modelKey]);
     if (pendingSlewCircles[modelKey]) {
       const ctx = pendingSlewCircleContext[modelKey] || {};
-      applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration);
+      applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm);
     }
   } else {
     loadModel(modelKey, url, (root) => {
@@ -336,7 +336,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingSync[modelKey]) applySync(modelKey, root, pendingSync[modelKey]);
       if (pendingSlewCircles[modelKey]) {
         const ctx = pendingSlewCircleContext[modelKey] || {};
-        applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration);
+        applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm);
       }
     });
   }
@@ -761,6 +761,43 @@ window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, l
   applySync(modelKey, root, pendingSync[modelKey]);
 };
 
+// Billboard text label (always faces the camera - a Sprite, not a mesh) for
+// the clearance dimension line below. Drawn as a canvas texture rather than
+// tracking a projected 2D screen position every frame (the approach the
+// transient "Loading..." HTML label uses) - simpler, and correct at any
+// camera angle since it's a real object in the 3D scene, not an HTML
+// overlay that would need re-projecting on every OrbitControls frame.
+function makeTextSprite(text, color) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const fontPx = 56;
+  ctx.font = `bold ${fontPx}px sans-serif`;
+  const textWidth = ctx.measureText(text).width;
+  const padX = 20, padY = 14;
+  canvas.width = textWidth + padX * 2;
+  canvas.height = fontPx + padY * 2;
+  // measureText above needs the font set BEFORE sizing the canvas, but
+  // resizing a canvas clears it - the font has to be set again after.
+  ctx.font = `bold ${fontPx}px sans-serif`;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, padX, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.renderOrder = 999; // always drawn on top, same reasoning as depthTest:false above
+  const targetHeightM = 0.5; // world-metres tall, tuned to read clearly against a ~10-20m carrier
+  const scale = targetHeightM / canvas.height;
+  sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+  return sprite;
+}
+
 // 360 slew clearance radius circles (index.html's Crane Layout sub-tab,
 // see SLEW_CLEARANCE_DATA) - draws a flat ring on the ground plane at
 // each requested radius, centred on the slew axis, so a person can see
@@ -770,16 +807,27 @@ window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, l
 // index.html) are only actually used to compute a fallback calibration
 // via ensureSlewCalibration when Support Pad Placement hasn't already
 // synced this exact model (see that function's own comment) - prefers
-// the real refined one whenever it's available.
+// the real refined one whenever it's available. carrierWidthMm, when
+// given (the person's "show clearance measurement" checkbox), also draws
+// a dimension line from the carrier's own side out to each circle,
+// labelled with the same clearance figure as the numeric table below it.
 //
-// Circle radius is drawn directly in world metres (radius_mm / 1000),
-// NOT scaled through cal.xSlope/zSlope - those carry the mm-to-model-
-// space TRANSLATION mapping for the site plan's own approximate
-// footprint figures, but the model itself is dimensionally accurate CAD
-// (methodology.txt 10.77), so a real physical radius in mm converts to
+// All distances are drawn directly in world metres (mm / 1000), NOT
+// scaled through cal.xSlope/zSlope - those carry the mm-to-model-space
+// TRANSLATION mapping for the site plan's own approximate footprint
+// figures, but the model itself is dimensionally accurate CAD
+// (methodology.txt 10.77), so a real physical distance in mm converts to
 // this model's world units by the plain /1000 unit conversion, same as
 // every other physical dimension already drawn (pad sizes, etc).
-function applySlewCircles(modelKey, root, circles, footprint, calibration) {
+//
+// The dimension line always runs along world +X from the slew centre -
+// i.e. straight to one side, matching the "parked parallel to the
+// structure" worst case the numeric clearance figure itself assumes (see
+// index.html's own disclaimer on that card). This is a real 3D line, so
+// it's always geometrically correct from any camera angle, but like the
+// circles themselves it reads most clearly from a top-down view (Fit
+// View gets close to that).
+function applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm) {
   clearSlewCircles();
   if (!circles || !circles.length) return;
   const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
@@ -788,9 +836,11 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration) {
   slewCircleGroup = new THREE.Group();
   const center = siteToWorld(cal, 0, 0);
   const SEGMENTS = 96;
+  const halfWidthM = carrierWidthMm ? (carrierWidthMm / 1000) / 2 : null;
 
   circles.forEach((c) => {
     const radiusM = c.radius / 1000;
+    const color = c.color || '#ff3b30';
     const points = [];
     for (let i = 0; i <= SEGMENTS; i++) {
       const theta = (i / SEGMENTS) * Math.PI * 2;
@@ -801,18 +851,46 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration) {
       ));
     }
     const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({ color: c.color || 0xff3b30 });
+    const mat = new THREE.LineBasicMaterial({ color });
     slewCircleGroup.add(new THREE.LineLoop(geo, mat));
+
+    if (halfWidthM == null) return;
+
+    const y = center.y + 0.04;
+    const innerX = center.x + halfWidthM;
+    const outerX = center.x + radiusM;
+    const dimLine = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(innerX, y, center.z),
+      new THREE.Vector3(outerX, y, center.z)
+    ]);
+    slewCircleGroup.add(new THREE.Line(dimLine, mat));
+
+    // Short perpendicular tick at each end, standard dimension-line
+    // convention, so the measured span reads unambiguously against the
+    // circle/carrier-edge it's really spanning between.
+    const tickHalf = 0.12;
+    [innerX, outerX].forEach((x) => {
+      const tick = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, y, center.z - tickHalf),
+        new THREE.Vector3(x, y, center.z + tickHalf)
+      ]);
+      slewCircleGroup.add(new THREE.Line(tick, mat));
+    });
+
+    const clearanceM = radiusM - halfWidthM;
+    const label = makeTextSprite(`${clearanceM.toFixed(2)}m`, color);
+    label.position.set((innerX + outerX) / 2, y + 0.35, center.z);
+    slewCircleGroup.add(label);
   });
 
   scene.add(slewCircleGroup);
 }
 
-window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calibration) {
+window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calibration, carrierWidthMm) {
   pendingSlewCircles[modelKey] = circles;
-  pendingSlewCircleContext[modelKey] = { footprint, calibration };
+  pendingSlewCircleContext[modelKey] = { footprint, calibration, carrierWidthMm };
   if (currentModelKey !== modelKey || !scene) return;
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
-  applySlewCircles(modelKey, root, circles, footprint, calibration);
+  applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm);
 };

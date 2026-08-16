@@ -249,7 +249,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.18</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.19</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -661,6 +661,20 @@
         </div>
       </div>
 
+      <div class="card" id="carrier-3d-card-layout" style="display:none;">
+        <div class="card-title">3D Carrier Preview</div>
+        <button class="toolbar-btn" id="carrier-3d-toggle-btn-layout" style="width:100%;" onclick="toggleCarrier3DLayout()">Show 3D Carrier Model</button>
+        <div class="toolbar-row" id="carrier-3d-toolbar-layout" style="display:none; margin-top:10px;">
+          <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
+        </div>
+        <div id="carrier-3d-slew-toggles" style="display:none; margin-top:10px;"></div>
+        <div id="carrier-3d-wrap-layout" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
+          <div id="carrier-3d-canvas-wrap-layout" style="position:absolute; inset:0;"></div>
+          <div id="carrier-3d-label-layout" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
+        </div>
+        <div class="cwt-zoom-hint" id="carrier-3d-hint-layout" style="display:none;">Drag to rotate, scroll or pinch to zoom.</div>
+      </div>
+
       <div class="card">
         <div class="card-title">360° Slew Clearance</div>
         <div id="sc-width-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
@@ -676,20 +690,6 @@
         </table>
         <div class="disclaimer" id="sc-limiting-note"></div>
         <div class="disclaimer">Assumes the crane is parked with its centerline parallel to whatever it needs to clear (wall, stockpile, fence, etc.) — the true worst case, since at that parking angle the swing radius becomes pure sideways distance. Park at an angle to the structure and the real clearance is larger than shown here. Carrier width is this fleet's standard 525/80 R25 tyre (see the crane operating instructions, chapter 1.03, for other tyre options) except where noted. Reference tool only — cross-check against the current OEM documentation and the actual site before slewing near a structure.</div>
-      </div>
-
-      <div class="card" id="carrier-3d-card-layout" style="display:none;">
-        <div class="card-title">3D Carrier Preview</div>
-        <button class="toolbar-btn" id="carrier-3d-toggle-btn-layout" style="width:100%;" onclick="toggleCarrier3DLayout()">Show 3D Carrier Model</button>
-        <div class="toolbar-row" id="carrier-3d-toolbar-layout" style="display:none; margin-top:10px;">
-          <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
-        </div>
-        <div id="carrier-3d-slew-toggles" style="display:none; margin-top:10px;"></div>
-        <div id="carrier-3d-wrap-layout" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
-          <div id="carrier-3d-canvas-wrap-layout" style="position:absolute; inset:0;"></div>
-          <div id="carrier-3d-label-layout" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
-        </div>
-        <div class="cwt-zoom-hint" id="carrier-3d-hint-layout" style="display:none;">Drag to rotate, scroll or pinch to zoom.</div>
       </div>
       </div>
       <!-- /cad-panel-layout -->
@@ -2034,7 +2034,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 24;
+    const CARRIER3D_VERSION = 25;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -4857,22 +4857,32 @@
             <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
             ${p.label} (${(p.radius / 1000).toFixed(2)}m)
           </label>`;
-        }).join('');
+        }).join('') +
+        `<label style="display:flex; align-items:center; gap:6px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); cursor:pointer; font-size:0.75rem;">
+          <input type="checkbox" id="carrier-3d-show-clearance" onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
+          Show clearance measurement (beyond side of carrier)
+        </label>`;
       onSlewCircleToggle();
     }
 
     function onSlewCircleToggle() {
       const modelKey = document.getElementById('sc-crane').value;
-      const checks = Array.from(document.querySelectorAll('#carrier-3d-slew-toggles input[type="checkbox"]:checked'));
+      const checks = Array.from(document.querySelectorAll('#carrier-3d-slew-toggles input[data-radius]:checked'));
       const circles = checks.map(el => ({ radius: parseFloat(el.dataset.radius), color: el.dataset.color }));
+      const showClearanceEl = document.getElementById('carrier-3d-show-clearance');
+      const showClearance = showClearanceEl ? showClearanceEl.checked : false;
+      const data = SLEW_CLEARANCE_DATA[modelKey];
       // FOOTPRINTS/CARRIER_CALIBRATION passed through so carrier3d.js can
       // compute its own fallback slew-centre calibration when Support Pad
       // Placement hasn't already synced outriggers for this exact model
       // (Crane Layout has its own independent crane select, sc-crane, so
       // that's the common case, not an edge case) - see
-      // ensureSlewCalibration's own comment in carrier3d.js.
+      // ensureSlewCalibration's own comment in carrier3d.js. carrierWidthB
+      // (only passed when the checkbox is on) draws a dimension line +
+      // label from the carrier's own side out to each checked circle,
+      // labelled with the same clearance figure as the numeric table.
       if (window.__carrier3dSetSlewCircles) {
-        window.__carrier3dSetSlewCircles(modelKey, circles, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+        window.__carrier3dSetSlewCircles(modelKey, circles, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey], showClearance && data ? data.carrierWidthB : null);
       }
     }
 
