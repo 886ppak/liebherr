@@ -39,6 +39,7 @@ let currentModelKey = null;
 let animating = false;
 let outriggerGroup = null;
 let slewCircleGroup = null;
+let legDimensionGroup = null;
 // Which DOM wrap/label the single shared canvas is currently parented
 // into - there are two possible mount points now (Support Pad Placement's
 // own 3D card, and Crane Layout's own 3D card), never both showing at
@@ -71,6 +72,14 @@ const pendingSlewCircles = {};
 // still mid-fetch at the time (see ensureSlewCalibration's own comment
 // on why a fallback calibration needs these).
 const pendingSlewCircleContext = {};
+// Same replay-once-loaded pattern again, for the Crane Layout tab's
+// outrigger-leg dimension lines (slew centre -> each of C1-C4, OEM-
+// drawing style - see __carrier3dSetLegDimensions below). A third
+// independent toggle, kept in its own pair of maps rather than merged
+// into the slew-circle ones since it's a genuinely separate on/off
+// switch the person flips independently of the radius circles.
+const pendingLegDimensions = {};
+const pendingLegDimensionContext = {};
 
 // Creates the renderer on first-ever call; every call after that just
 // re-parents the existing canvas into whichever wrapId was requested (a
@@ -135,6 +144,20 @@ function resizeRenderer() {
   renderer.setSize(wrap.clientWidth, wrap.clientHeight);
 }
 
+// Disposes geometry, material AND any texture the material holds (map) -
+// plain material.dispose() alone leaks a canvas texture (the dimension-
+// line labels' Sprites, see makeTextSprite) since Three.js doesn't cascade
+// texture disposal automatically. Shared by every clearXxx() below.
+function disposeGroup(group) {
+  group.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      if (o.material.map) o.material.map.dispose();
+      o.material.dispose();
+    }
+  });
+}
+
 function clearScene() {
   if (!scene) return;
   [...scene.children].forEach(obj => {
@@ -143,26 +166,28 @@ function clearScene() {
   });
   outriggerGroup = null;
   slewCircleGroup = null;
+  legDimensionGroup = null;
 }
 
 function clearOutriggers() {
   if (!outriggerGroup) return;
   scene.remove(outriggerGroup);
-  outriggerGroup.traverse(o => {
-    if (o.geometry) o.geometry.dispose();
-    if (o.material) o.material.dispose();
-  });
+  disposeGroup(outriggerGroup);
   outriggerGroup = null;
 }
 
 function clearSlewCircles() {
   if (!slewCircleGroup) return;
   scene.remove(slewCircleGroup);
-  slewCircleGroup.traverse(o => {
-    if (o.geometry) o.geometry.dispose();
-    if (o.material) o.material.dispose();
-  });
+  disposeGroup(slewCircleGroup);
   slewCircleGroup = null;
+}
+
+function clearLegDimensions() {
+  if (!legDimensionGroup) return;
+  scene.remove(legDimensionGroup);
+  disposeGroup(legDimensionGroup);
+  legDimensionGroup = null;
 }
 
 function loadGLTFAsync(url) {
@@ -205,6 +230,7 @@ function sceneBox() {
   if (root) box.union(new THREE.Box3().setFromObject(root));
   if (outriggerGroup) box.union(new THREE.Box3().setFromObject(outriggerGroup));
   if (slewCircleGroup) box.union(new THREE.Box3().setFromObject(slewCircleGroup));
+  if (legDimensionGroup) box.union(new THREE.Box3().setFromObject(legDimensionGroup));
   return box;
 }
 
@@ -316,6 +342,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     // this function's own responsibility.
     clearOutriggers();
     clearSlewCircles();
+    clearLegDimensions();
   }
 
   const cached = modelCache[modelKey];
@@ -328,6 +355,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       const ctx = pendingSlewCircleContext[modelKey] || {};
       applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm);
     }
+    if (pendingLegDimensions[modelKey]) {
+      const ctx = pendingLegDimensionContext[modelKey] || {};
+      applyLegDimensions(modelKey, cached, pendingLegDimensions[modelKey], ctx.footprint, ctx.calibration);
+    }
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
@@ -337,6 +368,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingSlewCircles[modelKey]) {
         const ctx = pendingSlewCircleContext[modelKey] || {};
         applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm);
+      }
+      if (pendingLegDimensions[modelKey]) {
+        const ctx = pendingLegDimensionContext[modelKey] || {};
+        applyLegDimensions(modelKey, root, pendingLegDimensions[modelKey], ctx.footprint, ctx.calibration);
       }
     });
   }
@@ -798,6 +833,39 @@ function makeTextSprite(text, color) {
   return sprite;
 }
 
+// Draws a straight dimension line between two arbitrary ground-plane
+// points into `group` - a line, a short perpendicular tick at each end
+// (standard dimension-line convention), and a text label at the midpoint.
+// Generalized out of what was originally the clearance-measurement line's
+// own inline code (always along world +X) so the same drawing logic can
+// also place a line in any direction - needed for the outrigger leg
+// dimensions below, where each of the 4 legs sits at its own angle from
+// the slew centre, not all sideways like the clearance line.
+function addDimensionLine(group, p1, p2, color, labelText) {
+  const mat = new THREE.LineBasicMaterial({ color });
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), mat));
+
+  const dir = new THREE.Vector3().subVectors(p2, p1);
+  if (dir.lengthSq() > 1e-9) {
+    dir.normalize();
+    const tickHalf = 0.12;
+    // Perpendicular to the line, in the ground (XZ) plane - a 90 degree
+    // rotation of the direction vector about Y.
+    const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(tickHalf);
+    [p1, p2].forEach((p) => {
+      const tick = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(p.x - perp.x, p.y, p.z - perp.z),
+        new THREE.Vector3(p.x + perp.x, p.y, p.z + perp.z)
+      ]);
+      group.add(new THREE.Line(tick, mat));
+    });
+  }
+
+  const label = makeTextSprite(labelText, color);
+  label.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2 + 0.35, (p1.z + p2.z) / 2);
+  group.add(label);
+}
+
 // 360 slew clearance radius circles (index.html's Crane Layout sub-tab,
 // see SLEW_CLEARANCE_DATA) - draws a flat ring on the ground plane at
 // each requested radius, centred on the slew axis, so a person can see
@@ -857,30 +925,14 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration, carri
     if (halfWidthM == null) return;
 
     const y = center.y + 0.04;
-    const innerX = center.x + halfWidthM;
-    const outerX = center.x + radiusM;
-    const dimLine = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(innerX, y, center.z),
-      new THREE.Vector3(outerX, y, center.z)
-    ]);
-    slewCircleGroup.add(new THREE.Line(dimLine, mat));
-
-    // Short perpendicular tick at each end, standard dimension-line
-    // convention, so the measured span reads unambiguously against the
-    // circle/carrier-edge it's really spanning between.
-    const tickHalf = 0.12;
-    [innerX, outerX].forEach((x) => {
-      const tick = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(x, y, center.z - tickHalf),
-        new THREE.Vector3(x, y, center.z + tickHalf)
-      ]);
-      slewCircleGroup.add(new THREE.Line(tick, mat));
-    });
-
     const clearanceMm = Math.round(c.radius - halfWidthM * 1000);
-    const label = makeTextSprite(`${clearanceMm}mm`, color);
-    label.position.set((innerX + outerX) / 2, y + 0.35, center.z);
-    slewCircleGroup.add(label);
+    addDimensionLine(
+      slewCircleGroup,
+      new THREE.Vector3(center.x + halfWidthM, y, center.z),
+      new THREE.Vector3(center.x + radiusM, y, center.z),
+      color,
+      `${clearanceMm}mm`
+    );
   });
 
   scene.add(slewCircleGroup);
@@ -893,4 +945,44 @@ window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calib
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
   applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm);
+};
+
+// Crane Layout's "outrigger distances" toggle - OEM-drawing style
+// dimension lines from the slew centre straight out to each of C1-C4's
+// own BASELINE position (index.html's cadFleetData, the same unshifted
+// r/angle the "All Four Legs" table's own "Baseline" column already
+// shows on Support Pad Placement - not whatever a shift/pad input might
+// currently have configured there, since Crane Layout has no shift
+// inputs of its own at all). legs is an array of
+// {xMm, yMm, r, label, color} - x/y already resolved from r/angle by
+// index.html (same site-plan mm convention siteToWorld expects
+// everywhere else), r is the real baseline distance in mm for the label,
+// label/color identify which leg (e.g. "C1").
+function applyLegDimensions(modelKey, root, legs, footprint, calibration) {
+  clearLegDimensions();
+  if (!legs || !legs.length) return;
+  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
+  if (!cal) return;
+
+  legDimensionGroup = new THREE.Group();
+  const center = siteToWorld(cal, 0, 0);
+  const y = center.y + 0.04;
+  const p0 = new THREE.Vector3(center.x, y, center.z);
+
+  legs.forEach((leg) => {
+    const pos = siteToWorld(cal, leg.xMm, leg.yMm);
+    const p1 = new THREE.Vector3(pos.x, y, pos.z);
+    addDimensionLine(legDimensionGroup, p0, p1, leg.color || '#f8fafc', `${leg.label}: ${Math.round(leg.r)}mm`);
+  });
+
+  scene.add(legDimensionGroup);
+}
+
+window.__carrier3dSetLegDimensions = function (modelKey, legs, footprint, calibration) {
+  pendingLegDimensions[modelKey] = legs;
+  pendingLegDimensionContext[modelKey] = { footprint, calibration };
+  if (currentModelKey !== modelKey || !scene) return;
+  const root = modelCache[modelKey];
+  if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
+  applyLegDimensions(modelKey, root, legs, footprint, calibration);
 };
