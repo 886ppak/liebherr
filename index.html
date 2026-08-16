@@ -211,7 +211,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v2.17</span></h1>
+    <h1>MYSLEWER <span class="app-version">v2.18</span></h1>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
@@ -408,7 +408,7 @@
     <div id="cad-tab" class="tab-content">
       <div class="mode-toggle" id="cad-subtab-toggle" style="margin-bottom:14px;">
         <button class="mode-btn active" id="cad-subtab-pads" onclick="setCadSubTab('pads')">Support Pad Placement</button>
-        <button class="mode-btn" id="cad-subtab-setup" onclick="setCadSubTab('setup')">Crane Setup</button>
+        <button class="mode-btn" id="cad-subtab-layout" onclick="setCadSubTab('layout')">Crane Layout</button>
       </div>
 
       <div id="cad-panel-pads">
@@ -522,7 +522,6 @@
             <input type="checkbox" id="carrier-3d-pad-4-toggle" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> C4
           </label>
         </div>
-        <div id="carrier-3d-slew-toggles" style="display:none; margin-top:10px;"></div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
           <div id="carrier-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
@@ -550,7 +549,7 @@
       </div>
       <!-- /cad-panel-pads -->
 
-      <div id="cad-panel-setup" style="display:none;">
+      <div id="cad-panel-layout" style="display:none;">
       <div class="card">
         <div class="card-title">Crane &amp; Configuration</div>
         <div class="form-group">
@@ -579,8 +578,22 @@
         <div class="disclaimer" id="sc-limiting-note"></div>
         <div class="disclaimer">Assumes the crane is parked with its centerline parallel to whatever it needs to clear (wall, stockpile, fence, etc.) — the true worst case, since at that parking angle the swing radius becomes pure sideways distance. Park at an angle to the structure and the real clearance is larger than shown here. Carrier width is this fleet's standard 525/80 R25 tyre (see the crane operating instructions, chapter 1.03, for other tyre options) except where noted. Reference tool only — cross-check against the current OEM documentation and the actual site before slewing near a structure.</div>
       </div>
+
+      <div class="card" id="carrier-3d-card-layout" style="display:none;">
+        <div class="card-title">3D Carrier Preview</div>
+        <button class="toolbar-btn" id="carrier-3d-toggle-btn-layout" style="width:100%;" onclick="toggleCarrier3DLayout()">Show 3D Carrier Model</button>
+        <div class="toolbar-row" id="carrier-3d-toolbar-layout" style="display:none; margin-top:10px;">
+          <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
+        </div>
+        <div id="carrier-3d-slew-toggles" style="display:none; margin-top:10px;"></div>
+        <div id="carrier-3d-wrap-layout" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
+          <div id="carrier-3d-canvas-wrap-layout" style="position:absolute; inset:0;"></div>
+          <div id="carrier-3d-label-layout" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
+        </div>
+        <div class="cwt-zoom-hint" id="carrier-3d-hint-layout" style="display:none;">Drag to rotate, scroll or pinch to zoom.</div>
       </div>
-      <!-- /cad-panel-setup -->
+      </div>
+      <!-- /cad-panel-layout -->
     </div>
 
     <!-- ================= TAB 4: REEVING PLAN ================= -->
@@ -914,10 +927,10 @@
 
       if (tabId === 'cad-tab') {
         calcCAD();
-        // Crane Setup sub-tab has its own crane select, independent of
+        // Crane Layout sub-tab has its own crane select, independent of
         // cad-crane above - lazy-inits the first time it's ever shown,
         // same pattern as the Load Chart Finder's Compare sub-tab.
-        if (document.getElementById('cad-subtab-setup').classList.contains('active')) initSlewClearanceTab();
+        if (document.getElementById('cad-subtab-layout').classList.contains('active')) initSlewClearanceTab();
       }
       if (tabId === 'reeve-tab') initReeveTab();
       // Re-checked on every visit, not just after the button runs - content
@@ -928,14 +941,25 @@
 
     // Crane Positioning's two sub-tabs: Support Pad Placement (all the
     // pre-existing outrigger/site-plan/3D-carrier/bog-mat content) and
-    // Crane Setup (360 slew clearance). Same show/hide + active-class
-    // pattern as setLoadChartSubTab().
+    // Crane Layout (360 slew clearance). Same show/hide + active-class
+    // pattern as setLoadChartSubTab(). Each sub-tab has its OWN "3D
+    // Carrier Preview" card (see index.html's two cards + carrier3d.js),
+    // sharing one underlying renderer/canvas rather than two - so
+    // switching sub-tabs while a 3D preview is marked "on" needs to
+    // actively reclaim the canvas for whichever card is now visible, not
+    // just show/hide a div (the canvas physically lives in only one wrap
+    // at a time - see carrier3d.js's own ensureRenderer comment).
     function setCadSubTab(mode) {
       document.getElementById('cad-subtab-pads').classList.toggle('active', mode === 'pads');
-      document.getElementById('cad-subtab-setup').classList.toggle('active', mode === 'setup');
+      document.getElementById('cad-subtab-layout').classList.toggle('active', mode === 'layout');
       document.getElementById('cad-panel-pads').style.display = mode === 'pads' ? '' : 'none';
-      document.getElementById('cad-panel-setup').style.display = mode === 'setup' ? '' : 'none';
-      if (mode === 'setup') initSlewClearanceTab();
+      document.getElementById('cad-panel-layout').style.display = mode === 'layout' ? '' : 'none';
+      if (mode === 'layout') {
+        initSlewClearanceTab();
+        if (carrier3DLayoutActive) activateCarrier3DLayout(carrier3DLayoutModelKey, CARRIER_MODELS[carrier3DLayoutModelKey]);
+      } else if (mode === 'pads') {
+        if (carrier3DActive) activateCarrier3D(carrier3DModelKey, CARRIER_MODELS[carrier3DModelKey]);
+      }
     }
 
     // --- TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ---
@@ -969,6 +993,8 @@
       const modelKey = document.getElementById('sc-crane').value;
       const data = SLEW_CLEARANCE_DATA[modelKey];
       if (!data) return;
+
+      updateCarrier3DLayoutAvailability(modelKey);
 
       const halfWidth = data.carrierWidthB / 2;
       document.getElementById('sc-width-info').innerHTML =
@@ -1909,7 +1935,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 22;
+    const CARRIER3D_VERSION = 24;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -4675,6 +4701,27 @@
       document.getElementById('carrier-3d-wrap').style.display = 'none';
       document.getElementById('carrier-3d-hint').style.display = 'none';
       document.getElementById('carrier-3d-toolbar').style.display = 'none';
+    }
+
+    // Crane Layout's own 3D card - independent crane context from Support
+    // Pad Placement's (sc-crane, not cad-crane), and deliberately no
+    // outrigger toolbar (Compare/C1-C4) since Crane Layout never computes
+    // pad positions at all. Same reset-on-crane-switch pattern as
+    // updateCarrier3DAvailability above.
+    let carrier3DLayoutModelKey = null;
+    let carrier3DLayoutActive = false;
+
+    function updateCarrier3DLayoutAvailability(modelKey) {
+      const card = document.getElementById('carrier-3d-card-layout');
+      const url = CARRIER_MODELS[modelKey];
+      card.style.display = url ? '' : 'none';
+      if (modelKey === carrier3DLayoutModelKey) { renderCarrier3DSlewToggles(modelKey); return; }
+      carrier3DLayoutModelKey = modelKey;
+      carrier3DLayoutActive = false;
+      document.getElementById('carrier-3d-toggle-btn-layout').textContent = 'Show 3D Carrier Model';
+      document.getElementById('carrier-3d-wrap-layout').style.display = 'none';
+      document.getElementById('carrier-3d-hint-layout').style.display = 'none';
+      document.getElementById('carrier-3d-toolbar-layout').style.display = 'none';
       renderCarrier3DSlewToggles(modelKey);
     }
 
@@ -4716,10 +4763,18 @@
     }
 
     function onSlewCircleToggle() {
-      const modelKey = document.getElementById('cad-crane').value;
+      const modelKey = document.getElementById('sc-crane').value;
       const checks = Array.from(document.querySelectorAll('#carrier-3d-slew-toggles input[type="checkbox"]:checked'));
       const circles = checks.map(el => ({ radius: parseFloat(el.dataset.radius), color: el.dataset.color }));
-      if (window.__carrier3dSetSlewCircles) window.__carrier3dSetSlewCircles(modelKey, circles);
+      // FOOTPRINTS/CARRIER_CALIBRATION passed through so carrier3d.js can
+      // compute its own fallback slew-centre calibration when Support Pad
+      // Placement hasn't already synced outriggers for this exact model
+      // (Crane Layout has its own independent crane select, sc-crane, so
+      // that's the common case, not an edge case) - see
+      // ensureSlewCalibration's own comment in carrier3d.js.
+      if (window.__carrier3dSetSlewCircles) {
+        window.__carrier3dSetSlewCircles(modelKey, circles, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+      }
     }
 
     function toggleCarrier3D() {
@@ -4731,25 +4786,61 @@
       document.getElementById('carrier-3d-wrap').style.display = carrier3DActive ? '' : 'none';
       document.getElementById('carrier-3d-hint').style.display = carrier3DActive ? '' : 'none';
       document.getElementById('carrier-3d-toolbar').style.display = carrier3DActive ? '' : 'none';
-      if (carrier3DActive) {
-        // Toolbar checkboxes (Compare + C1-C4) mirror the 2D card's own
-        // checkboxes (see toggleCompareMode/syncPadToggle) - but only ever
-        // get pushed INTO sync by a change event on either side, so if the
-        // person toggled any of them before ever opening the 3D view, the
-        // toolbar's copies would still show unchecked the first time it
-        // appears. Pull the real current state in here instead of waiting
-        // for the next change event.
-        document.getElementById('carrier-3d-compare-toggle').checked = document.getElementById('cad-compare-toggle').checked;
-        [1, 2, 3, 4].forEach((legId) => {
-          document.getElementById(`carrier-3d-pad-${legId}-toggle`).checked = document.getElementById(`cad-pad-${legId}`).checked;
-        });
-        // Three.js + the viewer module are never fetched until this first
-        // toggle - dynamic import(), same reasoning as CWT's 3D view (see
-        // its own comment on setCwtView). Cached by URL after that.
-        const activate = () => { window.__carrier3dActivate(modelKey, url); syncCarrier3DOutriggers(); };
-        if (window.__carrier3dActivate) activate();
-        else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
-      }
+      if (carrier3DActive) activateCarrier3D(modelKey, url);
+    }
+
+    // Shared by toggleCarrier3D() and setCadSubTab()'s own re-activation
+    // when switching back to Support Pad Placement with the 3D preview
+    // already marked "on" - the shared canvas (see carrier3d.js) may have
+    // been re-parented to Crane Layout's card in the meantime, so simply
+    // switching sub-tabs back needs to reclaim it, not just rely on
+    // whatever it's currently showing.
+    function activateCarrier3D(modelKey, url) {
+      // Toolbar checkboxes (Compare + C1-C4) mirror the 2D card's own
+      // checkboxes (see toggleCompareMode/syncPadToggle) - but only ever
+      // get pushed INTO sync by a change event on either side, so if the
+      // person toggled any of them before ever opening the 3D view, the
+      // toolbar's copies would still show unchecked the first time it
+      // appears. Pull the real current state in here instead of waiting
+      // for the next change event.
+      document.getElementById('carrier-3d-compare-toggle').checked = document.getElementById('cad-compare-toggle').checked;
+      [1, 2, 3, 4].forEach((legId) => {
+        document.getElementById(`carrier-3d-pad-${legId}-toggle`).checked = document.getElementById(`cad-pad-${legId}`).checked;
+      });
+      // Three.js + the viewer module are never fetched until this first
+      // toggle - dynamic import(), same reasoning as CWT's 3D view (see
+      // its own comment on setCwtView). Cached by URL after that.
+      const activate = () => {
+        window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap', 'carrier-3d-label');
+        syncCarrier3DOutriggers();
+      };
+      if (window.__carrier3dActivate) activate();
+      else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
+    }
+
+    function toggleCarrier3DLayout() {
+      const modelKey = document.getElementById('sc-crane').value;
+      const url = CARRIER_MODELS[modelKey];
+      if (!url) return;
+      carrier3DLayoutActive = !carrier3DLayoutActive;
+      document.getElementById('carrier-3d-toggle-btn-layout').textContent = carrier3DLayoutActive ? 'Hide 3D Carrier Model' : 'Show 3D Carrier Model';
+      document.getElementById('carrier-3d-wrap-layout').style.display = carrier3DLayoutActive ? '' : 'none';
+      document.getElementById('carrier-3d-hint-layout').style.display = carrier3DLayoutActive ? '' : 'none';
+      document.getElementById('carrier-3d-toolbar-layout').style.display = carrier3DLayoutActive ? '' : 'none';
+      if (carrier3DLayoutActive) activateCarrier3DLayout(modelKey, url);
+    }
+
+    // Shared by toggleCarrier3DLayout() and setCadSubTab()'s own
+    // re-activation when switching back to Crane Layout with the 3D
+    // preview already marked "on" - see activateCarrier3D's own comment,
+    // same reasoning, just reclaiming the canvas for this card instead.
+    function activateCarrier3DLayout(modelKey, url) {
+      const activate = () => {
+        window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap-layout', 'carrier-3d-label-layout');
+        onSlewCircleToggle();
+      };
+      if (window.__carrier3dActivate) activate();
+      else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
     }
 
     // Pushes calcCAD()'s own leg/pad positions (lastMapped/lastFp - the
