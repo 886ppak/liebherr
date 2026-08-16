@@ -895,13 +895,19 @@ function makeTextSprite(text, color) {
 
 // Draws a straight dimension line between two arbitrary ground-plane
 // points into `group` - a line, a short perpendicular tick at each end
-// (standard dimension-line convention), and a text label at the midpoint.
-// Generalized out of what was originally the clearance-measurement line's
-// own inline code (always along world +X) so the same drawing logic can
-// also place a line in any direction - needed for the outrigger leg
-// dimensions below, where each of the 4 legs sits at its own angle from
-// the slew centre, not all sideways like the clearance line.
-function addDimensionLine(group, p1, p2, color, labelText) {
+// (standard dimension-line convention), and a text label at labelT's own
+// fraction along the line (0 = at p1, 1 = at p2; defaults to the midpoint,
+// 0.5). Generalized out of what was originally the clearance-measurement
+// line's own inline code (always along world +X) so the same drawing
+// logic can also place a line in any direction - needed for the outrigger
+// leg dimensions below, where each of the 4 legs sits at its own angle
+// from the slew centre, not all sideways like the clearance line.
+// labelT exists for cases like the mat edge "outside" figure - a line that
+// measures a full span (crane edge to a mat's OUTER edge) but reads more
+// clearly with its label biased toward the far end it's naming, not stuck
+// at the geometric midpoint of a span that starts well before the mat
+// itself even begins.
+function addDimensionLine(group, p1, p2, color, labelText, labelT = 0.5) {
   const mat = new THREE.LineBasicMaterial({ color });
   group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), mat));
 
@@ -922,7 +928,7 @@ function addDimensionLine(group, p1, p2, color, labelText) {
   }
 
   const label = makeTextSprite(labelText, color);
-  label.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2 + 0.35, (p1.z + p2.z) / 2);
+  label.position.set(p1.x + (p2.x - p1.x) * labelT, p1.y + (p2.y - p1.y) * labelT + 0.35, p1.z + (p2.z - p1.z) * labelT);
   group.add(label);
 }
 
@@ -1141,15 +1147,18 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
 // computeMatMarkingData() the 2D table itself reads from, so the two can
 // never drift apart).
 //
-// Two dimension lines per leg, both starting at the SAME point (the
-// carrier's own edge, at that leg's own station) rather than at the leg's
-// centre or the centerline - mirrors how a crew actually measures it in
-// the field, two separate tape pulls from one reference point. Since
-// insideXMm sits between edgeXMm and outsideXMm on the same ray, the two
-// lines are collinear - they read on screen as a single line with two
-// labels at different points along it (the inside figure closer to the
-// carrier, the outside figure further out), not as two disconnected
-// segments.
+// Two dimension lines per leg, both starting at the SAME reference point
+// (the carrier's own edge, at that leg's own station) rather than at the
+// leg's centre or the centerline - mirrors how a crew actually measures it
+// in the field, two separate tape pulls from one reference point. Each is
+// drawn on its own PARALLEL offset line rather than collinear along the
+// same ray - offset inward (toward the vehicle centre) for inside, offset
+// outward (away from it, toward the mat's own far edge) for outside - so
+// they read as two clearly separate measurements at any zoom instead of
+// stacking their labels on top of each other near the mat's inner corner.
+// Person's own request after seeing the inside/outside labels bunched
+// together there: move outside out to "the far side of each gold
+// rectangle from the crane".
 function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
   clearMatEdgeMarks();
   if (!marks || !marks.length) return;
@@ -1160,32 +1169,51 @@ function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
   const center = siteToWorld(cal, 0, 0);
   const y = center.y + 0.04;
 
-  // insideYMm is offset off the pad's own true Y (mark.yMm, which the
-  // OUTSIDE line still uses unchanged) by a fixed 400mm toward the
-  // vehicle's own centre - otherwise the inside and outside lines are
-  // perfectly collinear (inside is fully contained within outside's own
-  // span), and their labels - each sitting at its own line's midpoint -
-  // land close enough together at any reasonable zoom to overlap into
-  // unreadable stacked text. Offsetting inside onto its own PARALLEL line
-  // instead fixes that at any camera angle, including the near-top-down
-  // Fit View this is mostly viewed from, and matches how the real OEM
-  // dimension chains already read elsewhere in this app - nested
-  // measurements drawn as separate parallel lines, not chained along one.
+  // insideYMm/outsideYMm are offset off the pad's own true Y (mark.yMm) by
+  // a fixed 400mm - inside toward the vehicle's own centre, outside away
+  // from it - otherwise the inside and outside lines are perfectly
+  // collinear (inside is fully contained within outside's own span), and
+  // their labels - each sitting at its own line's midpoint - land close
+  // enough together at any reasonable zoom to overlap into unreadable
+  // stacked text. Offsetting each onto its own PARALLEL line instead fixes
+  // that at any camera angle, including the near-top-down Fit View this is
+  // mostly viewed from, and matches how the real OEM dimension chains
+  // already read elsewhere in this app - nested measurements drawn as
+  // separate parallel lines, not chained along one. 400mm keeps both well
+  // inside the pad's own length (pad length is 3.5m+ in practice), so
+  // outside still lands within the mat's own footprint - just at its far
+  // corner instead of its near one.
   const OFFSET_MM = 400;
   marks.forEach((mark) => {
-    const insideYMm = mark.yMm - Math.sign(mark.yMm || 1) * OFFSET_MM;
+    const sign = Math.sign(mark.yMm || 1);
+    const insideYMm = mark.yMm - sign * OFFSET_MM;
+    const outsideYMm = mark.yMm + sign * OFFSET_MM;
     const edgePos = siteToWorld(cal, mark.edgeXMm, mark.yMm);
     const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
     const insideEdgePos = siteToWorld(cal, mark.edgeXMm, insideYMm);
     const pInsideEdge = new THREE.Vector3(insideEdgePos.x, y, insideEdgePos.z);
     const insidePos = siteToWorld(cal, mark.insideXMm, insideYMm);
     const pInside = new THREE.Vector3(insidePos.x, y, insidePos.z);
-    const outsidePos = siteToWorld(cal, mark.outsideXMm, mark.yMm);
+    const outsideEdgePos = siteToWorld(cal, mark.edgeXMm, outsideYMm);
+    const pOutsideEdge = new THREE.Vector3(outsideEdgePos.x, y, outsideEdgePos.z);
+    const outsidePos = siteToWorld(cal, mark.outsideXMm, outsideYMm);
     const pOutside = new THREE.Vector3(outsidePos.x, y, outsidePos.z);
 
     addWitnessLine(matEdgeGroup, pEdge, pInsideEdge, mark.color);
     addDimensionLine(matEdgeGroup, pInsideEdge, pInside, mark.color, `${mark.label} inside: ${mark.insideMm}mm`);
-    addDimensionLine(matEdgeGroup, pEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`);
+    addWitnessLine(matEdgeGroup, pEdge, pOutsideEdge, mark.color);
+    // The outside line's true endpoints have to stay at the crane edge and
+    // the mat's outer edge (that full span IS the 3525mm-type figure being
+    // labelled), but its label defaults to that span's own midpoint - which
+    // falls well short of the mat itself, since the mat's own footprint
+    // only starts at insideXMm, partway along. Bias the label to the
+    // midpoint of the MAT's own footprint instead (between insideXMm and
+    // outsideXMm) so it reads sitting on the mat's outer half, not in the
+    // gap between the crane and the mat. Person's own request: "on the
+    // actual outside of the bog mat".
+    const matMidXMm = (mark.insideXMm + mark.outsideXMm) / 2;
+    const outsideLabelT = (matMidXMm - mark.edgeXMm) / (mark.outsideXMm - mark.edgeXMm);
+    addDimensionLine(matEdgeGroup, pOutsideEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`, outsideLabelT);
   });
 
   scene.add(matEdgeGroup);
