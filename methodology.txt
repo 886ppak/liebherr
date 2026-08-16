@@ -2372,6 +2372,25 @@ in a visual stack, or jump straight to a known combination from a dropdown.
       label with a divider between them, per explicit instruction:
       "id like them both displace one below each other with clean
       deliniation please."
+      UPDATE (person found the actual OEM explanation later, in LTM
+      1160-5.2's own Driving w/ Equipment manual - supersedes whatever
+      informal reasoning either of us had for why two rows exist per
+      counterweight): the manual's own Note reads "For 'travel operation
+      with equipment in place', for the same set up configuration there
+      are different values for the 'Telescopic boom angle to the
+      horizontal' and the resulting 'maximum axle load per axle'."
+      followed by two labelled examples - Example 1 = the permissible
+      boom angle WITHOUT optimized axle load values, Example 2 = the
+      OPTIMAL boom angle WITH optimized (i.e. more favorable, lower)
+      axle load values for that same physical setup. So "Option A" /
+      "Option B" in the app aren't two arbitrary alternate readings of
+      the chart - they're specifically the un-optimized vs
+      axle-load-optimized boom angle for driving with the same
+      equipment fitted, straight from the OEM's own worked-example
+      structure. Current UI labels ("Option A"/"Option B") don't convey
+      this - worth relabeling if the person wants it (e.g. "Permissible
+      angle" / "Optimized angle (reduced axle load)"), not yet done as
+      of this note.
   Data extraction: per-span dict-mode text extraction (ArialMT for data,
   Arial-BoldMT for headers), rows auto-grouped by pattern-matching 6
   consecutive fields against expected shapes (weight: \d+\.\d, hook
