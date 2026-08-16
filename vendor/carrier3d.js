@@ -39,6 +39,15 @@ let currentModelKey = null;
 let animating = false;
 let outriggerGroup = null;
 let slewCircleGroup = null;
+// Which DOM wrap/label the single shared canvas is currently parented
+// into - there are two possible mount points now (Support Pad Placement's
+// own 3D card, and Crane Layout's own 3D card), never both showing at
+// once since the two sub-tabs are mutually exclusive, so ONE renderer
+// genuinely reused by re-parenting its canvas is simpler and cheaper than
+// two concurrent WebGL contexts loading/holding the same multi-MB model
+// twice. See __carrier3dActivate below for how a wrap change is handled.
+let currentWrapId = null;
+let currentLabelId = null;
 
 // modelKey -> THREE.Object3D (the loaded scene root)
 const modelCache = {};
@@ -56,11 +65,34 @@ const pendingSync = {};
 // (outrigger sync fires automatically on every calcCAD() recalc; slew
 // circles only change when the person explicitly checks/unchecks one).
 const pendingSlewCircles = {};
+// footprint/calibration args accompanying the most recent
+// __carrier3dSetSlewCircles() call per model - needed alongside
+// pendingSlewCircles when replaying a circle draw for a model that was
+// still mid-fetch at the time (see ensureSlewCalibration's own comment
+// on why a fallback calibration needs these).
+const pendingSlewCircleContext = {};
 
-function ensureRenderer() {
-  if (renderer) return;
-  const wrap = document.getElementById('carrier-3d-canvas-wrap');
+// Creates the renderer on first-ever call; every call after that just
+// re-parents the existing canvas into whichever wrapId was requested (a
+// no-op DOM-wise if it's already there). Returns true when the canvas
+// actually moved to a DIFFERENT wrap than before (including the very
+// first placement) - __carrier3dActivate uses that to know whether a
+// same-model reactivation needs to drop the previous context's overlays
+// (outrigger markers / slew circles) before applying its own.
+function ensureRenderer(wrapId, labelId) {
+  currentLabelId = labelId;
+  const wrap = document.getElementById(wrapId);
 
+  if (renderer) {
+    const moved = currentWrapId !== wrapId;
+    if (moved) {
+      wrap.appendChild(renderer.domElement);
+      currentWrapId = wrapId;
+    }
+    return moved;
+  }
+
+  currentWrapId = wrapId;
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0f172a);
 
@@ -92,10 +124,11 @@ function ensureRenderer() {
       renderer.render(scene, camera);
     });
   }
+  return true;
 }
 
 function resizeRenderer() {
-  const wrap = document.getElementById('carrier-3d-canvas-wrap');
+  const wrap = document.getElementById(currentWrapId);
   if (!renderer || !wrap || wrap.clientWidth === 0) return;
   camera.aspect = wrap.clientWidth / wrap.clientHeight;
   camera.updateProjectionMatrix();
@@ -157,16 +190,21 @@ function frameCamera(root) {
   controls.update();
 }
 
-// Bounding box of everything currently visible - the carrier model itself
-// AND any markers/pads/ghost boxes from the outrigger sync (see
-// applySync) - not just the model's own footprint, since a shifted ghost
-// footprint or an outrigger ghost pad can sit well outside the carrier's
-// own bounding box.
+// Bounding box of everything currently visible - the carrier model itself,
+// any markers/pads/ghost boxes from the outrigger sync (see applySync),
+// AND any slew-radius circles (see applySlewCircles) - not just the
+// model's own footprint, since a shifted ghost footprint, an outrigger
+// ghost pad, or (especially) a slew circle can sit well outside the
+// carrier's own bounding box - a 1650 at its 8.4m ballast radius is a
+// good example, a ring far wider than the carrier itself. Without
+// including it here, Fit View would frame just the model and clip the
+// circle off-screen.
 function sceneBox() {
   const box = new THREE.Box3();
   const root = modelCache[currentModelKey];
   if (root) box.union(new THREE.Box3().setFromObject(root));
   if (outriggerGroup) box.union(new THREE.Box3().setFromObject(outriggerGroup));
+  if (slewCircleGroup) box.union(new THREE.Box3().setFromObject(slewCircleGroup));
   return box;
 }
 
@@ -222,7 +260,8 @@ window.__carrier3dFitView = function () {
 // entirely rather than left as an empty padded chip once there's nothing
 // to say.
 function setLabel(text) {
-  const el = document.getElementById('carrier-3d-label');
+  const el = document.getElementById(currentLabelId);
+  if (!el) return;
   el.textContent = text;
   el.style.display = text ? '' : 'none';
 }
@@ -248,29 +287,57 @@ async function loadModel(modelKey, url, onDone) {
   }
 }
 
-window.__carrier3dActivate = function (modelKey, url) {
+// wrapId/labelId identify WHICH 3D card is asking (Support Pad
+// Placement's own card, or Crane Layout's own card - see index.html).
+// Both share this one renderer/scene (see ensureRenderer's own comment on
+// why), so switching between them re-parents the canvas rather than
+// spinning up a second WebGL context.
+window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
   if (!url) return;
-  ensureRenderer();
+  const wrapChanged = ensureRenderer(wrapId, labelId);
   resizeRenderer();
 
-  if (currentModelKey === modelKey) return;
-  clearScene();
-  currentModelKey = modelKey;
+  if (currentModelKey === modelKey && !wrapChanged) return; // truly nothing to do
+
+  if (currentModelKey !== modelKey) {
+    clearScene(); // full swap - drops the old model, outriggers AND circles
+    currentModelKey = modelKey;
+  } else {
+    // Same model, but a different card just took ownership of the shared
+    // canvas - drop whatever overlays the PREVIOUS context had drawn
+    // (outrigger markers if Pad Placement had it open, or slew circles if
+    // Layout did) without touching the model itself, which is still
+    // correct and already in the scene. The card that just activated
+    // will push its own fresh overlay state (sync or circles) right after
+    // this call returns, same as it always does - see toggleCarrier3D()/
+    // toggleCarrier3DLayout() in index.html - so nothing needs replaying
+    // from here for the synchronous case; only the pendingSync/
+    // pendingSlewCircles replay below (for a model still mid-fetch) is
+    // this function's own responsibility.
+    clearOutriggers();
+    clearSlewCircles();
+  }
 
   const cached = modelCache[modelKey];
   if (cached) {
-    scene.add(cached);
+    scene.add(cached); // safe even if already a child of this scene
     frameCamera(cached);
     setLabel('');
     if (pendingSync[modelKey]) applySync(modelKey, cached, pendingSync[modelKey]);
-    if (pendingSlewCircles[modelKey]) applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey]);
+    if (pendingSlewCircles[modelKey]) {
+      const ctx = pendingSlewCircleContext[modelKey] || {};
+      applySlewCircles(modelKey, cached, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration);
+    }
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
       scene.add(root);
       frameCamera(root);
       if (pendingSync[modelKey]) applySync(modelKey, root, pendingSync[modelKey]);
-      if (pendingSlewCircles[modelKey]) applySlewCircles(modelKey, root, pendingSlewCircles[modelKey]);
+      if (pendingSlewCircles[modelKey]) {
+        const ctx = pendingSlewCircleContext[modelKey] || {};
+        applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration);
+      }
     });
   }
 };
@@ -535,6 +602,28 @@ function computeCalibration(modelKey, root, footprint, calibration, baseLegs) {
   return refined;
 }
 
+// Cheaper fallback for Crane Layout's slew circles, which have no outrigger
+// leg geometry to anchor a full refinement against (Crane Layout never
+// calls __carrier3dSyncOutriggers - it has its own independent crane
+// selector, sc-crane, that Support Pad Placement's cad-crane may never
+// have shown a 3D preview for at all). The plain formula estimate is
+// already a good slew-centre estimate on its own (it's what the
+// refinement itself starts from) - kept in a SEPARATE cache from
+// calibrationCache so it can never win out over a genuinely refined
+// calibration: computeCalibration always checks calibrationCache first,
+// so if Support Pad Placement later opens its own 3D preview for the same
+// model, it still gets the full leg-anchored refinement, not this
+// cheaper stand-in.
+const formulaCalibrationCache = {};
+function ensureSlewCalibration(modelKey, root, footprint, calibration) {
+  if (calibrationCache[modelKey]) return calibrationCache[modelKey];
+  if (formulaCalibrationCache[modelKey]) return formulaCalibrationCache[modelKey];
+  if (!footprint || !calibration) return null;
+  const cal = computeFormulaCalibration(root, footprint, calibration);
+  formulaCalibrationCache[modelKey] = cal;
+  return cal;
+}
+
 // Site plan convention (see index.html): x = lateral, +right; y =
 // longitudinal, front = negative Y, rear = positive Y. mm in, xSlope/
 // zSlope already carry the mm->m conversion (see computeFormulaCalibration/
@@ -672,21 +761,16 @@ window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, l
   applySync(modelKey, root, pendingSync[modelKey]);
 };
 
-// 360 slew clearance radius circles (index.html's Crane Setup sub-tab,
+// 360 slew clearance radius circles (index.html's Crane Layout sub-tab,
 // see SLEW_CLEARANCE_DATA) - draws a flat ring on the ground plane at
 // each requested radius, centred on the slew axis, so a person can see
 // at a glance whether a nearby wall/stockpile/fence sits inside or
-// outside the counterweight/Winch 2's own swing envelope. Reuses
-// whatever calibration the outrigger sync already computed for this
-// model (calibrationCache, populated by computeCalibration() inside
-// applySync above) rather than requiring its own footprint/calibration/
-// baseLegs args - the slew centre and ground height don't depend on
-// which feature asked for them, and outrigger sync always runs first
-// (calcCAD() fires it on every tab load/recalc, before a person could
-// realistically reach the checkbox). If no calibration is cached yet
-// (sync genuinely hasn't run once for this model), the circles simply
-// don't draw rather than guessing a centre - the checkboxes will re-fire
-// this once calcCAD() runs.
+// outside the counterweight/Winch 2's own swing envelope. footprint/
+// calibration (FOOTPRINTS[modelKey]/CARRIER_CALIBRATION[modelKey], see
+// index.html) are only actually used to compute a fallback calibration
+// via ensureSlewCalibration when Support Pad Placement hasn't already
+// synced this exact model (see that function's own comment) - prefers
+// the real refined one whenever it's available.
 //
 // Circle radius is drawn directly in world metres (radius_mm / 1000),
 // NOT scaled through cal.xSlope/zSlope - those carry the mm-to-model-
@@ -695,10 +779,10 @@ window.__carrier3dSyncOutriggers = function (modelKey, footprint, calibration, l
 // (methodology.txt 10.77), so a real physical radius in mm converts to
 // this model's world units by the plain /1000 unit conversion, same as
 // every other physical dimension already drawn (pad sizes, etc).
-function applySlewCircles(modelKey, root, circles) {
+function applySlewCircles(modelKey, root, circles, footprint, calibration) {
   clearSlewCircles();
   if (!circles || !circles.length) return;
-  const cal = calibrationCache[modelKey];
+  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
   if (!cal) return;
 
   slewCircleGroup = new THREE.Group();
@@ -724,10 +808,11 @@ function applySlewCircles(modelKey, root, circles) {
   scene.add(slewCircleGroup);
 }
 
-window.__carrier3dSetSlewCircles = function (modelKey, circles) {
+window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calibration) {
   pendingSlewCircles[modelKey] = circles;
+  pendingSlewCircleContext[modelKey] = { footprint, calibration };
   if (currentModelKey !== modelKey || !scene) return;
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
-  applySlewCircles(modelKey, root, circles);
+  applySlewCircles(modelKey, root, circles, footprint, calibration);
 };

@@ -6031,4 +6031,105 @@ cranes get their own subsections as they're built.
   entirely rather than kept as dead weight, since the toggle buttons
   already make switching obvious with no card needed.
 
+  UPDATE (same day): person clarified further - wanted BOTH sub-tabs to
+  have their OWN 3D Carrier Preview card (so neither one requires
+  switching to the other just to see the model), with the slew-radius
+  toggle checkboxes living EXCLUSIVELY on Crane Layout's copy, and the
+  sub-tab renamed Crane Setup -> Crane Layout throughout (ids too:
+  cad-subtab-layout/cad-panel-layout, mode string 'layout' not 'setup').
+
+  This reopens the exact tradeoff the original 3D-toggle deferral was
+  about, in a new shape: TWO cards now need a 3D view, but
+  vendor/carrier3d.js is still a single hardcoded-canvas module (one
+  scene/camera/renderer/controls, previously tied to one fixed
+  #carrier-3d-canvas-wrap). Rather than spin up a second concurrent
+  WebGL context (real cost - a duplicate GLB parse/upload for a model
+  already sitting in modelCache, and every mobile browser caps how many
+  live WebGL contexts it'll allow at once), generalized the ONE renderer
+  to be re-parentable: ensureRenderer(wrapId, labelId) now moves the
+  existing canvas into whichever wrap asked for it (a no-op if already
+  there), returning whether it actually moved. Since the two sub-tabs are
+  mutually exclusive (only one ever visible), this is invisible to the
+  person - it just looks like "each sub-tab has its own persistent 3D
+  view."
+  __carrier3dActivate(modelKey, url, wrapId, labelId) gained the wrapId/
+  labelId params and a new case its old two-branch shape (same model ->
+  no-op; different model -> full clearScene()+swap) didn't cover: SAME
+  model, DIFFERENT wrap - e.g. Support Pad Placement showing LTM 1110
+  while Crane Layout's own crane select ALSO happens to be on 1110. The
+  old "if (currentModelKey === modelKey) return;" early-return would have
+  silently left the canvas parented wherever it was, so the newly-
+  activated card would show nothing at all. Now: a wrap change (with or
+  without a model change) always proceeds; a same-model/different-wrap
+  transition additionally drops the PREVIOUS context's own overlays
+  (clearOutriggers()+clearSlewCircles()) without touching the model
+  itself, since Pad Placement's outrigger markers have no business
+  showing up in Crane Layout's context or vice versa - whichever card
+  just took over immediately pushes its own fresh overlay state right
+  after activate() returns (syncCarrier3DOutriggers() for Pad Placement,
+  onSlewCircleToggle() for Crane Layout), same as they always did.
+  setCadSubTab() now actively reclaims the canvas on every switch, not
+  just show/hide a div: switching to 'pads' re-runs activateCarrier3D()
+  if carrier3DActive is true, switching to 'layout' re-runs
+  activateCarrier3DLayout() if carrier3DLayoutActive is true - each is a
+  small extracted helper (previously inlined in toggleCarrier3D()/
+  toggleCarrier3DLayout()) so the exact same activation logic runs
+  whether triggered by the toggle button or by a sub-tab switch finding
+  its own "3D on" flag already set from before the person navigated away.
+  Also fixed sceneBox() (used by Fit View) to include slewCircleGroup's
+  own bounds, not just the model's and outriggerGroup's - a circle can be
+  (and often is) far wider than the carrier itself, e.g. LTM 1650 at its
+  8.4m ballast radius, so Fit View would otherwise frame just the model
+  and clip the ring off-screen.
+
+  Real bug caught during testing, not by inspection: circles simply
+  didn't draw at all when Crane Layout was used WITHOUT first opening
+  Support Pad Placement's own 3D preview for the same crane. Root cause:
+  applySlewCircles() read calibrationCache[modelKey], which is ONLY ever
+  populated by computeCalibration() inside applySync() - i.e. only by
+  Support Pad Placement's own outrigger sync. The original comment
+  reasoned "outrigger sync always runs first... before a person could
+  realistically reach the checkbox" - true when Crane Setup only had
+  Support Pad Placement's crane to work with, false now that Crane Layout
+  has its own independent crane select (sc-crane) that may never have
+  been opened on the Pad Placement side at all. Fixed with a SEPARATE
+  fallback cache (formulaCalibrationCache) computed from just
+  computeFormulaCalibration(root, footprint, calibration) - the same
+  formula the full refinement itself starts from, good enough to anchor a
+  slew-centre ring without needing any outrigger leg geometry to refine
+  against. Deliberately kept in its own cache rather than writing into
+  calibrationCache, so if Support Pad Placement's own sync runs LATER for
+  the same model, it still gets the full leg-anchored refinement, not
+  silently stuck on the cheaper stand-in a lookup-order shortcut would
+  have left behind. index.html's onSlewCircleToggle() now passes
+  FOOTPRINTS[modelKey]/CARRIER_CALIBRATION[modelKey] through
+  __carrier3dSetSlewCircles() so this fallback has what it needs; a new
+  pendingSlewCircleContext map carries the same two values through to the
+  async-model-still-loading replay path in __carrier3dActivate.
+
+  Testing note: Playwright's native .click() (and even a JS-dispatched
+  .click() via evaluate) hung indefinitely against the 3D toggle buttons
+  in this sandboxed environment, with "GPU stall due to ReadPixels"
+  console warnings alongside - consistent with Playwright's own element-
+  stability screenshotting fighting a live, actively-rendering WebGL
+  canvas under software rendering (SwiftShader, no real GPU in this
+  sandbox), not an app defect. Confirmed by calling the exact same
+  handler functions directly via page.evaluate() (toggleCarrier3D(),
+  toggleCarrier3DLayout(), onSlewCircleToggle()) - all returned in
+  well under a second with correct results and zero console errors, just
+  through a code path that skips Playwright's click-specific stability
+  polling. All functional verification for this update was done this
+  way, cross-checked with screenshots.
+  Verified: both cards' own 3D toggle correctly loads/shows their
+  respective crane; checking Standard + Vario Ballast circles on LTM
+  1160 (opened directly via Crane Layout, no prior Pad Placement 3D use)
+  renders two correctly-centred, correctly-scaled concentric rings;
+  switching Support Pad Placement -> Crane Layout -> Support Pad
+  Placement reclaims the canvas each time (confirmed via each canvas's
+  actual DOM parent id), shows the right crane with outrigger markers
+  restored and zero leftover slew circles from the other context, and a
+  full regression sweep across all 7 top-level tabs plus the existing
+  outrigger pad-toggle/compare-mode controls came back clean - 0 console
+  errors throughout every check.
+
 ================================================================================
