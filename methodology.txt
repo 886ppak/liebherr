@@ -6909,44 +6909,93 @@ cranes get their own subsections as they're built.
   10m shift (nothing required or clashing - target correctly non-empty
   for all 4 legs, hint correctly hidden): 0 console errors throughout.
 
-23. LTM 1160 UK VARIANT: SIMPLE WEIGHT CALCULATOR, NO COMBO CHART
+23. LTM 1160 UK VARIANT: REAL TAP-DIAGRAM, BUILT FROM THE PERSON'S OWN DXF
   Person wanted the UK-market counterweight variant of the 160t crane
-  added, but had no OEM combination chart (the document that says which
-  plate subsets are actually approved) - only a WhatsApp photo of the
+  added. No OEM combination chart exists for it (the document that would
+  say which plate subsets are actually approved) - only a photo of the
   exploded-view diagram with weights labelled per piece (5t/6.5t/5t top
   plates, 10t/14t/10t base blocks, 3.5t base spacer - 54t total across 7
-  pieces), and a DXF of traced box outlines with no text/weight labels
-  of its own (confirmed via ezdxf: 158 LINE + 160 POINT entities, one
-  externally-linked IMAGE reference that never came through - zero TEXT/
-  MTEXT). First worked out scope through several rounds: initially read
-  "map to total weight calculator" as wiring this into Load Chart
-  Finder - wrong, person clarified "nothing to do with load charts,
-  im only trying to build a CWT combo". Landed on: since there's no
-  approved-combination list to validate against, build a plain tick-list
-  instead of the diagram-tap-and-match UI every other crane here uses -
-  check which of the 7 pieces are fitted, see the running total, no
-  approval flagging.
-  Placement: person's own request - inside the EXISTING 1160 crane entry
-  in the Counterweight Combinations tab (not a new crane in the
-  dropdown), behind a Global | UK mode-toggle that only appears when the
-  selected crane's data carries a ukVariant key. COUNTERWEIGHT_DATA['1160']
-  gained a ukVariant: { sourceNote, pieces: [{id, name, weight}, ...7] }
-  block, named descriptively by role in the exploded view (Top/Middle/
-  Lower Plate, Base Block Left/Centre/Right, Base Spacer) since no source
-  document supplies OEM part names either.
-  New cwtVariant/cwtUkSelected state, setCwtVariant()/renderCwtVariant()
-  dispatcher (shows the 3 diagram-based cards vs the new #cwt-uk-card
-  tick-list, calls renderCwtTab() or the new renderCwtUkTab()
-  accordingly), toggleCwtUkPiece(). onCwtCraneChange() resets to Global
-  and re-hides the toggle for cranes without a ukVariant, so switching
-  crane or switching back to 1160 never leaves a stale UK selection
-  showing.
-  Verified via Playwright: toggle only appears for 1160; ticking 3 pieces
-  (5+10+14) reads 29.0t; all 7 reads 54.0t exactly matching the photo's
-  own total; switching Global<->UK correctly shows/hides the right cards
-  each way; switching to a different crane and back to 1160 resets to
-  Global rather than remembering UK; existing Global/EU diagram-tap flow
-  for 1160 (and a spot-check across every other crane) completely
-  unaffected; 0 console errors across a full click-through of all 8 tabs.
+  pieces), and a DXF the person traced themselves in AutoCAD LT (a closed
+  polyline around each piece's own silhouette, over that same photo).
+  Went through several false starts before landing on the right shape:
+  (1) first read "map to total weight calculator" as wiring into Load
+  Chart Finder - wrong, person clarified "nothing to do with load
+  charts, im only trying to build a CWT combo"; (2) built a plain tick-
+  list (no diagram) reasoning that no approved-combination chart meant no
+  diagram was possible - also wrong, person asked "why isn't there an
+  image I can click", clarifying the DXF boxes were always meant to
+  BECOME the clickable diagram, not just back a total-weight tally;
+  (3) the DXF's own linked reference image (an IMAGE entity pointing to
+  a local Windows path) never transferred, and pasting the photo inline
+  in chat doesn't give file access either - only an @-attached file does,
+  or a Nextcloud share fetched via WebDAV (see the next entry) - that's
+  how the actual photo file finally arrived.
+  The payoff: the DXF's own IMAGE entity records the EXACT insert point
+  and per-pixel u/v vectors used when the photo was placed in AutoCAD
+  (confirmed image_size (532,458) matches the photo's real pixel
+  dimensions exactly), so every traced vertex converts to an exact photo-
+  pixel coordinate with zero guessing: px = (wx-insert.x)/u_pixel.x,
+  py = image_size.y - (wy-insert.y)/v_pixel.y. Parsed via ezdxf: all 158
+  LINE entities on the 'boxes' layer form exactly 7 closed loops (all
+  158 vertices degree-2 in the adjacency graph - simple disjoint
+  polygons, no branching), one per piece. Rendered all 7 outlines back
+  over the actual photo at their computed coordinates as a verification
+  step before writing any hotspot data - every outline landed exactly on
+  its own piece's silhouette, and reading the weight label already
+  printed inside each outline gave an unambiguous, inspection-verified
+  id->weight mapping (no manual matching or guessing which shape is
+  which).
+  Reused the diagram/hotspot-tap/zoom machinery every other crane already
+  has here, rather than a bespoke UI: COUNTERWEIGHT_DATA['1160'] gained a
+  ukVariant block with the same shape as a top-level crane entry
+  (diagramImage/diagramWidth/diagramHeight/components[with hotspots]),
+  but combos: [] (deliberately empty - no OEM chart exists, so nothing
+  is ever flagged as an approved combination, matching the pre-existing
+  "not an OEM-approved combination" warning path every crane already has
+  for an unmatched selection). New cwtData(modelKey) helper is the single
+  point every CWT function now reads crane data through - resolves to
+  ukVariant's own components/diagram when cwtVariant==='uk', the regular
+  top-level entry otherwise - so cwtComponentMap/cwtFindMatchingCombo/
+  populateCwtComboSelect/cycleCwtSlotGroup/renderCwtTab etc. all work
+  unmodified for the UK variant. populateCwtComboSelect() hides the
+  "Jump to Known Combination" card whenever combos is empty (UK), rather
+  than showing a pointless empty dropdown. Global | UK toggle only
+  appears when the selected crane's data carries a ukVariant key
+  (currently just 1160) - person's own request to keep it inside the
+  existing crane entry, not a new crane in the dropdown.
+  Diagram image saved as counterweight/img/ltm1160-cwt-uk-exploded.png
+  (the person's own reference photo, not OEM artwork - flagged as such
+  in figRef, same convention as the 1300 global variant's own re-drawn
+  diagram).
+  Verified via Playwright: toggle only appears for 1160; all 7 hotspot
+  aria-labels read the correct name/weight; tapping all 7 (via direct
+  toggleCwtPlate() calls, since a synthetic bounding-box-center click
+  landed in the spacer piece's own concave notch between its two pins -
+  a test-script artifact, not a real interaction, since real SVG polygon
+  hit-testing follows the actual fill shape, not its bounding box) totals
+  exactly 54.0t matching the photo; "Jump to Known Combination" correctly
+  hidden for UK, correctly shown for Global; switching Global<->UK and
+  crane<->crane always resets to Global with no stale selection; existing
+  Global/EU diagram-tap flow for 1160 (and a spot-check across every
+  other crane) completely unaffected; 0 console errors across a full
+  click-through of all 8 tabs.
+
+24. PERSON'S NEXTCLOUD - HOW TO PULL A FILE FROM "MY NEXTCLOUD"
+  Person's own reference point whenever they say "my Nextcloud" or "same
+  link I've pasted in the past": local.idull.au, the same host already
+  referenced in sections 14/15/18/20 for the original carrier/counterweight
+  exports and OEM manual PDFs. A share link looks like
+  https://local.idull.au/index.php/s/<TOKEN> - the token is a public
+  share token, used as the WebDAV basic-auth username with an empty
+  password: `curl -u "<TOKEN>:" https://local.idull.au/public.php/webdav/`
+  lists (PROPFIND) or downloads (GET) whatever that particular share
+  exposes - a single file, or a whole folder tree (browse with `curl -u
+  "<TOKEN>:" ... -X PROPFIND -H "Depth: 1"`, fetch a specific path by
+  appending it, URL-encoding spaces as %20). This session's own token
+  (Twn8N4Z7xb3QiEk) exposed the 1160 UK reference photo directly at the
+  share root plus Carrier/ and Counterweight/ sibling folders - each new
+  share the person sends will have its own fresh token, but the pattern
+  (extract token from the /s/ URL, WebDAV GET/PROPFIND with that token as
+  the basic-auth username) is the constant part worth remembering.
 
 ================================================================================
