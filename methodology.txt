@@ -7396,4 +7396,15 @@ cranes get their own subsections as they're built.
   size); full regression sweep, 0 console errors.
   CACHE_VERSION v144->v145, app version v3.14->v3.15.
 
+31. BETA-ONLY: Bug-report email added to Welcome tab
+  Person's request: myslewer@gmail.com (confirmed against the on-file
+  address after the person's first message typed it one character short
+  - checked before publishing rather than assuming the typo was
+  intentional). Added as a mailto: link in the Welcome tab's own intro
+  card, right after the existing "that's exactly the kind of feedback
+  this trial is for" line. Beta-only file, no main-branch change.
+  Verified via Playwright: mailto href reads exactly
+  mailto:myslewer@gmail.com; full regression sweep, 0 console errors.
+  CACHE_VERSION v51-beta98->v51-beta99.
+
 ================================================================================
