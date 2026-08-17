@@ -6743,4 +6743,39 @@ cranes get their own subsections as they're built.
   ghost pad fill and outline both visibly faded below the dimension
   lines' own full opacity.
 
+19. BUG FIX: "MUST MOVE" STATUS FLIPPING BASED ON PAD CHECKBOX STATE
+  Person's own report: with a shift entered and only C4's pad toggled on,
+  then Compare old/new turned on, then C1/C2/C3 toggled on - the mat edge
+  marks for C1/C2/C3 showed the FUTURE (shifted target) position instead
+  of the current one.
+  Root cause: calcCAD()'s own isRequired/clash determination
+  (checkClash(relX, relY, fp, legPad) and checkClash(newX, newY, fp,
+  legPad)) was passed legPad - which is null whenever that SAME leg's own
+  pad checkbox happens to be unticked, falling back to a bare-point clash
+  test (clashesWithFootprint) instead of the real pad-sized rectangle test
+  (padClashesWithFootprint). Toggling a leg's own pad checkbox ON could
+  therefore flip that same leg from "optional" to "MUST MOVE" with every
+  other input unchanged - confirmed directly: shiftX=1.867m, shiftY=0 on
+  the LTM 1130 put C1 exactly in the boundary zone where its bare contact
+  point sits clear of the chassis footprint but a 2.4x3.5m pad centred on
+  that same point would reach into it - C1 read "optional" with its pad
+  off and "MUST MOVE" with it on, no other change. Since accuratePlotX
+  (what Bog Mat Marking reads) jumps to the shifted target position
+  whenever isRequired is true, this pad-toggle flip was exactly what
+  surfaced as the person's bug.
+  Fix: the clash tests now always use sharedPadDims() (the shared pad
+  size entered above, same for all four legs) rather than legPad -
+  whether a mat's own footprint would clash with the chassis is a
+  physical fact about the shift and the shared pad size, not something
+  that should depend on which leg's checkbox happens to be ticked at the
+  moment. legPad itself is untouched for its other job (what's actually
+  drawn/shown per leg).
+  Verified: reproduced the exact flip on the pre-fix code (C1 optional ->
+  MUST MOVE from toggling only its own checkbox, shiftX=1.867m), then
+  confirmed identical, order-independent results after the fix - same
+  Bog Mat Marking figures for C1-C4 whether pads are toggled on before or
+  after Compare old/new, and the same MUST MOVE status regardless of that
+  leg's own pad checkbox state. Full click-through of all 8 tabs
+  afterward: 0 console errors.
+
 ================================================================================
