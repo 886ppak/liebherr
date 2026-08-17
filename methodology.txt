@@ -7174,4 +7174,27 @@ cranes get their own subsections as they're built.
   Layout and Support Pad Placement (which shares carrier3d.js) plus the
   other 4 top-level tabs, 0 console errors throughout.
 
+  26.1 "Include tool box" now defaults ON, not off
+    Person independently hand-verified the LTM 1300 figure against the
+    OEM dimension chain (2407+1650+320 rear-to-slew-centre + 810mm box =
+    5187mm; 5600mm Counterweight radius - 5187mm = 413mm) - matched the
+    app's own 412mm to within 1mm (the app's FOOTPRINTS.rear of 4378mm
+    vs. their 4377mm hand-sum, an already-known rounding difference from
+    how that figure was originally cross-validated, not a new error).
+    Then flagged that the checkbox defaulting unticked was actively
+    wrong for how the fleet is really run: every LTM crane that carries
+    a combi box has it physically fitted in real life, so an unticked
+    default was showing an 810mm-too-generous rear clearance unless
+    someone remembered to tick the box every single time - a real
+    number, but not the number a crew should see without asking.
+    Fixed by defaulting scIncludeToolbox to true (was false) and adding
+    `checked` to both the numeric table's static checkbox and the 3D
+    preview's per-crane-rendered one, keeping the toggle itself (still
+    resets to true, not the previous choice, on every crane switch -
+    someone unticking it for the rare box-less crane never carries that
+    over) rather than removing it and hardcoding the box into
+    FOOTPRINTS.rear directly, since the checkbox is what surfaces the
+    correction as a visible, explained figure instead of a silent one.
+    CACHE_VERSION v139->v140, app version v3.9->v3.10.
+
 ================================================================================

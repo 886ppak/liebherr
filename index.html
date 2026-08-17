@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.9</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.10</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -661,7 +661,7 @@
         <div id="sc-width-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;"></div>
         <div id="sc-rear-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
         <label id="sc-toolbox-group" style="display:none; align-items:center; gap:6px; margin-bottom:10px; cursor:pointer; font-size:0.8rem;">
-          <input type="checkbox" id="sc-include-toolbox" onchange="onScToolboxToggle()" style="width:auto; cursor:pointer;">
+          <input type="checkbox" id="sc-include-toolbox" checked onchange="onScToolboxToggle()" style="width:auto; cursor:pointer;">
           Include tool box in rear clearance (+0.81 m)
         </label>
         <table>
@@ -1057,10 +1057,15 @@
 
     // --- TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ---
     let slewClearanceVariantIdx = 0;
-    // Reset per crane switch (see onSlewClearanceCraneChange) so a
-    // toolbox choice made for one crane never silently carries over and
-    // gets applied to the next crane's own rear figure.
-    let scIncludeToolbox = false;
+    // Defaults ON, not off - the person's own fleet always has the tool
+    // box physically fitted on every LTM crane that carries one, so the
+    // safe (smaller) rear clearance figure is the one that should show
+    // without anyone having to remember to tick a box first. Still reset
+    // (back to true, not false) on every crane switch - see
+    // onSlewClearanceCraneChange - so a person unticking it for one
+    // crane (the rare one actually running without its box) never
+    // silently carries that choice over to the next crane.
+    let scIncludeToolbox = true;
 
     function initSlewClearanceTab() {
       const select = document.getElementById('sc-crane');
@@ -1078,9 +1083,9 @@
 
     function onSlewClearanceCraneChange() {
       slewClearanceVariantIdx = 0;
-      scIncludeToolbox = false;
+      scIncludeToolbox = true;
       const toolboxCheck = document.getElementById('sc-include-toolbox');
-      if (toolboxCheck) toolboxCheck.checked = false;
+      if (toolboxCheck) toolboxCheck.checked = true;
       renderSlewClearanceResults();
     }
 
@@ -5198,7 +5203,7 @@
         </label>` +
         (COMBI_BOX_DEPTH_MM[modelKey] ? `
         <label style="display:flex; align-items:center; gap:6px; margin-top:6px; margin-left:22px; cursor:pointer; font-size:0.7rem; color:var(--text-muted);">
-          <input type="checkbox" id="carrier-3d-include-toolbox" onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
+          <input type="checkbox" id="carrier-3d-include-toolbox" checked onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
           Include tool box in rear figure (+${(COMBI_BOX_DEPTH_MM[modelKey] / 1000).toFixed(2)}m)
         </label>` : '') +
         `<label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
