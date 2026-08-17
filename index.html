@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.8</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.9</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -658,19 +658,25 @@
 
       <div class="card">
         <div class="card-title">360° Slew Clearance</div>
-        <div id="sc-width-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
+        <div id="sc-width-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;"></div>
+        <div id="sc-rear-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
+        <label id="sc-toolbox-group" style="display:none; align-items:center; gap:6px; margin-bottom:10px; cursor:pointer; font-size:0.8rem;">
+          <input type="checkbox" id="sc-include-toolbox" onchange="onScToolboxToggle()" style="width:auto; cursor:pointer;">
+          Include tool box in rear clearance (+0.81 m)
+        </label>
         <table>
           <thead>
             <tr>
               <th>Point</th>
               <th>Radius<br><span style="font-weight:400;text-transform:none;">from slew center</span></th>
               <th>Clearance<br><span style="font-weight:400;text-transform:none;">beyond side of carrier</span></th>
+              <th>Clearance<br><span style="font-weight:400;text-transform:none;">beyond rear of carrier</span></th>
             </tr>
           </thead>
           <tbody id="sc-results"></tbody>
         </table>
         <div class="disclaimer" id="sc-limiting-note"></div>
-        <div class="disclaimer">Assumes the crane is parked with its centerline parallel to whatever it needs to clear (wall, stockpile, fence, etc.) — the true worst case, since at that parking angle the swing radius becomes pure sideways distance. Park at an angle to the structure and the real clearance is larger than shown here. Carrier width is this fleet's standard 525/80 R25 tyre (see the crane operating instructions, chapter 1.03, for other tyre options) except where noted. Reference tool only — cross-check against the current OEM documentation and the actual site before slewing near a structure.</div>
+        <div class="disclaimer">Side clearance assumes the crane is parked with its centerline parallel to whatever it needs to clear (wall, stockpile, fence, etc.) — the true worst case, since at that parking angle the swing radius becomes pure sideways distance. Park at an angle to the structure and the real clearance is larger than shown here. Rear clearance assumes the crane is backed square up to whatever sits directly behind it, measured from the rear of the carrier chassis (or the tool box's own rear face, once fitted, if the checkbox above is ticked) straight back to each radius point. Carrier width is this fleet's standard 525/80 R25 tyre (see the crane operating instructions, chapter 1.03, for other tyre options) except where noted. Reference tool only — cross-check against the current OEM documentation and the actual site before slewing near a structure.</div>
       </div>
       </div>
       <!-- /cad-panel-layout -->
@@ -1051,6 +1057,10 @@
 
     // --- TAB 3B: CRANE SETUP (360 SLEW CLEARANCE) ---
     let slewClearanceVariantIdx = 0;
+    // Reset per crane switch (see onSlewClearanceCraneChange) so a
+    // toolbox choice made for one crane never silently carries over and
+    // gets applied to the next crane's own rear figure.
+    let scIncludeToolbox = false;
 
     function initSlewClearanceTab() {
       const select = document.getElementById('sc-crane');
@@ -1068,11 +1078,19 @@
 
     function onSlewClearanceCraneChange() {
       slewClearanceVariantIdx = 0;
+      scIncludeToolbox = false;
+      const toolboxCheck = document.getElementById('sc-include-toolbox');
+      if (toolboxCheck) toolboxCheck.checked = false;
       renderSlewClearanceResults();
     }
 
     function setSlewClearanceVariant(idx) {
       slewClearanceVariantIdx = idx;
+      renderSlewClearanceResults();
+    }
+
+    function onScToolboxToggle() {
+      scIncludeToolbox = document.getElementById('sc-include-toolbox').checked;
       renderSlewClearanceResults();
     }
 
@@ -1087,6 +1105,17 @@
       document.getElementById('sc-width-info').innerHTML =
         `Carrier width (B): <strong>${data.carrierWidthB} mm</strong>` +
         (data.widthNote ? ` — ${data.widthNote}` : '');
+
+      const footprint = FOOTPRINTS[modelKey];
+      const toolboxMm = COMBI_BOX_DEPTH_MM[modelKey] || 0;
+      const toolboxGroup = document.getElementById('sc-toolbox-group');
+      toolboxGroup.style.display = toolboxMm ? 'flex' : 'none';
+      const includeToolbox = toolboxMm > 0 && scIncludeToolbox;
+      const rearRef = footprint ? footprint.rear + (includeToolbox ? toolboxMm : 0) : null;
+      document.getElementById('sc-rear-info').innerHTML = footprint
+        ? `Rear overhang (chassis${toolboxMm ? ', no tool box' : ''}): <strong>${footprint.rear} mm</strong>` +
+          (toolboxMm ? ` — tool box adds ${toolboxMm} mm when fitted` : '')
+        : '';
 
       const variantGroup = document.getElementById('sc-variant-group');
       const points = data.fixed.slice();
@@ -1105,7 +1134,8 @@
 
       const rows = points.map(p => {
         const clearance = p.radius - halfWidth;
-        return { ...p, clearance };
+        const rearClearance = rearRef != null ? p.radius - rearRef : null;
+        return { ...p, clearance, rearClearance };
       });
 
       document.getElementById('sc-results').innerHTML = rows.map(r => `
@@ -1113,12 +1143,15 @@
           <td style="text-align:left;">${r.label}</td>
           <td>${(r.radius / 1000).toFixed(2)} m</td>
           <td>${(r.clearance / 1000).toFixed(2)} m</td>
+          <td>${r.rearClearance != null ? (r.rearClearance / 1000).toFixed(2) + ' m' : '—'}</td>
         </tr>
       `).join('');
 
       const limiting = rows.reduce((max, r) => r.radius > max.radius ? r : max, rows[0]);
       document.getElementById('sc-limiting-note').textContent = limiting
-        ? `Limiting point: ${limiting.label} — needs ${(limiting.clearance / 1000).toFixed(2)} m clear beyond the side of the carrier for a full 360° slew.`
+        ? `Limiting point: ${limiting.label} — needs ${(limiting.clearance / 1000).toFixed(2)} m clear beyond the side of the carrier` +
+          (limiting.rearClearance != null ? `, or ${(limiting.rearClearance / 1000).toFixed(2)} m clear beyond the rear` : '') +
+          `, for a full 360° slew.`
         : '';
     }
 
@@ -2159,7 +2192,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 41;
+    const CARRIER3D_VERSION = 42;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -2286,6 +2319,35 @@
           ]
         }
       }
+    };
+
+    // Combi box rear-mounted accessory box, fitted to most of the LTM
+    // fleet (not the 1650, not the LRT 1100). Depth it adds behind
+    // FOOTPRINTS' own rear (chassis-only) figure when actually fitted -
+    // used by the 360 Slew Clearance "beyond rear of carrier" toggle
+    // (both the numeric table and the 3D dimension line) so a person can
+    // check clearance with or without the box counted.
+    // 810mm confirmed from TWO independent OEM sources, not one: LTM
+    // 1300-6.2's own manual (chapter 1.03 Technical data > 9.16 Combi
+    // box, 0.81m depth x 2.50m width x 1.03m height) and LTM 1110-5.1's
+    // own manual (chapter 1.03 Technical data > 16 Combi box, same
+    // 0.81m x 2.50m x 1.02m) - same physical part, independently
+    // dimensioned in two separate manuals, exact match. LTM 1130-5.1,
+    // 1160-5.2 and 1250-5.1's own manuals confirm the box is fitted
+    // (each has the same "Overloading of the combi box is prohibited"
+    // warning page) but don't repeat its own dimensioned drawing in
+    // these particular manual editions - treated as the same fleet-
+    // standard part given the exact two-source agreement above, not a
+    // guess. LRT 1100-2.1's manual has no combi box mention anywhere
+    // (different chassis, not road-driven the same way) - deliberately
+    // has no entry here. LTM 1650-8.1 never gets one fitted (person's
+    // own confirmation) - also no entry.
+    const COMBI_BOX_DEPTH_MM = {
+      '1110': 810,
+      '1130': 810,
+      '1160': 810,
+      '1250': 810,
+      '1300': 810
     };
 
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
@@ -5131,6 +5193,15 @@
           Show clearance measurement (beyond side of carrier)
         </label>
         <label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
+          <input type="checkbox" id="carrier-3d-show-rear-clearance" onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
+          Show clearance measurement (beyond rear of carrier)
+        </label>` +
+        (COMBI_BOX_DEPTH_MM[modelKey] ? `
+        <label style="display:flex; align-items:center; gap:6px; margin-top:6px; margin-left:22px; cursor:pointer; font-size:0.7rem; color:var(--text-muted);">
+          <input type="checkbox" id="carrier-3d-include-toolbox" onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
+          Include tool box in rear figure (+${(COMBI_BOX_DEPTH_MM[modelKey] / 1000).toFixed(2)}m)
+        </label>` : '') +
+        `<label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
           <input type="checkbox" id="carrier-3d-show-legs" onchange="onLegDimensionToggle()" style="width:auto; cursor:pointer;">
           Show outrigger distances (C1-C4, baseline position)
         </label>
@@ -5232,18 +5303,32 @@
       const circles = checks.map(el => ({ radius: parseFloat(el.dataset.radius), color: el.dataset.color }));
       const showClearanceEl = document.getElementById('carrier-3d-show-clearance');
       const showClearance = showClearanceEl ? showClearanceEl.checked : false;
+      const showRearClearanceEl = document.getElementById('carrier-3d-show-rear-clearance');
+      const showRearClearance = showRearClearanceEl ? showRearClearanceEl.checked : false;
+      const includeToolboxEl = document.getElementById('carrier-3d-include-toolbox');
+      const includeToolbox = includeToolboxEl ? includeToolboxEl.checked : false;
       const data = SLEW_CLEARANCE_DATA[modelKey];
+      const footprint = FOOTPRINTS[modelKey];
+      const rearMm = (showRearClearance && footprint)
+        ? footprint.rear + (includeToolbox ? (COMBI_BOX_DEPTH_MM[modelKey] || 0) : 0)
+        : null;
       // FOOTPRINTS/CARRIER_CALIBRATION passed through so carrier3d.js can
       // compute its own fallback slew-centre calibration when Support Pad
       // Placement hasn't already synced outriggers for this exact model
       // (Crane Layout has its own independent crane select, sc-crane, so
       // that's the common case, not an edge case) - see
       // ensureSlewCalibration's own comment in carrier3d.js. carrierWidthB
-      // (only passed when the checkbox is on) draws a dimension line +
+      // (only passed when the side checkbox is on) draws a dimension line +
       // label from the carrier's own side out to each checked circle,
       // labelled with the same clearance figure as the numeric table.
+      // rearMm (only passed when the rear checkbox is on, and folding in
+      // the tool box depth when that second checkbox is also on) draws the
+      // same kind of dimension line but straight back along the carrier's
+      // own centerline instead of sideways - see applySlewCircles' own
+      // comment in carrier3d.js for how the direction is derived correctly
+      // regardless of a given crane's own frontAtMinZ orientation.
       if (window.__carrier3dSetSlewCircles) {
-        window.__carrier3dSetSlewCircles(modelKey, circles, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey], showClearance && data ? data.carrierWidthB : null);
+        window.__carrier3dSetSlewCircles(modelKey, circles, footprint, CARRIER_CALIBRATION[modelKey], showClearance && data ? data.carrierWidthB : null, rearMm);
       }
     }
 

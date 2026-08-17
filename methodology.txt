@@ -7083,4 +7083,95 @@ cranes get their own subsections as they're built.
   own data/3D model completely unchanged; full regression sweep across
   every crane's CWT tab plus the other 8 app tabs, 0 console errors.
 
+26. 360 SLEW CLEARANCE - "BEYOND REAR OF CARRIER" (mirrors the existing
+    "beyond side" feature, plus a tool box add-on toggle)
+  Person's request: the existing 360° Slew Clearance card only ever
+  measured how far a swing-radius point oversails the carrier's SIDE
+  (radius - carrierWidthB/2) - wanted the same idea for the REAR (radius
+  - some rear reference), since a crew backed up close to something
+  behind the crane needs that figure just as much as the side one.
+  Complication: most of the LTM fleet has a rear-mounted "combi box"
+  accessory that sticks out further back than the bare chassis - wanted
+  a toggle to include or exclude it from the rear figure.
+  Turned out the base rear reference didn't need sourcing at all - it
+  already existed. FOOTPRINTS[modelKey].rear (methodology.txt 4.5,
+  "distance from slew center to the rear tip of the chassis body") is
+  exactly the same measurement already used for the chassis-footprint
+  collision check, sourced and cross-validated per crane back when that
+  feature was built. Every crane in SLEW_CLEARANCE_DATA already has one.
+  The tool box depth needed real sourcing though. Confirmed 810mm from
+  TWO independent OEM manuals, not one: LTM 1300-6.2's own operator
+  manual (chapter 1.03 Technical data > 9.16 Combi box, fetched from the
+  person's Nextcloud - 0.81m depth x 2.50m width x 1.03m height) and LTM
+  1110-5.1's own manual (same chapter, "16 Combi box", 0.81m x 2.50m x
+  1.02m) - same physical part, independently dimensioned in two separate
+  manuals, exact match on the depth that matters here. Checked all 7
+  fleet manuals for it: LTM 1130-5.1/1160-5.2/1250-5.1 each confirm the
+  box is actually fitted (same "Overloading of the combi box is
+  prohibited" warning page in all three) but don't repeat its own
+  dimensioned drawing in these particular manual editions - treated as
+  the same fleet-standard 810mm part given the exact two-source
+  agreement, not a guess. LRT 1100-2.1's manual has zero "combi box"
+  mentions anywhere in 1197 pages (different chassis architecture, not
+  road-driven the same way as the LTM range) - correctly gets no tool
+  box option. LTM 1650-8.1 was confirmed directly by the person - a
+  combi box never gets fitted to it - also correctly gets no tool box
+  option. COMBI_BOX_DEPTH_MM{} holds the 5 LTM keys only (1110/1130/
+  1160/1250/1300); its absence for a modelKey is what drives the "Include
+  tool box" checkbox's own visibility in both places it appears.
+  Two places this needed wiring, both mirroring the existing side-
+  clearance pattern exactly rather than inventing a new one:
+    1. The numeric "360° Slew Clearance" table (Crane Layout tab) gained
+       a 4th column, same per-point rows as the existing side column,
+       computed as radius - (FOOTPRINTS.rear + (toolbox checked ?
+       COMBI_BOX_DEPTH_MM : 0)). New "Include tool box" checkbox (only
+       rendered when the selected crane has a COMBI_BOX_DEPTH_MM entry)
+       drives scIncludeToolbox, reset to false on every crane switch -
+       same reasoning as every other per-crane toggle in this app, a
+       choice made for one crane should never silently carry over and
+       apply to the next crane's own figure.
+    2. The 3D Carrier Preview's toggle list gained a second checkbox
+       "Show clearance measurement (beyond rear of carrier)" alongside
+       the existing side one, plus a conditionally-rendered "Include tool
+       box" sub-checkbox nested under it. Both feed the same
+       onSlewCircleToggle() the side checkbox already used, which now
+       also computes rearMm and passes it through to
+       window.__carrier3dSetSlewCircles as a new 6th argument.
+  carrier3d.js's applySlewCircles() gained the matching rearMm parameter
+  and draws a second dimension line per circle when it's set - same
+  addDimensionLine() helper the side line already used, same per-circle
+  loop, just a different pair of endpoints. The side line hardcodes
+  world +X since every crane's calibration is guaranteed lateral-
+  symmetric; the rear line deliberately does NOT hardcode +Z the same
+  way - it computes BOTH endpoints via siteToWorld(cal, 0, mm), which is
+  the one place in this file that already carries the correct sign per
+  crane (computeFormulaCalibration's own dirSign, chosen so site-space
+  +Y/rear always maps to increasing world Z regardless of which end of a
+  given crane's own CAD export sits at min vs max Z - see that
+  function's comment). Hardcoding +Z here would have silently drawn the
+  rear dimension line pointing at the FRONT on any crane calibrated with
+  frontAtMinZ false, without erroring - confirmed correct instead of
+  assumed, by cross-checking the 3D line's own on-screen label against
+  the numeric table's figure for the same crane/point (642mm in both
+  places for LTM 1300's Winch 2, no toolbox - see verification below).
+  pendingSlewCircleContext (the replay-once-loaded state for a model
+  still mid-fetch when the toggle fires) now carries rearMm alongside
+  carrierWidthMm, same replay pattern as everything else in this file.
+  CARRIER3D_VERSION bumped 41->42 (carrier3d.js itself changed).
+  Verified via Playwright: numeric table's new rear column present and
+  correct for all 7 cranes with FOOTPRINTS-only rear figures (including
+  a legitimate NEGATIVE clearance for LRT 1100 - Counterweight's own
+  4.19m radius doesn't even reach its 4.39m rear overhang, a real result,
+  not a bug); "Include tool box" checkbox correctly hidden for 1100/1650,
+  correctly shown and correctly shifts the rear column for the other 5;
+  checkbox state resets on crane switch; 3D preview's two new checkboxes
+  render with correct conditional nesting; a real 3D activation +
+  Fit View screenshot for LTM 1300 shows both dimension lines rendered
+  correctly - side line labelled 3470mm (exact match to the numeric
+  table's 3.47m for Winch 2) and rear line labelled 642mm (exact match to
+  the numeric table's 0.64m for the same point, before ticking the tool
+  box checkbox); full regression sweep across every crane on both Crane
+  Layout and Support Pad Placement (which shares carrier3d.js) plus the
+  other 4 top-level tabs, 0 console errors throughout.
+
 ================================================================================
