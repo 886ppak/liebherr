@@ -6857,4 +6857,56 @@ cranes get their own subsections as they're built.
   (1.5m/1.5m, C2's own case from the previous entry); full click-through
   of all 8 tabs afterward: 0 console errors.
 
+22. MAT MARKS REDESIGN: CURRENT NEVER JUMPS, TARGET COVERS EVERY LEG
+  Person's clarified spec, after seeing Current Mat Marks jump to the
+  shifted figures for a required leg: "current mat marks... show were
+  they current or should sit from its current position and never change
+  just being able to toggle it on and off" - and for Target: "if im
+  moving +4 to the right I want this to show me from the current edge of
+  crane where the inside and outside will be of the C1/C2 mats" (C1/C2
+  being required legs in their own example, not just optional ones) -
+  "if the mats will land in the future pos underneath the current pos of
+  the carrier there is no need to give dimension as they wont be
+  useful". Purpose, confirmed with the person: helps with using a tape
+  measure and line marking paint on the ground.
+  This superseded both the original Bog Mat Marking design (deliberately
+  showed a required leg's shifted position under "current", reasoning
+  being that's where the crew should actually place it) and the previous
+  entry's Target filter (excluded every required leg, since under the OLD
+  design current==target for them).
+  calcCAD(): accurateX (the field Current Mat Marks reads) no longer ever
+  jumps to the shifted spot for a required leg - it's now unconditionally
+  accurateBaseX, the leg's true physical position, full stop. Added
+  currentY (unconditionally baseY, same "never jumps" treatment for the Y
+  component - leg.y/plotY themselves are untouched, since those still
+  correctly drive where the leg/pad marker itself gets DRAWN on the
+  canvas/3D view, a separate concern from what the marking figures
+  should read). accurateTargetX was already unconditional from the
+  previous entry and needed no change.
+  computeMatMarkingData()'s target filter dropped the "required legs
+  never appear" exclusion entirely (that was only ever a side effect of
+  the old jumping accurateX) - now only excludes a leg with literally no
+  shift of its own (target trivially equals current) or one flagged
+  leg.clash (NOT POSSIBLE - would land under the current chassis).
+  Confirmed via Playwright on LTM 1130, shiftX=4m/shiftY=0 (C1/C2
+  required, C3/C4 optional-but-clashing): Current Mat Marks' own numbers
+  for all 4 legs came back byte-identical between shift=0 and shift=4m/0
+  (proving it truly never changes); Target now correctly includes C1 and
+  C2 (previously excluded), still correctly excludes C3/C4.
+  New clutter this surfaced: a leg's target Y equals its current Y
+  whenever the shift is pure sideways (very common - the person's own
+  "+4 right" example), which put Current's and Target's inside/outside
+  lines for the SAME leg on the exact same row, garbling their labels
+  together (screenshotted: "C2 outside: C2 outside: 7525mm", genuinely
+  unreadable overlapping text). Fixed in carrier3d.js's drawMatEdgeMarks:
+  Target's whole inside/outside pair now gets pushed an extra 0.9x pad
+  length further out along Y before applying its own inside/outside
+  split, unconditionally (simpler than only applying it when the two
+  actually coincide, and harmless when they already differ) - Current
+  and Target now always land in clearly separate bands. Re-screenshotted
+  to confirm: fully legible now, no character overlap.
+  Full click-through of all 8 tabs, plus a spot-check at an extreme
+  10m shift (nothing required or clashing - target correctly non-empty
+  for all 4 legs, hint correctly hidden): 0 console errors throughout.
+
 ================================================================================

@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.4</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.5</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -582,7 +582,7 @@
             <input type="checkbox" id="carrier-3d-show-mat-edges-target" onchange="onMatEdgeToggle()" style="width:auto; cursor:pointer;"> Target Mat Marks
           </label>
         </div>
-        <div class="cwt-zoom-hint" id="carrier-3d-target-empty-hint" style="display:none; margin-top:6px;">No target positions to show right now — every leg with a pad on is either already required to move (see Current Mat Marks) or its "if moved" spot would clip the chassis.</div>
+        <div class="cwt-zoom-hint" id="carrier-3d-target-empty-hint" style="display:none; margin-top:6px;">No target positions to show right now — enter a shift above, and make sure the resulting spot wouldn't clip the chassis.</div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
           <div id="carrier-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
@@ -2015,7 +2015,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 39;
+    const CARRIER3D_VERSION = 41;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -5213,7 +5213,7 @@
 
         if (shiftX === 0 && shiftYinput === 0) {
           mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, clash: false, pad: legPad,
-            x: baseX, y: baseY, movedX: baseX, movedY: baseY, accurateX: accurateBaseX, accurateTargetX: accurateBaseX,
+            x: baseX, y: baseY, movedX: baseX, movedY: baseY, accurateX: accurateBaseX, accurateTargetX: accurateBaseX, currentY: baseY,
             r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
             <tr>
@@ -5265,19 +5265,23 @@
         const isRequired = checkClash(relX, relY, fp, sharedPad);
         const plotX = isRequired ? newX : baseX;
         const plotY = isRequired ? newY : baseY;
-        // Same required/shift logic as plotX above, applied to the
-        // accurate baseline instead of the r/angle-derived one.
-        const accuratePlotX = isRequired ? accurateBaseX + shiftX : accurateBaseX;
-        // Unconditionally the accurate TARGET spot (not gated on
-        // isRequired like accuratePlotX above) - for a required leg this
-        // is identical to accuratePlotX (its current position already IS
-        // the target), but for an optional leg it's the "if you chose to
-        // relocate it anyway" spot, used by Target Mat Marks below.
+        // Unconditionally the accurate TARGET spot, regardless of
+        // isRequired - used by Target Mat Marks below. accurateX (Current
+        // Mat Marks' own field, right below) deliberately does NOT mirror
+        // this jump-when-required behaviour any more: person's own
+        // request was for Current Mat Marks to always read the pad's true
+        // current position and never change on its own, with the future/
+        // shifted position living entirely under its own Target Mat Marks
+        // toggle instead - even for a required leg. (plotX/plotY - used
+        // for where the leg/pad marker itself is actually DRAWN on the
+        // canvas/3D view - still legitimately jump to the target for a
+        // required leg; that's a different, correct concern from what the
+        // Bog Mat Marking figures should read.)
         const accurateTargetX = accurateBaseX + shiftX;
 
         mappedOutriggers.push({
           id: item.id, quadrant: item.quadrant, required: isRequired, clash, pad: legPad,
-          x: plotX, y: plotY, movedX: newX, movedY: newY, accurateX: accuratePlotX, accurateTargetX,
+          x: plotX, y: plotY, movedX: newX, movedY: newY, accurateX: accurateBaseX, accurateTargetX, currentY: baseY,
           r: isRequired ? movedR : stayR, dir: isRequired ? movedDir : stayDir, relAngle: isRequired ? movedAngle : stayAngle,
           posX: Math.round(plotX), posY: Math.round(plotY)
         });
@@ -5316,46 +5320,51 @@
     // the lateral distances a crew paints on the ground BEFORE the pad
     // goes down - measured from the crane's own edge (carrier width, not
     // centerline), same reference point the ground layout marks toggle
-    // uses on Crane Layout, but here against the pad's own CURRENT
-    // (possibly shifted) position rather than a fixed baseline, since this
-    // tab is the execution tool. Worked example that prompted this
-    // (person's own numbers): if a leg's own edge-to-pad-centre distance
-    // is 4m and the pad itself is 2m wide, mark the inside edge (closer to
-    // the crane) at 4 - 2/2 = 3m out, and the outside edge at
-    // 4 + 2/2 = 5m out - lets a crew square the mat up on bare ground with
-    // just a tape and paint, without needing to first find the pad's own
-    // centre point. Uses leg.accurateX, NOT leg.x - the same required/
-    // shift logic as leg.x (baseX, or the shifted newX once a "must move"
-    // shift makes that the real target), but built from GROUND_LAYOUT_DATA's
-    // own span figures rather than r*sin(angle). cadFleetData's angle is
-    // only stored to one decimal place, which is precise enough for the
-    // pad drawn on the canvas/3D view (leg.x, unchanged) but not for a
-    // marking figure meant to isolate the lateral component alone - it
-    // was making a mirrored pair (e.g. C2/C3, identical physical
-    // outrigger span) read as different distances from the crane's edge,
-    // which isn't physically real. See accurateLateralX() in calcCAD().
+    // uses on Crane Layout. Worked example that prompted this (person's
+    // own numbers): if a leg's own edge-to-pad-centre distance is 4m and
+    // the pad itself is 2m wide, mark the inside edge (closer to the
+    // crane) at 4 - 2/2 = 3m out, and the outside edge at 4 + 2/2 = 5m out
+    // - lets a crew square the mat up on bare ground with just a tape and
+    // paint, without needing to first find the pad's own centre point.
+    // Uses leg.accurateX, NOT leg.x - built from GROUND_LAYOUT_DATA's own
+    // span figures rather than r*sin(angle). cadFleetData's angle is only
+    // stored to one decimal place, which is precise enough for the pad
+    // drawn on the canvas/3D view (leg.x, unchanged) but not for a marking
+    // figure meant to isolate the lateral component alone - it was making
+    // a mirrored pair (e.g. C2/C3, identical physical outrigger span) read
+    // as different distances from the crane's edge, which isn't
+    // physically real. See accurateLateralX() in calcCAD(). leg.accurateX
+    // is always the leg's true CURRENT position now (see computeMatMarkingData's
+    // own comment below) - never the shifted target, even for a required
+    // leg; that distinction lives entirely in the useTarget parameter.
     // Shared by renderMatMarking()'s table below and onMatEdgeToggle()'s 3D
     // version of the same marks - one computation, two presentations, so
     // they can never quietly drift apart from each other.
-    // useTarget switches from a leg's CURRENT position (leg.accurateX/
-    // leg.y - already the shifted target once a "must move" shift makes
-    // that the real current intent, see accuratePlotX in calcCAD()) to its
-    // TARGET position (leg.accurateTargetX/leg.movedY - unconditionally
-    // "if this leg were moved to the shift's target spot", regardless of
-    // whether it's required). For a required leg those are the same
-    // point, so target mode filters those out - showing it again under
-    // Target Mat Marks would just duplicate Current Mat Marks. What's left
-    // is exactly the "if you chose to relocate this optional leg anyway"
-    // case - person's own request, after noticing this same figure
-    // surfacing (as a bug) under Current Mat Marks: "I actually wouldn't
-    // mind these but it would need to be toggled under another button".
-    // Also excludes any leg whose target spot is flagged clash (the "All
-    // Four Legs" table's own NOT POSSIBLE) - moving a pad there would clip
-    // the chassis, so its own edgeToCenterMm can come out smaller than
-    // half the pad's width, making insideMm go negative. That's technically
-    // correct (the pad really would overlap the crane) but not a real
-    // marking figure a crew could ever use, so it's excluded rather than
-    // shown with a confusing negative number.
+    // useTarget switches between leg.accurateX/leg.currentY - the leg's
+    // TRUE current position, unconditionally (never jumps for a required
+    // leg - person's own request: "current mat marks... show were they
+    // current or should sit from its current position and never change
+    // just being able to toggle it on and off") - and
+    // leg.accurateTargetX/leg.movedY - unconditionally "if this leg were
+    // moved to the shift's target spot", for EVERY leg with a pad on, not
+    // just optional ones ("i want this to show me... where the inside and
+    // outside will be of the C1/C2 mats" - C1/C2 being required legs in
+    // their own example). Both figures are always measured from the
+    // crane's own CURRENT edge (edgeXMm below, derived from halfB - a
+    // fixed crane-width constant, never shifted) - so Target's own inside/
+    // outside numbers already read as "from the current edge of the crane
+    // to where the mat will land", exactly as asked.
+    // Target mode excludes: a leg with no real shift of its own (target
+    // equals current - trivially true for every leg when no shift is
+    // entered at all), and any leg whose target spot is flagged clash (the
+    // "All Four Legs" table's own NOT POSSIBLE) - moving a pad there would
+    // land it under the current carrier's own chassis, so its own
+    // edgeToCenterMm can come out smaller than half the pad's width,
+    // making insideMm go negative. That's technically correct (the pad
+    // really would overlap the crane) but not a real marking figure a crew
+    // could ever use - person's own words: "there is no need to give
+    // dimension as they wont be useful" - so it's excluded outright rather
+    // than shown with a confusing negative number.
     function computeMatMarkingData(useTarget) {
       if (!lastMapped || !lastFp) return [];
       const halfB = lastFp.width / 2;
@@ -5363,10 +5372,10 @@
         if (!leg.pad) return false;
         if (!useTarget) return true;
         if (leg.clash) return false;
-        return leg.accurateTargetX !== leg.accurateX || leg.movedY !== leg.y;
+        return leg.accurateTargetX !== leg.accurateX || leg.movedY !== leg.currentY;
       }).map(leg => {
         const x = useTarget ? leg.accurateTargetX : leg.accurateX;
-        const y = useTarget ? leg.movedY : leg.y;
+        const y = useTarget ? leg.movedY : leg.currentY;
         const side = x >= 0 ? 1 : -1;
         const edgeToCenterMm = Math.abs(x) - halfB;
         const halfPadMm = leg.pad.width / 2;
@@ -5443,13 +5452,12 @@
         window.__carrier3dSetTargetMatEdgeMarks(modelKey, targetMarks, fp, cal);
       }
       // Target legitimately comes back empty whenever every leg with a pad
-      // on is either already required to move (its current position IS
-      // its target - see Current Mat Marks) or its "if moved" spot would
-      // clip the chassis (leg.clash) - a real, correct outcome, not a
-      // broken toggle. Surfaced explicitly rather than left as a
-      // silently-empty 3D view, since there's no other visual difference
-      // between "nothing to show" and "toggle isn't working". Person's own
-      // report after hitting exactly this with a large shift.
+      // on has no shift entered at all, or its "if moved" spot would clip
+      // the chassis (leg.clash) - a real, correct outcome, not a broken
+      // toggle. Surfaced explicitly rather than left as a silently-empty
+      // 3D view, since there's no other visual difference between
+      // "nothing to show" and "toggle isn't working". Person's own report
+      // after hitting exactly this with a large shift.
       document.getElementById('carrier-3d-target-empty-hint').style.display = (targetShow && targetMarks.length === 0) ? '' : 'none';
     }
 
