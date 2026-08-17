@@ -1,7 +1,8 @@
 # Git workflow
 
-`main` is the primary branch (production, `myslewer.github.io`). Develop
-directly on `main`, commit, and push to `origin main` as the primary step.
+`main` is the primary branch (production, `886ppak.github.io/myslewer/`).
+Develop directly on `main`, commit, and push to `origin main` as the
+primary step.
 
 Then shadow the same change onto `beta-trial` so the beta channel stays
 current too:
@@ -28,7 +29,7 @@ not merge the branch.
 
 Confirm each deploy actually landed by fetching `sw.js` from the live
 Pages URL and checking `CACHE_VERSION` before considering the work done
-(`myslewer.github.io/myslewer/sw.js` for main,
+(`886ppak.github.io/myslewer/sw.js` for main,
 `886ppak.github.io/myslewer-beta/sw.js` for beta).
 
 # App version number
