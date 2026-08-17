@@ -260,7 +260,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.0</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.1</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -5326,7 +5326,21 @@
         const movedRawAngle = toDegrees(Math.atan2(newX, newY));
         const movedDir = dirFor(movedRawAngle);
         const movedAngle = Math.round(Math.abs(movedRawAngle) * 10) / 10;
-        const clash = checkClash(newX, newY, fp, legPad);
+        // sharedPad here, NOT legPad - whether a leg's own pad checkbox is
+        // currently toggled is a display/progress-tracking state (which
+        // mats have physically gone down yet), not a fact about whether
+        // its pad WOULD clash with the chassis once placed. Using legPad
+        // here was a real bug: toggling a leg's pad on/off switched its
+        // clash test between the pad-sized box and a bare point, which
+        // could flip that leg's own "must move" status - and with it,
+        // Bog Mat Marking's figures for that leg (see accuratePlotX below)
+        // - purely because of checkbox state, not anything physical.
+        // Person's own report: C1-C3 toggled on AFTER Compare old/new was
+        // already active came up showing the SHIFTED target position
+        // instead of the current one. All four legs always use the same
+        // shared pad size for this test now, matching how the mat
+        // dimensions are genuinely uniform across all four in practice.
+        const clash = checkClash(newX, newY, fp, sharedPad);
 
         // If left in place: its position measured from the crane's NEW center.
         const relX = baseX - shiftX, relY = baseY - shiftY;
@@ -5343,7 +5357,7 @@
         // check above. Checked per pad, per crane, per shift - not a
         // left/right-of-travel heuristic, so a diagonal shift can require
         // a front or rear pad to move too, not just a lateral one.
-        const isRequired = checkClash(relX, relY, fp, legPad);
+        const isRequired = checkClash(relX, relY, fp, sharedPad);
         const plotX = isRequired ? newX : baseX;
         const plotY = isRequired ? newY : baseY;
         // Same required/shift logic as plotX above, applied to the
