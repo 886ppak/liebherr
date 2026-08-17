@@ -7509,4 +7509,34 @@ cranes get their own subsections as they're built.
   errors.
   CACHE_VERSION v147->v148, app version v3.17->v3.18.
 
+34. Chain Shortening: "Shorten By Amount" input mode
+  Person's request: didn't want to have to know/enter a chain's current
+  length just to find out how many links to remove - wanted to type the
+  amount to shorten by directly (e.g. 500mm) and get links to remove for
+  the selected diameter.
+  Added an "Input Method" mode-toggle (Current & Desired Length / Shorten
+  By Amount) above the existing inputs - same mode-toggle/mode-btn
+  pattern already used elsewhere in the app (Load Chart Finder's own
+  sub-tabs, Driving with Equipment's direction toggle), not a new UI
+  pattern. 'amount' mode swaps the Current/Desired Length fields for a
+  single "Shorten By" field and reuses the exact same formula
+  (calcChainShortening() now branches on chainMode, both branches share
+  CHAIN_PITCH_TABLE and the same round-to-nearest-link math) - "Actual
+  Finished Length" (which needs a starting length to mean anything) is
+  replaced with "Actual Amount Shortened" (Links to Remove x Pitch per
+  Link) in this mode, "Difference from Target" carries over unchanged
+  (still Actual - Target, just against the shorten amount instead of the
+  desired length).
+  Note for the person: their own example (500mm on 8mm chain = 20 links)
+  doesn't match what the existing, already-verified CHAIN_PITCH_TABLE
+  (8mm -> 24mm/link, matching their own reference spreadsheet) computes -
+  500/24 = 20.83, which rounds to 21 links (504mm actual, +4mm over), not
+  20. Didn't change the pitch table over an offhand example - flagged
+  this instead, same formula/table both modes already share.
+  Verified via Playwright: default length-mode result unchanged from
+  before this change; amount-mode for 8mm/500mm gives 21 links/504mm/
+  +4mm as described above; field visibility toggles correctly between
+  modes both directions; full regression sweep, 0 console errors.
+  CACHE_VERSION v148->v149, app version v3.18->v3.19.
+
 ================================================================================

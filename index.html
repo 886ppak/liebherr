@@ -286,7 +286,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.18</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.19</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -592,19 +592,30 @@
           <select id="chain-diameter" onchange="calcChainShortening()"></select>
         </div>
         <div class="form-group" style="margin-top:10px;">
+          <label>Input Method</label>
+          <div class="mode-toggle" id="chain-mode-toggle" style="margin-top:6px;">
+            <button class="mode-btn active" id="chain-mode-length-btn" onclick="setChainMode('length')">Current &amp; Desired Length</button>
+            <button class="mode-btn" id="chain-mode-amount-btn" onclick="setChainMode('amount')">Shorten By Amount</button>
+          </div>
+        </div>
+        <div class="form-group" id="chain-current-group" style="margin-top:10px;">
           <label>Current Length (mm)</label>
           <input type="number" id="chain-current" value="6000" step="1" min="0" oninput="calcChainShortening()">
         </div>
-        <div class="form-group" style="margin-top:10px;">
+        <div class="form-group" id="chain-desired-group" style="margin-top:10px;">
           <label>Desired Length (mm)</label>
           <input type="number" id="chain-desired" value="5500" step="1" min="0" oninput="calcChainShortening()">
+        </div>
+        <div class="form-group" id="chain-amount-group" style="margin-top:10px; display:none;">
+          <label>Shorten By (mm)</label>
+          <input type="number" id="chain-amount" value="500" step="1" min="0" oninput="calcChainShortening()">
         </div>
       </div>
 
       <div class="card">
         <div class="card-title" style="color:var(--success);">Result</div>
         <div id="chain-result"></div>
-        <div class="disclaimer">Pitch per link is looked up from chain diameter (8/10/13/16/19/22/26mm), same table as the reference shortening calculator. Links to remove is rounded to the nearest whole link, so the actual finished length can land a few mm off the desired length — that's the "Difference from Target" figure below. Cross-check against the chain's own data plate/certification before cutting.</div>
+        <div class="disclaimer">Pitch per link is looked up from chain diameter (8/10/13/16/19/22/26mm), same table as the reference shortening calculator. Links to remove is rounded to the nearest whole link, so the actual shortened amount can land a few mm off the target — that's the "Difference from Target" figure below. Cross-check against the chain's own data plate/certification before cutting.</div>
       </div>
     </div>
 
@@ -5024,6 +5035,24 @@
     // holding for a diameter added later.
     const CHAIN_PITCH_TABLE = { 8: 24, 10: 30, 13: 39, 16: 48, 19: 57, 22: 66, 26: 78 };
 
+    // 'length' (original: current + desired length) or 'amount' (person's
+    // own request: just say how much to shorten by, e.g. 500mm, without
+    // needing to know/enter the current length at all). Reset to 'length'
+    // isn't needed anywhere else - this tab has no crane/model select to
+    // switch away from, so there's no other place the mode would need
+    // clearing from.
+    let chainMode = 'length';
+
+    function setChainMode(mode) {
+      chainMode = mode;
+      document.getElementById('chain-mode-length-btn').classList.toggle('active', mode === 'length');
+      document.getElementById('chain-mode-amount-btn').classList.toggle('active', mode === 'amount');
+      document.getElementById('chain-current-group').style.display = mode === 'length' ? '' : 'none';
+      document.getElementById('chain-desired-group').style.display = mode === 'length' ? '' : 'none';
+      document.getElementById('chain-amount-group').style.display = mode === 'amount' ? '' : 'none';
+      calcChainShortening();
+    }
+
     function initChainTab() {
       const select = document.getElementById('chain-diameter');
       buildSelect(
@@ -5037,7 +5066,8 @@
     }
 
     // Same formula as the reference spreadsheet, same field names:
-    //   Amount to Shorten = Current - Desired
+    //   Amount to Shorten = Current - Desired (or typed directly, in
+    //     'amount' mode - see chainMode above)
     //   Links to Remove = ROUND(Amount to Shorten / Pitch per Link, 0)
     //   Actual Finished Length = Current - (Links to Remove x Pitch per Link)
     //   Difference from Target = Actual Finished Length - Desired
@@ -5046,19 +5076,46 @@
     // land a few mm off the desired length - Difference from Target is
     // exactly that gap, shown rather than hidden, so a person isn't
     // surprised when the finished chain doesn't land bang on the number
-    // they typed in.
+    // they typed in. 'amount' mode is the exact same formula minus the
+    // Current Length input it doesn't need - Actual Finished Length has
+    // no meaning without a starting length, so that row is replaced with
+    // Actual Amount Shortened (Links to Remove x Pitch per Link) instead.
     function calcChainShortening() {
       const diameter = parseFloat(document.getElementById('chain-diameter').value);
+      const resultEl = document.getElementById('chain-result');
+      const pitch = CHAIN_PITCH_TABLE[diameter];
+
+      if (chainMode === 'amount') {
+        const amountToShorten = parseFloat(document.getElementById('chain-amount').value);
+        if (isNaN(amountToShorten) || isNaN(diameter)) {
+          resultEl.innerHTML = '<div class="disclaimer">Enter a chain diameter and the amount to shorten by above.</div>';
+          return;
+        }
+        const linksToRemove = Math.round(amountToShorten / pitch);
+        const actualShortened = linksToRemove * pitch;
+        const diffFromTarget = actualShortened - amountToShorten;
+
+        resultEl.innerHTML = `
+          <table>
+            <tbody>
+              <tr><td style="text-align:left;">Pitch per Link</td><td>${pitch} mm</td></tr>
+              <tr><td style="text-align:left;">Amount to Shorten</td><td>${amountToShorten} mm</td></tr>
+              <tr><td style="text-align:left;"><b>Links to Remove</b></td><td><b>${linksToRemove}</b></td></tr>
+              <tr><td style="text-align:left;">Actual Amount Shortened</td><td>${actualShortened} mm</td></tr>
+              <tr><td style="text-align:left;">Difference from Target</td><td>${diffFromTarget > 0 ? '+' : ''}${diffFromTarget} mm</td></tr>
+            </tbody>
+          </table>`;
+        return;
+      }
+
       const current = parseFloat(document.getElementById('chain-current').value);
       const desired = parseFloat(document.getElementById('chain-desired').value);
-      const resultEl = document.getElementById('chain-result');
 
       if (isNaN(current) || isNaN(desired) || isNaN(diameter)) {
         resultEl.innerHTML = '<div class="disclaimer">Enter a chain diameter, current length, and desired length above.</div>';
         return;
       }
 
-      const pitch = CHAIN_PITCH_TABLE[diameter];
       const amountToShorten = current - desired;
       const linksToRemove = Math.round(amountToShorten / pitch);
       const actualFinished = current - (linksToRemove * pitch);
