@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.10</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.11</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -2314,7 +2314,18 @@
       '1650': {
         label: 'LTM 1650-8.1',
         carrierWidthB: 3100,
-        fixed: [],
+        // TY's/T3N: person-supplied radii, checkboxes (not part of the
+        // Ballast Radius variant group below) since they're independent
+        // rigging configurations, not mutually-exclusive alternatives to
+        // each other or to the ballast tray radius - a person may need
+        // to check either, both, or neither depending on what's rigged.
+        // TY's: clearance required with the TY's fitted and open to 40°.
+        // T3N: clearance required with the N assembly fitted to the T3
+        // boom.
+        fixed: [
+          { label: "TY's (open to 40°)", radius: 11646 },
+          { label: 'T3N (N assembly on T3 boom)', radius: 11485.4 }
+        ],
         variants: {
           label: 'Ballast Radius (Site Clearance)',
           options: [
