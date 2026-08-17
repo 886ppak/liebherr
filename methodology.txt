@@ -6909,4 +6909,44 @@ cranes get their own subsections as they're built.
   10m shift (nothing required or clashing - target correctly non-empty
   for all 4 legs, hint correctly hidden): 0 console errors throughout.
 
+23. LTM 1160 UK VARIANT: SIMPLE WEIGHT CALCULATOR, NO COMBO CHART
+  Person wanted the UK-market counterweight variant of the 160t crane
+  added, but had no OEM combination chart (the document that says which
+  plate subsets are actually approved) - only a WhatsApp photo of the
+  exploded-view diagram with weights labelled per piece (5t/6.5t/5t top
+  plates, 10t/14t/10t base blocks, 3.5t base spacer - 54t total across 7
+  pieces), and a DXF of traced box outlines with no text/weight labels
+  of its own (confirmed via ezdxf: 158 LINE + 160 POINT entities, one
+  externally-linked IMAGE reference that never came through - zero TEXT/
+  MTEXT). First worked out scope through several rounds: initially read
+  "map to total weight calculator" as wiring this into Load Chart
+  Finder - wrong, person clarified "nothing to do with load charts,
+  im only trying to build a CWT combo". Landed on: since there's no
+  approved-combination list to validate against, build a plain tick-list
+  instead of the diagram-tap-and-match UI every other crane here uses -
+  check which of the 7 pieces are fitted, see the running total, no
+  approval flagging.
+  Placement: person's own request - inside the EXISTING 1160 crane entry
+  in the Counterweight Combinations tab (not a new crane in the
+  dropdown), behind a Global | UK mode-toggle that only appears when the
+  selected crane's data carries a ukVariant key. COUNTERWEIGHT_DATA['1160']
+  gained a ukVariant: { sourceNote, pieces: [{id, name, weight}, ...7] }
+  block, named descriptively by role in the exploded view (Top/Middle/
+  Lower Plate, Base Block Left/Centre/Right, Base Spacer) since no source
+  document supplies OEM part names either.
+  New cwtVariant/cwtUkSelected state, setCwtVariant()/renderCwtVariant()
+  dispatcher (shows the 3 diagram-based cards vs the new #cwt-uk-card
+  tick-list, calls renderCwtTab() or the new renderCwtUkTab()
+  accordingly), toggleCwtUkPiece(). onCwtCraneChange() resets to Global
+  and re-hides the toggle for cranes without a ukVariant, so switching
+  crane or switching back to 1160 never leaves a stale UK selection
+  showing.
+  Verified via Playwright: toggle only appears for 1160; ticking 3 pieces
+  (5+10+14) reads 29.0t; all 7 reads 54.0t exactly matching the photo's
+  own total; switching Global<->UK correctly shows/hides the right cards
+  each way; switching to a different crane and back to 1160 resets to
+  Global rather than remembering UK; existing Global/EU diagram-tap flow
+  for 1160 (and a spot-check across every other crane) completely
+  unaffected; 0 console errors across a full click-through of all 8 tabs.
+
 ================================================================================

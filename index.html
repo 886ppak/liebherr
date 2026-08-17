@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.5</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.6</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -738,9 +738,23 @@
           <label>Select Crane Model</label>
           <select id="cwt-crane" onchange="onCwtCraneChange()"></select>
         </div>
+        <div class="form-group" id="cwt-variant-group" style="display:none; margin-top:14px;">
+          <label>Variant</label>
+          <div class="mode-toggle" id="cwt-variant-toggle">
+            <button class="mode-btn active" id="cwt-variant-global-btn" onclick="setCwtVariant('global')">Global</button>
+            <button class="mode-btn" id="cwt-variant-uk-btn" onclick="setCwtVariant('uk')">UK</button>
+          </div>
+        </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="cwt-uk-card" style="display:none;">
+        <div class="card-title">Counterweight Pieces (UK Variant)</div>
+        <div id="cwt-uk-checklist"></div>
+        <div id="cwt-uk-status" style="margin-top:12px;"></div>
+        <div class="disclaimer" id="cwt-uk-disclaimer"></div>
+      </div>
+
+      <div class="card" id="cwt-combo-card">
         <div class="card-title">Jump to Known Combination</div>
         <div class="form-group">
           <label>OEM-Approved Combination (by total weight)</label>
@@ -748,7 +762,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="cwt-stack-card">
         <div class="card-title">Counterweight Stack</div>
         <div class="mode-toggle" id="cwt-view-toggle" style="display:none; margin-bottom:10px;">
           <button class="mode-btn active" id="cwt-view-2d-btn" onclick="setCwtView('2d')">2D Diagram</button>
@@ -1581,7 +1595,37 @@
           { items: ['p1', 'p2', 'p3a', 'p3b', 'p4'] },
           { items: ['p1', 'p2', 'p3a', 'p3b', 'p3c'] },
           { items: ['p1', 'p2', 'p3a', 'p3b', 'p3c', 'p4'] }
-        ]
+        ],
+        // UK-market variant - genuinely different hardware from the
+        // Global/EU stack above (7 pieces vs 5, different weights
+        // entirely), not an alternate naming of the same plates. Person
+        // supplied a WhatsApp photo of the exploded-view diagram with
+        // weights labelled on each piece, and separately traced box
+        // outlines of each piece in AutoCAD (DXF) from a reference image -
+        // but no OEM combination chart (the document that would say which
+        // subsets are actually approved), and the DXF carries no weight
+        // labels of its own (confirmed: 158 LINE + 160 POINT entities, one
+        // externally-linked IMAGE reference that didn't come through, zero
+        // TEXT/MTEXT entities). Without that chart, this can't be built as
+        // an OEM-approved-combination diagram like every other crane here -
+        // person's own request: keep it simple for now, a tick-list that
+        // sums to a total weight, no validation against an approved list
+        // that doesn't exist yet. Pieces named descriptively from their
+        // role in the exploded view (top plate stack vs base blocks vs
+        // base spacer), not OEM part names, since no source document
+        // supplies those either.
+        ukVariant: {
+          sourceNote: 'UK-market variant — different hardware from the Global/EU stack above. No OEM combination chart available for this variant yet, so this is a simple weight calculator only: tick which pieces are fitted, see the running total. Not validated against any approved-combination list. Cross-check against current documentation before use on site.',
+          pieces: [
+            { id: 'uk-top1', name: 'Top Plate', weight: 5 },
+            { id: 'uk-top2', name: 'Middle Plate', weight: 6.5 },
+            { id: 'uk-top3', name: 'Lower Plate', weight: 5 },
+            { id: 'uk-left', name: 'Base Block (Left)', weight: 10 },
+            { id: 'uk-center', name: 'Base Block (Centre)', weight: 14 },
+            { id: 'uk-right', name: 'Base Block (Right)', weight: 10 },
+            { id: 'uk-spacer', name: 'Base Spacer', weight: 3.5 }
+          ]
+        }
       },
       // Source: Liebherr doc LTM 1650-8-1-000 (0213131-03), chapter 4.07
       // "Counterweight" (pages 3-19 of a 93-PAGE document - this is only
@@ -3845,10 +3889,85 @@
 
     function onCwtCraneChange() {
       cwtSelected = new Set();
+      cwtUkSelected = new Set();
+      cwtVariant = 'global';
+      document.getElementById('cwt-variant-global-btn').classList.add('active');
+      document.getElementById('cwt-variant-uk-btn').classList.remove('active');
+      updateCwtVariantVisibility();
       cwtResetZoom();
       setCwtView('2d');
       populateCwtComboSelect();
-      renderCwtTab();
+      renderCwtVariant();
+    }
+
+    // Global | UK toggle - only shown for a crane whose data carries a
+    // ukVariant (currently just 1160: genuinely different hardware from
+    // the standard/Global stack, not an alternate view of the same
+    // plates - see the person's own request to keep this inside the
+    // existing 1160 crane entry rather than a separate crane in the
+    // dropdown).
+    let cwtVariant = 'global';
+    let cwtUkSelected = new Set();
+
+    function updateCwtVariantVisibility() {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const data = COUNTERWEIGHT_DATA[modelKey];
+      document.getElementById('cwt-variant-group').style.display = (data && data.ukVariant) ? '' : 'none';
+    }
+
+    function setCwtVariant(v) {
+      cwtVariant = v;
+      document.getElementById('cwt-variant-global-btn').classList.toggle('active', v === 'global');
+      document.getElementById('cwt-variant-uk-btn').classList.toggle('active', v === 'uk');
+      renderCwtVariant();
+    }
+
+    // Single entry point every crane-select/variant-toggle change routes
+    // through - decides whether the UK tick-list or the normal diagram-
+    // based cards (Jump to Known Combination + Counterweight Stack) are
+    // showing, then renders whichever is active. Keeps that decision in
+    // one place rather than duplicated at every caller.
+    function renderCwtVariant() {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const data = COUNTERWEIGHT_DATA[modelKey];
+      const isUk = cwtVariant === 'uk' && data && data.ukVariant;
+      document.getElementById('cwt-combo-card').style.display = isUk ? 'none' : '';
+      document.getElementById('cwt-stack-card').style.display = isUk ? 'none' : '';
+      document.getElementById('cwt-uk-card').style.display = isUk ? '' : 'none';
+      if (isUk) renderCwtUkTab(); else renderCwtTab();
+    }
+
+    function toggleCwtUkPiece(id) {
+      if (cwtUkSelected.has(id)) cwtUkSelected.delete(id); else cwtUkSelected.add(id);
+      renderCwtUkTab();
+    }
+
+    // No diagram, no hotspots, no OEM-approved-combination matching - see
+    // the ukVariant data comment for why. Just a tick-list summing to a
+    // total weight, same "Total Counterweight" metric-card styling as the
+    // normal diagram view's own status box for visual consistency.
+    function renderCwtUkTab() {
+      const modelKey = document.getElementById('cwt-crane').value;
+      const data = COUNTERWEIGHT_DATA[modelKey];
+      const uk = data && data.ukVariant;
+      if (!uk) return;
+
+      const listEl = document.getElementById('cwt-uk-checklist');
+      listEl.innerHTML = uk.pieces.map(p => `
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--border-color); cursor:pointer;">
+          <span style="display:flex; align-items:center; gap:10px;">
+            <input type="checkbox" ${cwtUkSelected.has(p.id) ? 'checked' : ''} onchange="toggleCwtUkPiece('${p.id}')" style="width:auto; cursor:pointer;">
+            ${p.name}
+          </span>
+          <span style="color:var(--text-muted); font-weight:600;">${p.weight.toFixed(1)} t</span>
+        </label>`).join('');
+
+      const total = uk.pieces.filter(p => cwtUkSelected.has(p.id)).reduce((sum, p) => sum + p.weight, 0);
+      const sub = cwtUkSelected.size === 0 ? 'No pieces selected' : `${cwtUkSelected.size} of ${uk.pieces.length} pieces fitted`;
+      document.getElementById('cwt-uk-status').innerHTML =
+        `<div class="metric-card"><div class="metric-label">Total Counterweight</div><div class="metric-value">${total.toFixed(1)} t</div><div class="metric-sub">${sub}</div></div>`;
+
+      document.getElementById('cwt-uk-disclaimer').textContent = uk.sourceNote;
     }
 
     function onCwtComboSelect() {
@@ -4126,6 +4245,7 @@
     function initCwtTab() {
       const craneSelect = document.getElementById('cwt-crane');
       buildSelect(craneSelect, Object.keys(COUNTERWEIGHT_DATA), (k) => COUNTERWEIGHT_DATA[k].label, (k) => k);
+      updateCwtVariantVisibility();
       populateCwtComboSelect();
       renderCwtTab();
       cwtInitZoom();
