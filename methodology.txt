@@ -7264,4 +7264,27 @@ cranes get their own subsections as they're built.
     console errors throughout.
     CACHE_VERSION v141->v142, app version v3.11->v3.12.
 
+28. BETA-ONLY: Welcome tab "What Each Tab Does" brought up to date
+  Person asked to check whether the Welcome tab (beta-trial only, never
+  shipped to main - see CLAUDE.md) still covered every real tool tab.
+  It didn't: checked the nav bar's 8 tool tabs against the "What Each
+  Tab Does" list and found only 6 described - Load Chart Finder and
+  Chain Shortening were missing entirely (both added to the app after
+  this card was last written), and Crane Positioning's own entry
+  ("Outrigger Support Positioning") only covered the Support Pad
+  Placement sub-tab, saying nothing about the Crane Layout sub-tab's own
+  now-substantial feature set (360 slew clearance, 3D carrier preview,
+  ground layout marks).
+  Rewrote the list to match the nav bar's own order exactly (previously
+  it didn't - Driving with Equipment in Place and Minimum Hook Block
+  Weights were ahead of where Load Chart Finder/Crane Positioning now
+  sit), added the two missing entries, and expanded Crane Positioning's
+  entry to describe both its sub-tabs by name. Beta-only file
+  (welcome-tab only exists on beta-trial/myslewer-beta, per CLAUDE.md) -
+  no main-branch change, no cherry-pick to main.
+  Verified via Playwright screenshot: all 8 entries render in the
+  correct order with 0 console errors.
+  CACHE_VERSION v51-beta93->v51-beta94 (beta-trial's own scheme, no
+  main-side CACHE_VERSION or app-version bump since main is untouched).
+
 ================================================================================
