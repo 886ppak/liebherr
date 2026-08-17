@@ -54,6 +54,17 @@
     .share-actions { display: flex; gap: 8px; }
     .share-actions .toolbar-btn { flex: 1; }
 
+    /* Left-side header icon, opposite the share/update-check pair on the
+       right - offline cache status wasn't visible anywhere until a person
+       happened to be on one of the 4 tabs that carry their own "Offline
+       Availability" card, so this gives it a permanent, always-visible
+       entry point instead. Same circular-button treatment as the other
+       two, just anchored left instead of right. */
+    #cache-btn { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-gold); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+    #cache-btn svg { width: 18px; height: 18px; }
+    #cache-panel { display: none; position: fixed; top: 62px; right: 14px; left: 14px; max-width: 320px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; z-index: 201; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+    #cache-panel .card-title { margin-bottom: 12px; }
+
     .nav-tabs { display: flex; justify-content: flex-start; background-color: #181a1d; border-bottom: 2px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
     /* Centering only kicks in once there's enough width for all 4 tabs to
        fit without needing to scroll. Applying justify-content:center to a
@@ -206,7 +217,7 @@
       body { background: #fff; color: #000; padding-bottom: 0; }
       header { background: #fff; border-bottom: 2px solid #000; position: static; }
       header h1 { color: #000; }
-      #update-check-btn, #share-btn { display: none; }
+      #update-check-btn, #share-btn, #cache-btn { display: none; }
       .card { background: #fff; border: 1px solid #999; break-inside: avoid; }
       .card-title { color: #000; border-bottom: 1px solid #999; }
       input, select { background: #fff; color: #000; border: 1px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -260,7 +271,10 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.12</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.13</span></h1>
+    <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    </button>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -268,6 +282,19 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
     </button>
   </header>
+
+  <div id="cache-backdrop" onclick="closeCachePanel()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:200;"></div>
+  <div id="cache-panel">
+    <div class="card-title">Offline Content <span class="cache-all-status" style="font-size:0.8rem; text-transform:none; font-weight:400;"></span></div>
+    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Reeving diagrams and 3D counterweight models are cached automatically as you view them. To make everything available offline right now (e.g. before heading somewhere without signal), download it all in one go.</div>
+    <button class="btn cache-all-btn" onclick="cacheAllOfflineContent()" style="margin-top:0;">Cache All Offline Content</button>
+    <div class="cache-all-progress-wrap" style="display:none; margin-top:12px;">
+      <div style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:6px; height:10px; overflow:hidden;">
+        <div class="cache-all-progress-bar" style="background:var(--accent-gold); height:100%; width:0%; transition:width 0.2s ease;"></div>
+      </div>
+      <div class="cache-all-progress-text" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; text-align:center;"></div>
+    </div>
+  </div>
 
   <div id="share-backdrop" onclick="closeSharePanel()"></div>
   <div id="share-panel">
@@ -6300,6 +6327,34 @@
     function closeSharePanel() {
       document.getElementById('share-panel').style.display = 'none';
       document.getElementById('share-backdrop').style.display = 'none';
+    }
+
+    // Header's own always-visible entry point into offline caching -
+    // previously the only way to see "is this fully downloaded for
+    // offline use" or trigger a download was to already be on one of the
+    // 4 tabs that happen to carry their own "Offline Availability" card
+    // (Reeving Plans, CWT Combinations, Driving with Equipment in Place,
+    // Load Chart Finder). This panel reuses those same generic
+    // .cache-all-status/.cache-all-btn/.cache-all-progress-* classes
+    // (see cacheAllOfflineContent()/checkOfflineContentStatus() - both
+    // already operate via querySelectorAll across every matching element
+    // on the page, not a specific id) so adding one more instance here
+    // needed no changes to either function - it just participates
+    // automatically. Re-checks status on open since content also gets
+    // cached passively just by viewing it elsewhere in the app, so the
+    // status shown here could otherwise be stale from whenever the page
+    // first loaded.
+    function toggleCachePanel() {
+      const panel = document.getElementById('cache-panel');
+      if (panel.style.display === 'block') { closeCachePanel(); return; }
+      panel.style.display = 'block';
+      document.getElementById('cache-backdrop').style.display = 'block';
+      checkOfflineContentStatus();
+    }
+
+    function closeCachePanel() {
+      document.getElementById('cache-panel').style.display = 'none';
+      document.getElementById('cache-backdrop').style.display = 'none';
     }
 
     function renderShareQR() {

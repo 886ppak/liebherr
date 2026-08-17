@@ -7299,4 +7299,38 @@ cranes get their own subsections as they're built.
   correctly absent (not locked out).
   CACHE_VERSION v51-beta94->v51-beta95.
 
+30. Header "Offline Content" icon
+  Person's request: the "Cache All Offline Content" button only existed
+  buried inside an "Offline Availability" card on 4 specific tabs
+  (Reeving Plans, CWT Combinations, Driving with Equipment in Place,
+  Load Chart Finder) - nothing showed it on the other 4, so there was no
+  single obvious place to go check "is everything downloaded" or trigger
+  it. Wanted a permanent icon in the header, left side (opposite the
+  existing share/update-check pair on the right), using a download-into-
+  a-box style icon.
+  Icon: Feather's own "download" glyph (open-top box + arrow into it) -
+  matches the download/archive concept cleanly and keeps the same icon
+  style (stroke-only, 24x24 viewBox) already used for the two right-side
+  buttons, rather than introducing a different icon set.
+  New #cache-btn opens a #cache-panel styled identically to the existing
+  #share-panel (same fixed top-center overlay + backdrop pattern,
+  toggleCachePanel()/closeCachePanel() mirroring toggleSharePanel()/
+  closeSharePanel()). The panel's own contents are a straight copy of
+  the existing "Offline Availability" card markup, using the exact same
+  classes (.cache-all-status, .cache-all-btn, .cache-all-progress-wrap/
+  -bar/-text) the 4 existing per-tab instances already use - both
+  cacheAllOfflineContent() and checkOfflineContentStatus() already
+  operate via document.querySelectorAll() across every matching element
+  on the page rather than a specific id, so this new instance needed ZERO
+  changes to either function to participate correctly; it just works.
+  toggleCachePanel() also calls checkOfflineContentStatus() on open,
+  since content can get cached passively elsewhere in the app between
+  page load and whenever the panel is opened - re-checking on open keeps
+  the header's own status from ever showing stale.
+  Verified via Playwright: icon renders top-left, panel opens on click
+  showing live status ("Not fully downloaded (192 missing)" pre-cache,
+  matching the per-tab cards exactly), closes on backdrop click; full
+  regression sweep across every crane/tab, 0 console errors.
+  CACHE_VERSION v142->v143, app version v3.12->v3.13.
+
 ================================================================================
