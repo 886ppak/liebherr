@@ -260,7 +260,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.6</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.7</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -844,13 +844,6 @@
             <button class="mode-btn" id="cwt-variant-uk-btn" onclick="setCwtVariant('uk')">UK</button>
           </div>
         </div>
-      </div>
-
-      <div class="card" id="cwt-uk-card" style="display:none;">
-        <div class="card-title">Counterweight Pieces (UK Variant)</div>
-        <div id="cwt-uk-checklist"></div>
-        <div id="cwt-uk-status" style="margin-top:12px;"></div>
-        <div class="disclaimer" id="cwt-uk-disclaimer"></div>
       </div>
 
       <div class="card" id="cwt-combo-card">
@@ -1697,33 +1690,61 @@
         ],
         // UK-market variant - genuinely different hardware from the
         // Global/EU stack above (7 pieces vs 5, different weights
-        // entirely), not an alternate naming of the same plates. Person
-        // supplied a WhatsApp photo of the exploded-view diagram with
-        // weights labelled on each piece, and separately traced box
-        // outlines of each piece in AutoCAD (DXF) from a reference image -
-        // but no OEM combination chart (the document that would say which
-        // subsets are actually approved), and the DXF carries no weight
-        // labels of its own (confirmed: 158 LINE + 160 POINT entities, one
-        // externally-linked IMAGE reference that didn't come through, zero
-        // TEXT/MTEXT entities). Without that chart, this can't be built as
-        // an OEM-approved-combination diagram like every other crane here -
-        // person's own request: keep it simple for now, a tick-list that
-        // sums to a total weight, no validation against an approved list
-        // that doesn't exist yet. Pieces named descriptively from their
-        // role in the exploded view (top plate stack vs base blocks vs
-        // base spacer), not OEM part names, since no source document
-        // supplies those either.
+        // entirely), not an alternate naming of the same plates. No OEM
+        // combination chart exists for this variant (the document that
+        // would say which subsets are actually approved), so combos is
+        // deliberately empty - this is a tap-to-total calculator only,
+        // never flags anything as OEM-approved. Same components/hotspots
+        // shape as every other crane's diagram, reusing all of
+        // renderCwtTab()'s existing tap/zoom machinery via cwtData()
+        // rather than a bespoke UI.
+        //
+        // Diagram image and hotspot polygons: person supplied a WhatsApp
+        // photo (532x458px) of the exploded-view diagram with weights
+        // labelled per piece, then separately traced each piece's own
+        // silhouette as closed polylines in AutoCAD over that same photo
+        // and sent back the DXF (158 LINE + 160 POINT entities on a
+        // 'boxes' layer, one externally-linked IMAGE reference that never
+        // came through as a file - confirmed zero TEXT/MTEXT entities, so
+        // no weight labels live in the DXF itself). Hotspot points below
+        // are NOT hand-derived - the DXF's own IMAGE entity records the
+        // exact insert point and per-pixel u/v vectors used when the
+        // photo was placed in AutoCAD, so every traced vertex converts to
+        // an exact photo-pixel coordinate: px = (wx-insert.x)/u_pixel.x,
+        // py = image_size.y - (wy-insert.y)/v_pixel.y. Verified by
+        // rendering all 7 traced outlines back over the actual photo at
+        // those computed coordinates - each one lands exactly on its own
+        // piece's silhouette, confirming the transform and (by matching
+        // outline to the weight label already inside that outline) which
+        // shape is which weight, all 7 unambiguous by inspection - no
+        // guessing required. Pieces named descriptively from their role
+        // in the exploded view (top plate stack vs base blocks vs base
+        // spacer), not OEM part names, since no source document supplies
+        // those either.
         ukVariant: {
-          sourceNote: 'UK-market variant — different hardware from the Global/EU stack above. No OEM combination chart available for this variant yet, so this is a simple weight calculator only: tick which pieces are fitted, see the running total. Not validated against any approved-combination list. Cross-check against current documentation before use on site.',
-          pieces: [
-            { id: 'uk-top1', name: 'Top Plate', weight: 5 },
-            { id: 'uk-top2', name: 'Middle Plate', weight: 6.5 },
-            { id: 'uk-top3', name: 'Lower Plate', weight: 5 },
-            { id: 'uk-left', name: 'Base Block (Left)', weight: 10 },
-            { id: 'uk-center', name: 'Base Block (Centre)', weight: 14 },
-            { id: 'uk-right', name: 'Base Block (Right)', weight: 10 },
-            { id: 'uk-spacer', name: 'Base Spacer', weight: 3.5 }
-          ]
+          sourceNote: 'UK-market variant — different hardware from the Global/EU stack above. No OEM combination chart exists for this variant, so tapping a piece here only totals the weight — nothing is ever flagged as an approved combination. Cross-check against current documentation before use on site.',
+          diagramImage: './counterweight/img/ltm1160-cwt-uk-exploded.png',
+          diagramAlt: 'LTM 1160-5.2 UK variant counterweight exploded-view photo, 7 pieces with weights labelled',
+          diagramWidth: 532,
+          diagramHeight: 458,
+          figRef: 'Diagram is the person’s own reference photo, not OEM artwork — hotspot outlines traced over it in AutoCAD.',
+          components: [
+            { id: 'uk-center', name: 'Base Block (Centre)', weight: 14, shortLabel: '',
+              hotspots: [{ points: '75.8,308.7 75.6,298.9 75.6,267.4 83.1,260.3 194.7,237.5 289.4,244.4 296.2,250.8 297,256 312.6,252.5 315.3,251.2 321.2,256.4 321.2,273.7 326.6,283.4 326.9,311.1 321.9,316.7 313.7,317.7 312.1,325.4 309.2,329.4 291.8,335.2 278.4,337.7 261.8,335.2 242.8,330.2 208.5,326.1 138.7,318.2 94.2,317.3 82.6,316' }] },
+            { id: 'uk-left', name: 'Base Block (Left)', weight: 10, shortLabel: '',
+              hotspots: [{ points: '74.3,299.1 73.5,267.3 81.3,259.5 157,243.4 157.5,239.5 162,232.8 162.1,214.2 157.5,212.3 156.8,201.9 152.7,200.7 78.8,197.4 4.4,212 4,238.1 3.6,292.3 48.6,304.4' }] },
+            { id: 'uk-right', name: 'Base Block (Right)', weight: 10, shortLabel: '',
+              hotspots: [{ points: '322.4,251.7 429.5,229.5 472.8,241.7 472.8,322.2 401.8,336.5 321.2,334.4 322.2,317.7 328.4,311.1 327.9,283.7 327.8,281.2 323,274.1 323.2,256.7' }] },
+            { id: 'uk-top3', name: 'Lower Plate', weight: 5, shortLabel: '',
+              hotspots: [{ points: '81.6,190.1 101.3,193.4 105.5,192.1 133.7,191.8 135.7,194.9 182.6,198.4 236.3,204.8 249.9,206.4 259.2,208.3 270.9,212.8 281.7,212.3 357.8,196.3 394.8,189.2 394.8,177.6 339.9,168.7 267.5,160.8 213,156.7 194,156.7 82.7,178.4 81.4,180 81.4,186.3' }] },
+            { id: 'uk-top2', name: 'Middle Plate', weight: 6.5, shortLabel: '',
+              hotspots: [{ points: '81.6,138.8 104.2,138.8 135.9,140.6 181.5,143.6 206.3,146.4 241.5,151.9 259.9,156.2 271.4,157.6 282.1,157.8 394.4,135.5 394,120.9 355.2,112.3 284.3,104.5 218.6,100 196.9,98.3 178.5,101.4 177.5,106 171.9,104.5 169.8,96.7 162.9,96.3 159.8,105.3 81.6,121.2' }] },
+            { id: 'uk-top1', name: 'Top Plate', weight: 5, shortLabel: '',
+              hotspots: [{ points: '76.7,56.6 195.2,31.2 238.1,33.6 397.8,54.2 400.4,59.5 400.4,65.6 400.2,74.1 388.1,80.7 339.1,91 291.4,100.7 274.9,100.7 255.5,97.4 231.8,94.7 212.6,90.9 179.4,86.9 132.4,82.7 90.9,82.7 78.8,79.1 76.1,74.7' }] },
+            { id: 'uk-spacer', name: 'Base Spacer', weight: 3.5, shortLabel: '',
+              hotspots: [{ points: '103.1,429.1 103.3,419.3 106.9,414 158.2,402.5 158.3,364.1 159.9,361.5 159.9,354.6 158.7,352.1 159.2,348.7 168.9,342.1 182.7,341.6 188.3,345.2 191.4,350.1 191.3,380.7 191,400.7 295.4,411.4 295.4,365.5 302.6,356.5 308.1,358.4 311,356.5 321.7,356.8 328.4,364.4 328.4,415.2 374.8,419.7 380,422.5 383.3,427 383.8,437.1 380.6,441.3 375.6,444.1 370.4,445.2 364.5,445.2 360.5,447.5 353.7,448.8 347.5,448.2 342.3,449.5 336.8,449.9 333,452.7 326.6,453.2 311.7,457 281.4,454.3 201.7,444.9 111.7,436.1 105.9,433' }] }
+          ],
+          combos: []
         }
       },
       // Source: Liebherr doc LTM 1650-8-1-000 (0213131-03), chapter 4.07
@@ -3779,7 +3800,7 @@
 
     function cwtComponentMap(modelKey) {
       const map = {};
-      COUNTERWEIGHT_DATA[modelKey].components.forEach(c => { map[c.id] = c; });
+      cwtData(modelKey).components.forEach(c => { map[c.id] = c; });
       return map;
     }
 
@@ -3819,7 +3840,7 @@
 
     function cwtFindMatchingCombo(modelKey, selectedIds) {
       const target = cwtMatchSignature(modelKey, selectedIds);
-      const combos = COUNTERWEIGHT_DATA[modelKey].combos;
+      const combos = cwtData(modelKey).combos;
       const idx = combos.findIndex(c => cwtMatchSignature(modelKey, c.items) === target);
       // idx tags along so callers (e.g. the "Jump to Known Combination"
       // dropdown sync in renderCwtTab) can select the matching <option>
@@ -3988,7 +4009,6 @@
 
     function onCwtCraneChange() {
       cwtSelected = new Set();
-      cwtUkSelected = new Set();
       cwtVariant = 'global';
       document.getElementById('cwt-variant-global-btn').classList.add('active');
       document.getElementById('cwt-variant-uk-btn').classList.remove('active');
@@ -3996,17 +4016,26 @@
       cwtResetZoom();
       setCwtView('2d');
       populateCwtComboSelect();
-      renderCwtVariant();
+      renderCwtTab();
     }
 
     // Global | UK toggle - only shown for a crane whose data carries a
     // ukVariant (currently just 1160: genuinely different hardware from
-    // the standard/Global stack, not an alternate view of the same
-    // plates - see the person's own request to keep this inside the
-    // existing 1160 crane entry rather than a separate crane in the
-    // dropdown).
+    // the standard/Global stack - see the person's own request to keep
+    // this inside the existing 1160 crane entry rather than a separate
+    // crane in the dropdown). cwtData() is the single point every CWT
+    // function reads crane data through, so the whole existing diagram/
+    // tap/zoom machinery works unmodified for the UK variant too - it
+    // just resolves to ukVariant's own components/diagram instead of the
+    // top-level entry's, with an empty combos list (no OEM chart exists
+    // for it) so nothing is ever flagged as an approved combination.
     let cwtVariant = 'global';
-    let cwtUkSelected = new Set();
+
+    function cwtData(modelKey) {
+      const base = COUNTERWEIGHT_DATA[modelKey];
+      if (!base) return undefined;
+      return (cwtVariant === 'uk' && base.ukVariant) ? base.ukVariant : base;
+    }
 
     function updateCwtVariantVisibility() {
       const modelKey = document.getElementById('cwt-crane').value;
@@ -4016,63 +4045,19 @@
 
     function setCwtVariant(v) {
       cwtVariant = v;
+      cwtSelected = new Set(); // different id namespace between variants - a Global selection can't carry over to UK's own components, or vice versa
       document.getElementById('cwt-variant-global-btn').classList.toggle('active', v === 'global');
       document.getElementById('cwt-variant-uk-btn').classList.toggle('active', v === 'uk');
-      renderCwtVariant();
-    }
-
-    // Single entry point every crane-select/variant-toggle change routes
-    // through - decides whether the UK tick-list or the normal diagram-
-    // based cards (Jump to Known Combination + Counterweight Stack) are
-    // showing, then renders whichever is active. Keeps that decision in
-    // one place rather than duplicated at every caller.
-    function renderCwtVariant() {
-      const modelKey = document.getElementById('cwt-crane').value;
-      const data = COUNTERWEIGHT_DATA[modelKey];
-      const isUk = cwtVariant === 'uk' && data && data.ukVariant;
-      document.getElementById('cwt-combo-card').style.display = isUk ? 'none' : '';
-      document.getElementById('cwt-stack-card').style.display = isUk ? 'none' : '';
-      document.getElementById('cwt-uk-card').style.display = isUk ? '' : 'none';
-      if (isUk) renderCwtUkTab(); else renderCwtTab();
-    }
-
-    function toggleCwtUkPiece(id) {
-      if (cwtUkSelected.has(id)) cwtUkSelected.delete(id); else cwtUkSelected.add(id);
-      renderCwtUkTab();
-    }
-
-    // No diagram, no hotspots, no OEM-approved-combination matching - see
-    // the ukVariant data comment for why. Just a tick-list summing to a
-    // total weight, same "Total Counterweight" metric-card styling as the
-    // normal diagram view's own status box for visual consistency.
-    function renderCwtUkTab() {
-      const modelKey = document.getElementById('cwt-crane').value;
-      const data = COUNTERWEIGHT_DATA[modelKey];
-      const uk = data && data.ukVariant;
-      if (!uk) return;
-
-      const listEl = document.getElementById('cwt-uk-checklist');
-      listEl.innerHTML = uk.pieces.map(p => `
-        <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--border-color); cursor:pointer;">
-          <span style="display:flex; align-items:center; gap:10px;">
-            <input type="checkbox" ${cwtUkSelected.has(p.id) ? 'checked' : ''} onchange="toggleCwtUkPiece('${p.id}')" style="width:auto; cursor:pointer;">
-            ${p.name}
-          </span>
-          <span style="color:var(--text-muted); font-weight:600;">${p.weight.toFixed(1)} t</span>
-        </label>`).join('');
-
-      const total = uk.pieces.filter(p => cwtUkSelected.has(p.id)).reduce((sum, p) => sum + p.weight, 0);
-      const sub = cwtUkSelected.size === 0 ? 'No pieces selected' : `${cwtUkSelected.size} of ${uk.pieces.length} pieces fitted`;
-      document.getElementById('cwt-uk-status').innerHTML =
-        `<div class="metric-card"><div class="metric-label">Total Counterweight</div><div class="metric-value">${total.toFixed(1)} t</div><div class="metric-sub">${sub}</div></div>`;
-
-      document.getElementById('cwt-uk-disclaimer').textContent = uk.sourceNote;
+      cwtResetZoom();
+      setCwtView('2d');
+      populateCwtComboSelect();
+      renderCwtTab();
     }
 
     function onCwtComboSelect() {
       const modelKey = document.getElementById('cwt-crane').value;
       const idx = document.getElementById('cwt-combo-select').value;
-      const combo = COUNTERWEIGHT_DATA[modelKey].combos[idx];
+      const combo = cwtData(modelKey).combos[idx];
       cwtSelected = new Set(combo.items);
       // Published combos list only the components that carry weight (e.g.
       // LTM 1650's combos never mention "Center Section" since it's
@@ -4108,7 +4093,7 @@
     // member -> none, rather than a plain on/off toggle.
     function cycleCwtSlotGroup(groupName) {
       const modelKey = document.getElementById('cwt-crane').value;
-      const members = COUNTERWEIGHT_DATA[modelKey].components.filter(c => c.slotGroup === groupName).map(c => c.id);
+      const members = cwtData(modelKey).components.filter(c => c.slotGroup === groupName).map(c => c.id);
       const activeIdx = members.findIndex(id => cwtSelected.has(id));
       members.forEach(id => cwtSelected.delete(id));
       const nextIdx = activeIdx + 1;
@@ -4118,11 +4103,16 @@
 
     function populateCwtComboSelect() {
       const modelKey = document.getElementById('cwt-crane').value;
-      const data = COUNTERWEIGHT_DATA[modelKey];
+      const data = cwtData(modelKey);
       const comboSelect = document.getElementById('cwt-combo-select');
       buildSelect(comboSelect, data.combos.map((c, i) => ({ ...c, idx: i })),
         (c) => `${cwtComboWeight(modelKey, c.items).toFixed(1)} t — ${cwtDescribeCombo(modelKey, c.items)}`,
         (c) => c.idx);
+      // No OEM combination chart exists for some variants (currently just
+      // 1160's UK stack) - combos is deliberately empty there, so the
+      // "Jump to Known Combination" card has nothing to offer and is
+      // hidden rather than shown empty.
+      document.getElementById('cwt-combo-card').style.display = data.combos.length === 0 ? 'none' : '';
     }
 
     // Opens the manual as originally shared - Drive's normal /view link.
@@ -4147,7 +4137,7 @@
 
     function renderCwtTab() {
       const modelKey = document.getElementById('cwt-crane').value;
-      const data = COUNTERWEIGHT_DATA[modelKey];
+      const data = cwtData(modelKey);
       if (!data) return;
 
       const imgEl = document.querySelector('#cwt-image-wrap img');
@@ -4318,7 +4308,7 @@
       document.getElementById('cwt-3d-hint').style.display = cwtView3DActive ? '' : 'none';
       if (cwtView3DActive) {
         const modelKey = document.getElementById('cwt-crane').value;
-        const activate = () => window.__cwt3dActivate(modelKey, COUNTERWEIGHT_DATA[modelKey], cwtSelected);
+        const activate = () => window.__cwt3dActivate(modelKey, cwtData(modelKey), cwtSelected);
         // Three.js + the viewer module (~970KB) are never fetched at all
         // until this first switch to 3D view - dynamic import() rather than
         // a static <script type="module"> tag, so nobody pays for this on
