@@ -86,6 +86,21 @@
 
     .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
     .card-title { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; color: var(--accent-gold); margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    /* A <details class="card"> with a <summary class="card-title"> reuses
+       the exact same card-title look, just clickable - own default
+       triangle marker hidden in favour of a chevron that rotates via the
+       [open] attribute, so collapsed/expanded state is visible without
+       relying on the (inconsistently styled across browsers) native
+       marker. Closed by default wherever used - the whole point is
+       tidying up information a person doesn't always need to see.
+       Padding/etc otherwise untouched from plain .card - a collapsed
+       details just shows the title line with the card's normal padding
+       on all sides, same as any other card. */
+    details.card > summary.card-title { cursor: pointer; list-style: none; user-select: none; }
+    details.card > summary.card-title::-webkit-details-marker { display: none; }
+    details.card > summary.card-title::after { content: '▾'; font-size: 0.8rem; transition: transform 0.15s ease; }
+    details.card[open] > summary.card-title::after { transform: rotate(180deg); }
+    details.card:not([open]) > summary.card-title { margin-bottom: 0; border-bottom: none; }
 
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
@@ -233,7 +248,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.17</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.18</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -683,8 +698,24 @@
         <div class="cwt-zoom-hint" id="carrier-3d-hint-layout" style="display:none;">Drag to rotate, scroll or pinch to zoom.</div>
       </div>
 
-      <div class="card">
-        <div class="card-title">360° Slew Clearance</div>
+      <details class="card">
+        <summary class="card-title">Layout Dimensions</summary>
+        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Same paint-out-on-soil figures as the 3D preview's "Show ground layout marks" toggle above, as plain numbers. Forward/back is measured from the slew centre along the carrier's own centerline; out from edge is measured from the carrier's own side (not centerline) — the reference a crew actually measures from in the field.</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Outrigger</th>
+              <th>Fwd/Back</th>
+              <th>Out From Edge</th>
+            </tr>
+          </thead>
+          <tbody id="layout-dims-results"></tbody>
+        </table>
+        <div class="disclaimer">½ carrier width (rear, C1 side): <span id="layout-dims-halfwidth"></span></div>
+      </details>
+
+      <details class="card">
+        <summary class="card-title">360° Slew Clearance</summary>
         <div id="sc-width-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;"></div>
         <div id="sc-rear-info" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
         <label id="sc-toolbox-group" style="display:none; align-items:center; gap:6px; margin-bottom:10px; cursor:pointer; font-size:0.8rem;">
@@ -704,7 +735,7 @@
         </table>
         <div class="disclaimer" id="sc-limiting-note"></div>
         <div class="disclaimer">Side clearance assumes the crane is parked with its centerline parallel to whatever it needs to clear (wall, stockpile, fence, etc.) — the true worst case, since at that parking angle the swing radius becomes pure sideways distance. Park at an angle to the structure and the real clearance is larger than shown here. Rear clearance assumes the crane is backed square up to whatever sits directly behind it, measured from the rear of the carrier chassis (or the tool box's own rear face, once fitted, if the checkbox above is ticked) straight back to each radius point. Carrier width is this fleet's standard 525/80 R25 tyre (see the crane operating instructions, chapter 1.03, for other tyre options) except where noted. Reference tool only — cross-check against the current OEM documentation and the actual site before slewing near a structure.</div>
-      </div>
+      </details>
       </div>
       <!-- /cad-panel-layout -->
     </div>
@@ -1132,6 +1163,7 @@
       if (!data) return;
 
       updateCarrier3DLayoutAvailability(modelKey);
+      renderLayoutDimensionsList(modelKey);
 
       const halfWidth = data.carrierWidthB / 2;
       document.getElementById('sc-width-info').innerHTML =
@@ -5275,15 +5307,14 @@
     // the slew center, so the two numbers a crew actually uses (forward/
     // back, then out from the edge) are the two labelled segments, not some
     // third combined figure they'd have to subtract out themselves.
-    function onGroundLayoutToggle() {
-      const modelKey = document.getElementById('sc-crane').value;
-      const checkEl = document.getElementById('carrier-3d-show-ground-layout');
-      const show = checkEl ? checkEl.checked : false;
-      if (!window.__carrier3dSetGroundLayoutMarks) return;
-      if (!show) { window.__carrier3dSetGroundLayoutMarks(modelKey, []); return; }
+    // Shared by onGroundLayoutToggle() (3D preview) and
+    // renderLayoutDimensionsList() (the plain-text "Layout Dimensions"
+    // card) - same marks/halfB math, computed once so the two can never
+    // drift apart from each other.
+    function computeGroundLayoutMarks(modelKey) {
       const data = GROUND_LAYOUT_DATA[modelKey];
       const fp = FOOTPRINTS[modelKey];
-      if (!data || !fp) return;
+      if (!data || !fp) return null;
       const halfB = fp.width / 2;
       const legSpecs = [
         { label: 'C1', side: 1,  front: false, lon: data.C1, span: data.rearSpan },
@@ -5300,7 +5331,41 @@
         lonMm: leg.lon,
         latMm: Math.round(leg.span / 2 - halfB)
       }));
-      window.__carrier3dSetGroundLayoutMarks(modelKey, marks, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+      return { marks, halfB: Math.round(halfB), fp };
+    }
+
+    function onGroundLayoutToggle() {
+      const modelKey = document.getElementById('sc-crane').value;
+      const checkEl = document.getElementById('carrier-3d-show-ground-layout');
+      const show = checkEl ? checkEl.checked : false;
+      if (!window.__carrier3dSetGroundLayoutMarks) return;
+      if (!show) { window.__carrier3dSetGroundLayoutMarks(modelKey, []); return; }
+      const computed = computeGroundLayoutMarks(modelKey);
+      if (!computed) return;
+      window.__carrier3dSetGroundLayoutMarks(modelKey, computed.marks, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+    }
+
+    // "Layout Dimensions" card (Crane Layout tab, below the 3D preview) -
+    // same paint-out-on-soil figures as the 3D preview's own "Show
+    // ground layout marks" toggle, as a plain text table instead of a 3D
+    // overlay, for anyone who'd rather just read the numbers. Always
+    // rendered regardless of whether the 3D toggle is on, and
+    // independent of whether this crane even has a 3D model at all
+    // (GROUND_LAYOUT_DATA/FOOTPRINTS cover the same 7 cranes either way).
+    function renderLayoutDimensionsList(modelKey) {
+      const body = document.getElementById('layout-dims-results');
+      const halfEl = document.getElementById('layout-dims-halfwidth');
+      if (!body) return;
+      const computed = computeGroundLayoutMarks(modelKey);
+      if (!computed) { body.innerHTML = ''; if (halfEl) halfEl.textContent = ''; return; }
+      body.innerHTML = computed.marks.map(m => `
+        <tr>
+          <td style="text-align:left;">${m.label}</td>
+          <td>${m.lonMm} mm</td>
+          <td>${m.latMm} mm</td>
+        </tr>
+      `).join('');
+      if (halfEl) halfEl.textContent = `${computed.halfB} mm`;
     }
 
     function onSlewCircleToggle() {

@@ -7421,4 +7421,46 @@ cranes get their own subsections as they're built.
   regression sweep, 0 console errors.
   CACHE_VERSION v146->v147, app version v3.16->v3.17.
 
+33. Crane Layout: collapsible cards + new "Layout Dimensions" text card
+  Person's request, two parts (explicitly held off the half-width-
+  under-carrier fix from 32 for a later session):
+    1. A new "Layout Dimensions" card below the 3D Carrier Preview,
+       listing the same ground-layout figures the 3D preview's "Show
+       ground layout marks" toggle already draws (per-leg fwd/back +
+       out-from-edge, plus the half carrier width), as plain numbers -
+       for anyone who'd rather just read a table than orbit a 3D model.
+    2. Both the new card and the existing "360° Slew Clearance" card
+       made collapsible, closed by default, to cut down the information
+       overload Crane Layout had accumulated across this session's
+       string of additions (rear clearance, tool box toggle, TY's/T3N,
+       ground layout marks, half carrier width...).
+  Refactored onGroundLayoutToggle()'s own marks/halfB computation out
+  into a new shared computeGroundLayoutMarks(modelKey) - used by both
+  the existing 3D toggle path and the new renderLayoutDimensionsList(),
+  so the two can never drift apart from each other (same numbers,
+  computed once). renderLayoutDimensionsList() is independent of the 3D
+  toggle's own on/off state and of whether a crane even has a 3D model
+  at all (GROUND_LAYOUT_DATA/FOOTPRINTS cover the same 7 cranes either
+  way) - always populated the moment a crane is selected, called from
+  renderSlewClearanceResults() (already fires on every crane switch).
+  Collapsible mechanism: native <details>/<summary> - the app already
+  had exactly one precedent for this (Driving with Equipment's
+  "Advanced" boom config toggle), reused here rather than inventing a
+  second pattern. <summary class="card-title"> reuses the existing
+  card-title look exactly (same gold/uppercase/border styling already
+  used everywhere), with the native disclosure marker hidden (both
+  ::-webkit-details-marker and browsers where display:flex already
+  suppresses it) in favour of an explicit ▾/▴ chevron that rotates on
+  the [open] attribute, so the same card-title bar now doubles as an
+  always-legible expand/collapse control without changing how any other
+  (non-collapsible) card-title looks anywhere else in the app - the CSS
+  only targets details.card > summary.card-title specifically.
+  Verified via Playwright: both cards render closed by default with
+  correct chevron direction; layout-dims-results/halfwidth populate
+  correctly even while the card is collapsed (data isn't gated on the
+  <details> being open); expanding both shows all figures matching the
+  3D preview's own numbers exactly; full regression sweep, 0 console
+  errors.
+  CACHE_VERSION v147->v148, app version v3.17->v3.18.
+
 ================================================================================
