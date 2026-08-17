@@ -1134,6 +1134,26 @@ function applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration) {
     addDimensionLine(groundLayoutGroup, pEdge, pLeg, mark.color, `${mark.label} out from edge: ${mark.latMm}mm`);
   });
 
+  // Half the carrier's own known width (footprint.width/2) - the short
+  // centerline-to-edge gap every per-leg lateral line above deliberately
+  // leaves unmarked (see this function's own comment above), drawn once
+  // here instead of remarking it per leg. Person's own reference: a
+  // CAD-style dimension bracket for this exact figure. Drawn on both
+  // sides at Y=0 (through the slew centre's own station) - a single,
+  // unambiguous reference point clear of every per-leg line above (those
+  // sit at each leg's own stationYMm, essentially never exactly 0) - in
+  // a neutral off-white rather than any one leg's colour, since it isn't
+  // tied to a specific leg.
+  if (footprint && footprint.width) {
+    const halfB = footprint.width / 2;
+    const halfBMm = Math.round(halfB);
+    [1, -1].forEach((side) => {
+      const edgePos = siteToWorld(cal, side * halfB, 0);
+      const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
+      addDimensionLine(groundLayoutGroup, p0, pEdge, '#f8fafc', `½ carrier width: ${halfBMm}mm`);
+    });
+  }
+
   scene.add(groundLayoutGroup);
 }
 
