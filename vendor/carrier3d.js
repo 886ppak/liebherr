@@ -1186,12 +1186,13 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
 // edgeXMm, insideXMm, outsideXMm, yMm, insideMm, outsideMm} - all x already
 // resolved to site-plan mm by index.html's onMatEdgeToggle() (sharing the
 // exact same computeMatMarkingData() the 2D table itself reads from, so
-// the two can never drift apart). Current uses each leg's own current
-// (possibly already-shifted-if-required) position; Target uses the "if you
-// chose to relocate this optional leg anyway" spot - see
-// computeMatMarkingData()'s own comment in index.html for why a required
-// leg never appears under Target (its current position already IS its
-// target).
+// the two can never drift apart). Current always uses each leg's own true
+// current position, never the shifted target - even for a leg that's
+// required to move. Target uses the "if this leg were moved to the
+// shift's target spot" position, for every leg with a real shift of its
+// own (required or optional alike) - see computeMatMarkingData()'s own
+// comment in index.html for why a leg with no shift, or whose target
+// would clip the chassis, never appears under Target.
 //
 // Two dimension lines per leg, each its own full, honest span from the
 // carrier's own edge out to the edge it's naming (inside or outside) -
@@ -1209,19 +1210,30 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
 // dashed: Target's own lines render dashed (see addDimensionLine) so the
 // two toggles read as visually distinct even when both are on at once for
 // the same leg's neighbours - solid = current/real, dashed = projected,
-// same convention as the ghost pad boxes elsewhere in this file.
+// same convention as the ghost pad boxes elsewhere in this file. Also
+// pushes Target's whole inside/outside pair an extra padLength further
+// out along Y (bandOffsetMm below) than Current's own - needed because a
+// leg's target Y coincides with its current Y whenever the shift is pure
+// sideways (shiftY=0), which is common (e.g. "+4m right"); without this,
+// Current's and Target's lines/labels for the SAME leg would land on
+// literally the same row and overlap into unreadable stacked text -
+// confirmed happening for a leg required to move sideways only. Applying
+// the offset unconditionally (not just when the two actually coincide)
+// keeps the logic simple and is harmless when they already differ.
 function drawMatEdgeMarks(group, cal, marks, dashed) {
   const center = siteToWorld(cal, 0, 0);
   const y = center.y + 0.04;
 
   marks.forEach((mark) => {
     const sign = Math.sign(mark.yMm || 1);
+    const bandOffsetMm = dashed ? (mark.padLengthMm || 0) * 0.9 : 0;
+    const bandYMm = mark.yMm + sign * bandOffsetMm;
     // 0.4 rather than 0.5 (true half-length) leaves a small margin off the
     // mat's own front/rear edge, so each dimension line's end tick sits
     // just inside the mat's own corner rather than flush on top of it.
     const endOffsetMm = (mark.padLengthMm || 0) * 0.4;
-    const insideYMm = mark.yMm - sign * endOffsetMm;
-    const outsideYMm = mark.yMm + sign * endOffsetMm;
+    const insideYMm = bandYMm - sign * endOffsetMm;
+    const outsideYMm = bandYMm + sign * endOffsetMm;
 
     const insideEdgePos = siteToWorld(cal, mark.edgeXMm, insideYMm);
     const pInsideEdge = new THREE.Vector3(insideEdgePos.x, y, insideEdgePos.z);
