@@ -7287,4 +7287,16 @@ cranes get their own subsections as they're built.
   CACHE_VERSION v51-beta93->v51-beta94 (beta-trial's own scheme, no
   main-side CACHE_VERSION or app-version bump since main is untouched).
 
+29. BETA-ONLY: Trial extended another week
+  Person's request. window.TRIAL_EXPIRES (index.html, right after
+  <body>) was 2026-08-19T00:00:00 - bumped to 2026-08-26T00:00:00 (+7
+  days from the existing expiry, not from today). Single source of
+  truth for both the hard lockout check and the Welcome tab's own
+  trial-end-display text, so both updated from the one edit with no risk
+  of drift. Beta-only file, no main-branch change.
+  Verified via Playwright: window.TRIAL_EXPIRES reads the new date,
+  Welcome tab displays "Wednesday 26 August 2026", trial-expired class
+  correctly absent (not locked out).
+  CACHE_VERSION v51-beta94->v51-beta95.
+
 ================================================================================

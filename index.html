@@ -251,7 +251,7 @@
     // anything server-verified). Placed early and synchronous so it applies
     // before the rest of the page paints. Exposed on window so the welcome
     // tab can also display this same date without duplicating the literal.
-    window.TRIAL_EXPIRES = '2026-08-19T00:00:00';
+    window.TRIAL_EXPIRES = '2026-08-26T00:00:00';
     (function () {
       if (Date.now() >= new Date(window.TRIAL_EXPIRES).getTime()) {
         document.documentElement.classList.add('trial-expired');
