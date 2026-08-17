@@ -7197,4 +7197,37 @@ cranes get their own subsections as they're built.
     correction as a visible, explained figure instead of a silent one.
     CACHE_VERSION v139->v140, app version v3.9->v3.10.
 
+  26.2 Two more LTM 1650 radius points: TY's and T3N
+    Person's first message read as two more REAR-reference figures
+    (given the immediately preceding rear-clearance work), but the
+    numbers (11646mm, 11485.4mm) didn't fit that pattern at all - over
+    3x the 1650's own base rear overhang (3717mm). Asked before touching
+    anything; person corrected: these are two more SWING RADIUS points
+    (same category as the existing Counterweight/Winch 2/Ballast Radius
+    entries), not rear-overhang references - "clearance required if the
+    TY's are fitted and open to 40 degrees" and "if the N assembly is
+    fitted to the T3 boom".
+    Added both to SLEW_CLEARANCE_DATA['1650'].fixed (was empty) rather
+    than folding them into the existing "Ballast Radius (Site Clearance)"
+    variants group - fixed points are simultaneously-checkable
+    independent checkboxes, variants are a mutually-exclusive picker
+    (only one ballast tray radius is ever physically fitted at once).
+    TY's and T3N describe separate rigging configurations, not
+    alternatives to the ballast tray or to each other, so fixed is the
+    correct shape - person can check either, both, or neither. No other
+    code changes needed anywhere: both the numeric 360° Slew Clearance
+    table and the 3D preview's own toggle list already render every
+    `fixed` entry generically (same mechanism the Counterweight/Winch 2
+    checkboxes already used for other cranes), so the two new points
+    just appeared correctly in both places, side AND rear clearance
+    columns, the moment the data was added.
+    Verified via Playwright: both new checkboxes present with correct
+    labels/radii in the numeric table and the 3D toggle list; side/rear
+    clearance columns compute correctly for both (TY's: 11.65m radius ->
+    10.10m beyond side, 7.93m beyond rear with tool box N/A for 1650;
+    T3N: 11.49m -> 9.94m / 7.77m); TY's correctly becomes the new
+    limiting point (largest radius, beating the pre-existing Ballast
+    Radius options); full regression sweep, 0 console errors.
+    CACHE_VERSION v140->v141, app version v3.10->v3.11.
+
 ================================================================================
