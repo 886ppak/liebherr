@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.3</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.4</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -582,6 +582,7 @@
             <input type="checkbox" id="carrier-3d-show-mat-edges-target" onchange="onMatEdgeToggle()" style="width:auto; cursor:pointer;"> Target Mat Marks
           </label>
         </div>
+        <div class="cwt-zoom-hint" id="carrier-3d-target-empty-hint" style="display:none; margin-top:6px;">No target positions to show right now — every leg with a pad on is either already required to move (see Current Mat Marks) or its "if moved" spot would clip the chassis.</div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
           <div id="carrier-3d-canvas-wrap" style="position:absolute; inset:0;"></div>
           <div id="carrier-3d-label" style="position:absolute; top:10px; left:10px; color:#f8fafc; background:rgba(15,23,42,0.85); padding:8px 12px; border-radius:8px; font-size:12px; max-width:70%; pointer-events:none;"></div>
@@ -5437,9 +5438,19 @@
 
       const targetEl = document.getElementById('carrier-3d-show-mat-edges-target');
       const targetShow = targetEl ? targetEl.checked : false;
+      const targetMarks = targetShow ? buildMatEdgeMarks(true) : [];
       if (window.__carrier3dSetTargetMatEdgeMarks) {
-        window.__carrier3dSetTargetMatEdgeMarks(modelKey, targetShow ? buildMatEdgeMarks(true) : [], fp, cal);
+        window.__carrier3dSetTargetMatEdgeMarks(modelKey, targetMarks, fp, cal);
       }
+      // Target legitimately comes back empty whenever every leg with a pad
+      // on is either already required to move (its current position IS
+      // its target - see Current Mat Marks) or its "if moved" spot would
+      // clip the chassis (leg.clash) - a real, correct outcome, not a
+      // broken toggle. Surfaced explicitly rather than left as a
+      // silently-empty 3D view, since there's no other visual difference
+      // between "nothing to show" and "toggle isn't working". Person's own
+      // report after hitting exactly this with a large shift.
+      document.getElementById('carrier-3d-target-empty-hint').style.display = (targetShow && targetMarks.length === 0) ? '' : 'none';
     }
 
     function drawCADCanvas(shiftX, shiftY, outriggers, fp) {
