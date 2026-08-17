@@ -7361,4 +7361,43 @@ cranes get their own subsections as they're built.
   size); full regression sweep, 0 console errors.
   CACHE_VERSION v144->v145, app version v3.14->v3.15.
 
+31. Header cache icon redrawn again - solid two-tone, not stroke outline
+  Person's feedback on 30's stroke-line chest: "the top of the chest lid
+  looks cut off". Rendered 5 more stroke-outline variants (open dome
+  lid, closed dome, corner studs, flat-top case, plain archive box) to
+  isolate the actual problem before guessing at a fix - person picked
+  none of them, said the whole family "look like a mailbox not a chest"
+  and asked for something closer to their own reference image's actual
+  style.
+  Root issue wasn't the specific geometry, it was the render technique:
+  the reference image is a SOLID two-tone flat icon (black silhouette +
+  white cutout details for the arrow/keyhole/trim lines), not a thin
+  stroke-only line icon like the app's existing share/update-check
+  icons. A thin-stroke chest outline was never going to read as
+  convincingly "chest-shaped" at 18px regardless of which curve
+  variant - not enough contrast/mass to the shape.
+  Switched technique entirely: built 3 solid-fill variants (fill=
+  currentColor for the chest body, fill="#272a30" - the app's own
+  --input-bg value - for cutout details layered on top, exactly
+  mirroring the reference's black+white two-color construction just
+  recoloured). Person picked "H": a loaf-top chest silhouette, two
+  --input-bg-coloured horizontal bands near the top (lid trim lines,
+  matching the reference's own detail), a downward arrow cut into the
+  lid, a keyhole cutout at the base centre, and 4 small corner-rivet
+  cutout dots - closest match to the reference image of the 8 total
+  variants explored across both rounds.
+  Implementation note: the button's SVG previously carried
+  fill="none" stroke="currentColor" on the outer <svg> tag (inherited by
+  every child element, the mechanism the share/update-check icons still
+  use) - removed entirely for this icon and replaced with an explicit
+  fill="currentColor"/fill="#272a30" on every individual path/shape,
+  since a solid icon has no use for those inherited stroke attributes
+  and leaving them in place would have inherited an unwanted gold
+  outline onto the cutout shapes too.
+  Verified via Playwright screenshot (both full header context and a
+  cropped zoom of just the button) - chest silhouette reads clearly at
+  real 18px size with no cut-off top; full regression sweep, 0 console
+  errors.
+  CACHE_VERSION v145->v146, app version v3.15->v3.16.
+
 ================================================================================
