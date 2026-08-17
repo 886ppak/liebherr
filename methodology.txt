@@ -6830,4 +6830,31 @@ cranes get their own subsections as they're built.
   duplicate/leaked groups); 0 console errors across the full scenario set
   and a full click-through of all 8 tabs.
 
+21. TARGET MAT MARKS: EMPTY-STATE HINT
+  Person's report: with a large shift ("+4 right"), Current Mat Marks
+  showed the shifted figures, then unchecking it and checking Target Mat
+  Marks "does nothing". Reproduced on LTM 1130 with shiftX=4m, shiftY=0:
+  C1/C2 both come out required (their current position already IS their
+  target, correctly excluded from Target per the previous entry's design),
+  and C3/C4 - optional - both come out leg.clash=true (their own "if
+  moved anyway" spot, accurateTargetX around 250mm against a chassis
+  half-width of 1425mm, would land the mat well under the chassis), also
+  correctly excluded. So at this particular shift, every single leg
+  legitimately has nothing valid to show under Target - not a broken
+  toggle, just a real "nothing possible right now" outcome that happened
+  to be silent.
+  Added a small hint div (#carrier-3d-target-empty-hint, same
+  cwt-zoom-hint styling already used for the "drag to rotate" hint under
+  the 3D canvas) that appears specifically when Target Mat Marks is
+  checked AND buildMatEdgeMarks(true) comes back empty - explaining why,
+  rather than leaving an unexplained blank toggle a person can't
+  distinguish from a bug. Hidden the rest of the time (Target unchecked,
+  or Target checked with real marks to show).
+  Verified via Playwright: hint hidden with only Current checked; hint
+  visible (confirmed via getComputedStyle) with only Target checked at
+  the +4m/0m shift that produces zero valid targets; hint disappears
+  again once the shift changes to one with a genuinely valid target
+  (1.5m/1.5m, C2's own case from the previous entry); full click-through
+  of all 8 tabs afterward: 0 console errors.
+
 ================================================================================
