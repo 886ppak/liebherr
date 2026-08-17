@@ -7333,4 +7333,41 @@ cranes get their own subsections as they're built.
   regression sweep across every crane/tab, 0 console errors.
   CACHE_VERSION v142->v143, app version v3.12->v3.13.
 
+29. Ground layout marks: half carrier width dimension
+  Person's request, with a CAD screenshot as reference: a dimension
+  bracket labelled "1550mm" drawn beside (not through) a carrier, in
+  open space, for a value that's exactly half a 3100mm-wide carrier -
+  wanted this same half-width figure added to "Show ground layout marks"
+  as part of Crane Layout's 3D preview.
+  This exact gap was already known and deliberately left undrawn -
+  applyGroundLayoutMarks' own comment in carrier3d.js already called it
+  out: "The short unmarked gap between the centerline and the edge point
+  is deliberately left undrawn - it's just half the carrier's own
+  (known, fixed) width, not something to remeasure." Person's request
+  reverses that call for this specific figure - wanted it drawn after
+  all, matching the reference image's own convention.
+  Needed zero index.html changes: onGroundLayoutToggle() already passes
+  FOOTPRINTS[modelKey] straight through to
+  window.__carrier3dSetGroundLayoutMarks() as its own footprint
+  argument (previously only used there to compute a fallback slew
+  calibration), so footprint.width was already available inside
+  applyGroundLayoutMarks() without adding a new parameter anywhere.
+  Added two new dimension lines (carrier3d.js only) - one per side, from
+  the slew centre (already computed as p0) out to (±halfB, 0) - drawn at
+  Y=0 (through the slew centre's own station) since that's a single,
+  unambiguous reference point that's clear of every per-leg line above
+  (those sit at each leg's own stationYMm, essentially never exactly 0),
+  and in a neutral off-white (#f8fafc, matching LEG_MARKER_COLOR) rather
+  than any one leg's own colour, since this figure isn't tied to a
+  specific leg - reuses the existing addDimensionLine() helper directly,
+  no new drawing code needed.
+  CARRIER3D_VERSION bumped 43->44 (carrier3d.js changed).
+  Verified via Playwright + screenshot for LTM 1300: both "½ carrier
+  width: 1550mm" labels render on either side of the carrier body at the
+  slew centre's own station, correctly matching carrierWidthB/2 (3100mm
+  -> 1550mm), positioned clear of and not overlapping any of the 4 per-
+  leg dimension lines; full regression sweep across every crane/tab, 0
+  console errors.
+  CACHE_VERSION v143->v144, app version v3.13->v3.14.
+
 ================================================================================
