@@ -7370,4 +7370,30 @@ cranes get their own subsections as they're built.
   console errors.
   CACHE_VERSION v143->v144, app version v3.13->v3.14.
 
+30. Header cache icon redrawn as an actual treasure chest
+  Person's follow-up on 27 (the header "Offline Content" icon): the
+  original was a generic download-into-a-tray glyph, close enough to
+  ballpark the "treasure chest with a download arrow" ask but not the
+  real thing. Person supplied an actual chest icon (ChatGPT-generated,
+  solid black/white with a keyhole latch and corner rivets) and asked
+  for it in the app's own gold, or something similar in that style.
+  Redrawn from scratch as a stroke-only line icon (not the solid-fill
+  style of the supplied reference) to match the two existing header
+  icons' own visual language exactly (Feather-style: 24x24 viewBox,
+  stroke-width 2, round caps/joins, no fill) rather than mixing icon
+  styles in the same header. Built from an open lid (two trapezoid
+  paths meeting at a gap in the middle), a rounded-rect body, a
+  keyhole (circle + short stem) on the front, and a downward arrow
+  (line + chevron polyline) passing through the lid's gap into the
+  keyhole - same "treasure chest + download arrow" concept as the
+  reference, redrawn in the app's own icon language. Colour is free:
+  #cache-btn already sets color:var(--accent-gold) and every path uses
+  stroke="currentColor", the same mechanism the share/update-check
+  icons already use - no icon-specific colour code needed anywhere.
+  Verified via a standalone render at both the real 18px button size and
+  a large preview before committing it, then via Playwright screenshot
+  in the actual header (gold, reads clearly as a chest+arrow at real
+  size); full regression sweep, 0 console errors.
+  CACHE_VERSION v144->v145, app version v3.14->v3.15.
+
 ================================================================================
