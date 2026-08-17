@@ -427,7 +427,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingSync[modelKey]) applySync(modelKey, root, pendingSync[modelKey]);
       if (pendingSlewCircles[modelKey]) {
         const ctx = pendingSlewCircleContext[modelKey] || {};
-        applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm);
+        applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm, ctx.rearMm);
       }
       if (pendingLegDimensions[modelKey]) {
         const ctx = pendingLegDimensionContext[modelKey] || {};
@@ -996,9 +996,14 @@ function addWitnessLine(group, p1, p2, color) {
 // via ensureSlewCalibration when Support Pad Placement hasn't already
 // synced this exact model (see that function's own comment) - prefers
 // the real refined one whenever it's available. carrierWidthMm, when
-// given (the person's "show clearance measurement" checkbox), also draws
-// a dimension line from the carrier's own side out to each circle,
-// labelled with the same clearance figure as the numeric table below it.
+// given (the person's "show clearance measurement (beyond side)"
+// checkbox), also draws a dimension line from the carrier's own side out
+// to each circle, labelled with the same clearance figure as the numeric
+// table below it. rearMm is the same idea for the "beyond rear" checkbox
+// - already includes the tool box depth by the time it gets here if that
+// second checkbox was also on (see index.html's onSlewCircleToggle) -
+// this function just draws whatever single figure it's given, same as
+// carrierWidthMm.
 //
 // All distances are drawn directly in world metres (mm / 1000), NOT
 // scaled through cal.xSlope/zSlope - those carry the mm-to-model-space
@@ -1008,14 +1013,24 @@ function addWitnessLine(group, p1, p2, color) {
 // this model's world units by the plain /1000 unit conversion, same as
 // every other physical dimension already drawn (pad sizes, etc).
 //
-// The dimension line always runs along world +X from the slew centre -
-// i.e. straight to one side, matching the "parked parallel to the
-// structure" worst case the numeric clearance figure itself assumes (see
-// index.html's own disclaimer on that card). This is a real 3D line, so
-// it's always geometrically correct from any camera angle, but like the
-// circles themselves it reads most clearly from a top-down view (Fit
-// View gets close to that).
-function applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm) {
+// The side dimension line always runs along world +X from the slew
+// centre - i.e. straight to one side, matching the "parked parallel to
+// the structure" worst case the numeric clearance figure itself assumes
+// (see index.html's own disclaimer on that card). The rear dimension
+// line runs along the carrier's own centerline instead, straight back
+// from the slew centre - built via siteToWorld(cal, 0, mm) for BOTH its
+// endpoints (the carrier's own rear edge and the circle's own rear-most
+// point) rather than assuming +Z like the side line assumes +X, since
+// siteToWorld's zSlope is the one thing here that already carries the
+// correct sign per-crane (dirSign, computeFormulaCalibration's own
+// comment: chosen so +Y/rear always maps to increasing world Z,
+// regardless of which end of a given crane's own CAD export sits at min
+// vs max Z) - hardcoding +Z here would silently point the wrong way on
+// any crane calibrated with frontAtMinZ false. Both dimension lines are
+// real 3D lines, so they're always geometrically correct from any camera
+// angle, but like the circles themselves they read most clearly from a
+// top-down view (Fit View gets close to that).
+function applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm, rearMm) {
   clearSlewCircles();
   if (!circles || !circles.length) return;
   const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
@@ -1025,6 +1040,7 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration, carri
   const center = siteToWorld(cal, 0, 0);
   const SEGMENTS = 96;
   const halfWidthM = carrierWidthMm ? (carrierWidthMm / 1000) / 2 : null;
+  const rearEdge = rearMm != null ? siteToWorld(cal, 0, rearMm) : null;
 
   circles.forEach((c) => {
     const radiusM = c.radius / 1000;
@@ -1042,29 +1058,42 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration, carri
     const mat = new THREE.LineBasicMaterial({ color });
     slewCircleGroup.add(new THREE.LineLoop(geo, mat));
 
-    if (halfWidthM == null) return;
-
     const y = center.y + 0.04;
-    const clearanceMm = Math.round(c.radius - halfWidthM * 1000);
-    addDimensionLine(
-      slewCircleGroup,
-      new THREE.Vector3(center.x + halfWidthM, y, center.z),
-      new THREE.Vector3(center.x + radiusM, y, center.z),
-      color,
-      `${clearanceMm}mm`
-    );
+
+    if (halfWidthM != null) {
+      const clearanceMm = Math.round(c.radius - halfWidthM * 1000);
+      addDimensionLine(
+        slewCircleGroup,
+        new THREE.Vector3(center.x + halfWidthM, y, center.z),
+        new THREE.Vector3(center.x + radiusM, y, center.z),
+        color,
+        `${clearanceMm}mm`
+      );
+    }
+
+    if (rearEdge != null) {
+      const rearClearanceMm = Math.round(c.radius - rearMm);
+      const circleRearPos = siteToWorld(cal, 0, c.radius);
+      addDimensionLine(
+        slewCircleGroup,
+        new THREE.Vector3(rearEdge.x, y, rearEdge.z),
+        new THREE.Vector3(circleRearPos.x, y, circleRearPos.z),
+        color,
+        `${rearClearanceMm}mm`
+      );
+    }
   });
 
   scene.add(slewCircleGroup);
 }
 
-window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calibration, carrierWidthMm) {
+window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calibration, carrierWidthMm, rearMm) {
   pendingSlewCircles[modelKey] = circles;
-  pendingSlewCircleContext[modelKey] = { footprint, calibration, carrierWidthMm };
+  pendingSlewCircleContext[modelKey] = { footprint, calibration, carrierWidthMm, rearMm };
   if (currentModelKey !== modelKey || !scene) return;
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
-  applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm);
+  applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm, rearMm);
 };
 
 // Crane Layout's "outrigger distances" toggle - OEM-drawing style
