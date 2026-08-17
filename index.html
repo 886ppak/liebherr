@@ -260,7 +260,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.7</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.8</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -2076,7 +2076,86 @@
           { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5'] },
           { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'aux5', 'aux6'] },
           { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5', 'aux6'] }
-        ]
+        ],
+        // UK variant - confirmed straight from the crane's own OEM operator
+        // manual, chapter 4.07 "Counterweight" (LWE/LTM 1300-6-2-003, doc
+        // 0212837-02, pages 931-940 - "1 Overview of counterweight", "2
+        // Fastening the counterweight" and "3 Counterweight combinations" /
+        // "3.1 Special ballast 66t and special ballast 86t"). Not an
+        // estimate like the Global entry above - this is the exact
+        // composition and tier table printed in the manual, cross-checked
+        // piece-for-piece against the person's own traced DXF
+        // (c9c59a51-LTM1300CWTUK.dxf, boxes layer, 10 closed loops via
+        // shapely polygonize - a naive vertex/edge walk misassembles 2 of
+        // the 10 loops here because the receptacle (p1) and counterweight 7
+        // (p7) outlines share a boundary vertex) and their reference photo
+        // (824x442, GB flag "96 t" badge) used as the diagram background.
+        // Diagram is the person's real photo, not redrawn artwork - hotspot
+        // polygons are the DXF outlines transformed to photo pixel space via
+        // the DXF's own embedded IMAGE entity insert/u_pixel/v_pixel (exact
+        // world-to-pixel transform, not eyeballed). p7 is listed after p1 in
+        // this array (SVG paint order) since its hotspot nests entirely
+        // inside p1's larger outline. Inner-vs-outer wing pairing (aux5 =
+        // inner, aux6 = outer) follows the same left+right-symmetric
+        // convention as the Global entry's aux5/aux6, matched by stack
+        // position since the manual's chart doesn't call out inner/outer by
+        // name - the manual's own weight total (13+3+10+10+10+10+10+10+10+10
+        // = 96t) matches the photo's "96 t" badge exactly. No 3D model
+        // exists for this variant's actual hardware, so no model3d key here
+        // - keeps the 2D/3D toggle hidden per renderCwtTab()'s existing gate.
+        ukVariant: {
+          sourceNote: "UK-market hardware, confirmed directly from this crane's own OEM operator manual (chapter 4.07 ‘Counterweight’). Composition and tier table transcribed straight from the manual's own combination chart, cross-checked against the person's traced DXF and reference photo.",
+          diagramImage: './counterweight/img/ltm1300-cwt-uk-exploded.png',
+          diagramAlt: 'LTM 1300-6.2 UK variant counterweight exploded reference photo, 10 pieces: receptacle, counterweight 7, plates 2-4, and two auxiliary ballast pairs',
+          diagramWidth: 824,
+          diagramHeight: 442,
+          figRef: "Person's own reference photo, hotspots traced from their AutoCAD DXF outlines.",
+          manualUrl: 'https://drive.google.com/file/d/1fU-VjDgFGx8NcbJajghazvFk08wdlkDP/view?usp=drive_link',
+          manualPage: 931,
+          components: [
+            { id: 'p1', name: 'Receptacle Plate 1', weight: 13, shortLabel: '1',
+              hotspots: [{ points: '408,393 290,387 286,382 286,360 291,351 348,320 348,317 351,315 351,314 350,313 350,311 350,305 354,301 357,299 365,298 374,299 379,303 379,317 404,318 407,323 413,323 414,321 419,319 471,323 473,325 476,325 476,315 480,312 485,313 485,311 489,310 502,312 506,315 506,327 527,329 545,332 557,334 564,335 568,345 568,367 505,403 498,403 476,402 458,400' }] },
+            { id: 'p7', name: 'Counterweight 7', weight: 3, shortLabel: '7',
+              hotspots: [{ points: '373,377 373,361 438,326 482,330 482,336 427,367 427,380 422,386 377,382' }] },
+            { id: 'p2', name: 'Counterweight Plate 2', weight: 10, shortLabel: '2',
+              hotspots: [{ points: '291,295 253,295 253,262 311,231 364,231 396,233 463,238 529,244 533,248 553,250 557,248 591,255 593,256 598,257 598,289 538,320 505,314 505,292 500,290 492,292 434,284 367,279 331,276 327,273 321,280 314,283 296,281 296,289 294,293' }] },
+            { id: 'p3a', name: 'Counterweight Plate 3', weight: 10, interchangeableGroup: 'plate3_1300uk', shortLabel: '3',
+              hotspots: [{ points: '253,204 253,194 275,194 293,195 334,201 388,203 416,205 461,213 493,216 497,214 516,215 526,218 539,218 550,212 551,207 557,208 582,195 583,191 590,191 596,188 597,199 589,203 584,203 582,208 538,231 519,230 517,228 496,226 494,227 414,218 381,215 321,212 299,210 294,208 274,208 259,206' }] },
+            { id: 'p3b', name: 'Counterweight Plate 3', weight: 10, interchangeableGroup: 'plate3_1300uk', shortLabel: '3',
+              hotspots: [{ points: '596,188 590,191 583,191 582,195 557,208 551,207 550,212 539,218 526,218 516,215 497,214 493,216 461,213 416,205 388,203 334,201 293,195 275,194 253,194 253,180 312,149 366,150 416,152 483,158 530,163 562,167 596,174 596,186' }] },
+            { id: 'p4', name: 'Counterweight Plate 4', weight: 10, shortLabel: '4',
+              hotspots: [{ points: '254,109 310,78 376,78 417,82 417,86 504,94 509,90 560,95 596,103 599,109 597,117 591,121 541,147 533,149 518,147 515,145 498,144 495,145 443,140 411,136 408,133 392,131 387,134 333,131 297,127 293,126 273,124 269,126 255,123' }] },
+            { id: 'aux5', name: '2x Auxiliary Ballast 5', weight: 20, separate: true, shortLabel: '5',
+              hotspots: [
+                { points: '250,108 250,146 243,152 194,179 187,179 140,176 135,170 135,95 170,76 171,37 174,23 185,17 243,17 250,22 249,71 257,71 262,76 262,91 260,99' },
+                { points: '624,114 641,106 641,99 644,89 645,78 646,68 651,59 662,53 677,57 703,63 708,67 708,191 705,196 690,204 659,221 648,221 610,217 605,215 602,211 602,160 598,160 594,155 592,149 592,130 606,123 613,124 621,127 624,124' }
+              ] },
+            { id: 'aux6', name: '2x Auxiliary Ballast 6', weight: 20, separate: true, shortLabel: '6',
+              hotspots: [
+                { points: '124,142 75,169 66,168 16,164 7,163 4,159 3,153 4,83 25,71 30,42 31,25 43,14 116,11 123,17 123,67 128,67 132,71 134,83 130,94 124,98' },
+                { points: '709,166 709,141 715,136 723,136 727,138 729,138 729,132 732,128 737,124 744,122 745,116 748,106 748,99 749,95 751,85 754,77 769,70 814,86 818,97 818,154 820,159 820,217 790,233 783,233 769,230 724,227 719,224 718,220 718,168 712,168' }
+              ] }
+          ],
+          // Straight from the manual's own tier table (4.07 section 3 /
+          // 3.1) - 0/13/16/26/36/46/56/66/76/86/96t. 66t and 86t are the
+          // manual's "special ballast" tiers: three spacer pins replace the
+          // second Plate 3 copy (no weight, not modeled) rather than a
+          // plate actually being fitted, same single-p3a-copy modeling as
+          // the Global entry's own combos.
+          combos: [
+            { items: [] },
+            { items: ['p1'] },
+            { items: ['p1', 'p7'] },
+            { items: ['p1', 'p7', 'p2'] },
+            { items: ['p1', 'p7', 'p2', 'p3a'] },
+            { items: ['p1', 'p7', 'p2', 'p3a', 'p4'] },
+            { items: ['p1', 'p7', 'p2', 'p3a', 'p3b', 'p4'] },
+            { items: ['p1', 'p7', 'p2', 'p3a', 'p4', 'aux5'] },
+            { items: ['p1', 'p7', 'p2', 'p3a', 'p3b', 'p4', 'aux5'] },
+            { items: ['p1', 'p7', 'p2', 'p3a', 'p4', 'aux5', 'aux6'] },
+            { items: ['p1', 'p7', 'p2', 'p3a', 'p3b', 'p4', 'aux5', 'aux6'] }
+          ]
+        }
       },
       // LTR 1220 - diagram vector-traced directly from the OEM combo PDF's
       // own artwork page (AutoCAD PDFIMPORT of the actual drawing, not a

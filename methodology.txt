@@ -6996,6 +6996,91 @@ cranes get their own subsections as they're built.
   share root plus Carrier/ and Counterweight/ sibling folders - each new
   share the person sends will have its own fresh token, but the pattern
   (extract token from the /s/ URL, WebDAV GET/PROPFIND with that token as
-  the basic-auth username) is the constant part worth remembering.
+  the basic-auth username) is the constant part worth remembering. This
+  particular share's token was scoped narrowly to just what that
+  conversation needed - a later, broader share (section 25) turned out to
+  expose the person's whole Nextcloud root instead, so "my Nextcloud"
+  resolves to whatever token they most recently sent, not a fixed token
+  value - always re-derive from the latest /s/<TOKEN> link they give.
+
+25. LTM 1300-6.2 UK VARIANT - REAL OEM DATA, NOT AN ESTIMATE
+  Same starting point as 1160 UK (methodology.txt 23): person supplied a
+  DXF (10 piece outlines traced in AutoCAD LT over their own reference
+  photo, boxes layer) plus the photo itself (824x442, GB flag "96 t"
+  badge, on Nextcloud). Person's explicit scope instruction: move the
+  existing (at the time PROVISIONAL) COUNTERWEIGHT_DATA['1300'] entry to
+  become the "Global" variant as-is, and add this DXF+photo data as a new
+  "UK" ukVariant sibling - same cwtData()/Global|UK toggle architecture
+  1160 UK already built, no JS changes needed, just data.
+  Loop extraction hit a new failure mode 1160 didn't have: a naive
+  vertex-based or edge-based walk of the 254 LINE segments only found
+  9 loops instead of 10, because the receptacle (13t) and counterweight-7
+  (3t) outlines share a real boundary vertex where they touch - any
+  single-path walk that greedily picks "the first unvisited edge" at that
+  vertex can wander from one piece's outline into the other's instead of
+  closing its own loop. Fixed by using shapely's polygonize() (planar
+  subdivision from the full set of line segments, via
+  shapely.ops.unary_union + polygonize) instead of a hand-rolled graph
+  walk - correctly resolves all 10 closed faces regardless of shared
+  vertices, no special-casing needed. World->pixel transform (DXF's own
+  IMAGE entity: insert (0,0,0), u_pixel/v_pixel 0.2646202699126753,
+  image_size 824x442, exact match to the real photo's pixel dimensions)
+  reused unchanged from the 1160 method. Rendered all 10 polygons over
+  the actual photo as a verification step (same as 1160) - every outline
+  landed exactly on its own piece, confirming the shapely fix.
+  Then the person asked to look up "the ltm1300 operator manual, chapter
+  4.07 counterweight and combinations" on their Nextcloud - a different,
+  broader share this time (a whole personal Nextcloud root, not a scoped
+  folder - see the note appended to section 24), containing a full
+  2167-page Liebherr operating-instructions PDF for this exact crane
+  under CRANES/Liebherr cranes/LTM1300-6.2/071845_LTM_1300-6.2_v100_en/
+  Operating_instructions_Crane/. Chapter 4.07 "Counterweight" (pages
+  931-940) turned out to be the SAME chapter the already-shipped Global
+  entry's manualUrl/manualPage:931 was already pointing at - but nobody
+  had actually read it against the Global entry's own (admittedly
+  PROVISIONAL) combo data before now. Reading it: "1 Overview of
+  counterweight" lists the exact 10 physical pieces (1x receptacle plate
+  1, 1x counterweight 7, 1x counterweight plate 2, 2x counterweight plate
+  3, 1x counterweight plate 4, 2x auxiliary ballast 5, 2x auxiliary
+  ballast 6) matching the person's 10 DXF loops and photo one-for-one,
+  and "3 Counterweight combinations" / "3.1 Special ballast 66 t and
+  special ballast 86 t" gives the full confirmed tier table: 0/13/16/26/
+  36/46/56/66/76/86/96t, where 66t and 86t are "special ballast" tiers
+  that use three spacer pins in place of the second counterweight-plate-3
+  copy rather than an actual plate. This is a genuinely different base
+  pair (receptacle 13t + counterweight-7 3t = 16t combined) than the
+  existing Global entry's own base pair (receptacle 6t + Plate 5 10t =
+  16t combined, per that entry's own comments "Unique to this
+  (global/export) variant") - not a contradiction, just different
+  physical hardware between the export/Global crane and this UK one, so
+  the Global entry was left completely untouched as instructed.
+  ukVariant.combos is therefore NOT empty like 1160 UK's was (no chart
+  existed there) - it's the manual's own tier table, transcribed exactly,
+  with manualUrl/manualPage:931 carried over onto the ukVariant block
+  too since it's confirmably the same document/page. sourceNote reflects
+  this is confirmed OEM data, not an estimate.
+  Inner-vs-outer wing pairing (aux5 = inner pair closer to the main
+  stack, aux6 = outer pair) follows the same left+right-symmetric
+  convention as the Global entry's own aux5/aux6, matched by stack
+  position since the manual's chart doesn't distinguish inner/outer by
+  name, only by weight (all 4 wing pieces are 10t).
+  Image saved as counterweight/img/ltm1300-cwt-uk-exploded.png, added to
+  sw.js APP_SHELL. model3d intentionally omitted from ukVariant - no 3D
+  model exists for this variant's actual hardware - which correctly
+  keeps the 2D/3D view toggle hidden via renderCwtTab()'s existing
+  `data.model3d ? '' : 'none'` gate, no code change needed.
+  Verified via Playwright: Global|UK toggle appears for 1300 only;
+  ukVariant has no model3d (view toggle hidden); all 8 components/10
+  hotspots present with correct aria-labels; direct toggleCwtPlate()
+  calls across all 8 components total exactly 96.0t; all 11 combo tiers
+  compute to 0/13/16/26/36/46/56/66/76/86/96t exactly matching the
+  manual; a real (non-force) click on the visible receptacle-plate area
+  correctly resolves to "Receptacle Plate 1" with the "OEM-approved
+  combination" checkmark, confirming the nested 3t Counterweight-7
+  hotspot (listed after the 13t receptacle in the components array, so
+  it paints on top in the SVG) doesn't swallow clicks meant for the
+  surrounding 13t piece; switching Global<->UK leaves the Global entry's
+  own data/3D model completely unchanged; full regression sweep across
+  every crane's CWT tab plus the other 8 app tabs, 0 console errors.
 
 ================================================================================
