@@ -6778,4 +6778,56 @@ cranes get their own subsections as they're built.
   leg's own pad checkbox state. Full click-through of all 8 tabs
   afterward: 0 console errors.
 
+20. TARGET MAT MARKS (SECOND TOGGLE, "IF MOVED" MAT DIMENSIONS)
+  Follow-on from the previous entry's bug fix. Person's own reaction to
+  seeing shifted-position figures leak into the single existing toggle:
+  "I actually wouldn't mind these but it would need to be toggled under
+  another button like current mats marks and future mats marks". Renamed
+  the existing toggle "Show mat edge marks" -> "Mat Marks" -> (this round)
+  "Current Mat Marks", and added a genuinely new second toggle, "Target
+  Mat Marks", showing the same inside/outside dimension lines computed
+  against each optional leg's TARGET (if-moved) position instead of its
+  current one.
+  calcCAD() gained accurateTargetX (accurateBaseX + shiftX, unconditional -
+  unlike accuratePlotX/accurateX, which only jumps to the shifted spot
+  once a leg is actually required). computeMatMarkingData() took a
+  useTarget parameter: false reads leg.accurateX/leg.y (unchanged,
+  existing behaviour); true reads leg.accurateTargetX/leg.movedY and
+  filters out any leg where target equals current (i.e. required legs -
+  their current position already IS their target, so showing it twice
+  under both toggles would be pure duplication) AND any leg flagged
+  leg.clash (the "All Four Legs" table's own NOT POSSIBLE) - moving a pad
+  there would clip the chassis, and its own edgeToCenterMm can come out
+  smaller than half the pad's width, making insideMm go negative. That's
+  technically correct (the pad really would overlap the crane) but not a
+  real marking figure a crew could ever act on, so it's excluded outright
+  rather than shown with a confusing negative number. Confirmed via
+  Playwright against LTM 1130 at two different shifts: one where a
+  target's own inside figure came out -742mm before this filter (leg
+  correctly excluded after); one with a genuinely valid target (C2,
+  optional, not clashing) that renders correctly.
+  carrier3d.js: matEdgeGroup (current) and a new targetMatEdgeGroup
+  (target) are two fully independent groups/clear functions/pending-
+  replay maps, mirroring every other toggle already on this shared canvas
+  (slew circles, leg dimensions, ground layout marks) - each checkbox
+  clears and redraws only its own group. addDimensionLine gained an
+  optional `dashed` parameter (LineDashedMaterial instead of
+  LineBasicMaterial for the line itself; the tiny end ticks stay solid
+  regardless - dashing something that small reads as broken, not
+  "future") - Target's lines render dashed, Current's stay solid, same
+  dashed = "if moved" convention already established by the ghost pad
+  boxes elsewhere in this app, so both toggles read as visually distinct
+  even when on at once for neighbouring legs.
+  Verified via Playwright: a scenario with one required leg (target
+  correctly absent, current already shows its shifted figure) and one
+  valid-target optional leg (both Current and Target render, solid vs
+  dashed clearly distinguishable, labels land in genuinely different
+  screen positions since the leg's own current vs target Y differ);
+  live-updates confirmed by changing Pad Width with both toggles open -
+  target marks correctly disappeared once the wider pad made that same
+  leg go from optional to required; switching to Crane Layout and back to
+  Support Pad Placement with both toggles left on self-heals correctly (no
+  duplicate/leaked groups); 0 console errors across the full scenario set
+  and a full click-through of all 8 tabs.
+
 ================================================================================

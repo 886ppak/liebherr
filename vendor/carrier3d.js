@@ -42,6 +42,7 @@ let slewCircleGroup = null;
 let legDimensionGroup = null;
 let groundLayoutGroup = null;
 let matEdgeGroup = null;
+let targetMatEdgeGroup = null;
 // Which DOM wrap/label the single shared canvas is currently parented
 // into - there are two possible mount points now (Support Pad Placement's
 // own 3D card, and Crane Layout's own 3D card), never both showing at
@@ -97,6 +98,14 @@ const pendingGroundLayoutContext = {};
 // shared canvas.
 const pendingMatEdgeMarks = {};
 const pendingMatEdgeContext = {};
+// Same replay-once-loaded pattern again, for the Target Mat Marks toggle -
+// a sixth independent toggle, own pair of maps. Kept fully separate from
+// pendingMatEdgeMarks (not merged) since Current and Target are two
+// checkboxes a person can each flip independently, and their marks are
+// drawn into two separate groups (matEdgeGroup / targetMatEdgeGroup) so
+// clearing or redrawing one never touches the other.
+const pendingTargetMatEdgeMarks = {};
+const pendingTargetMatEdgeContext = {};
 
 // Creates the renderer on first-ever call; every call after that just
 // re-parents the existing canvas into whichever wrapId was requested (a
@@ -186,6 +195,7 @@ function clearScene() {
   legDimensionGroup = null;
   groundLayoutGroup = null;
   matEdgeGroup = null;
+  targetMatEdgeGroup = null;
 }
 
 function clearOutriggers() {
@@ -221,6 +231,13 @@ function clearMatEdgeMarks() {
   scene.remove(matEdgeGroup);
   disposeGroup(matEdgeGroup);
   matEdgeGroup = null;
+}
+
+function clearTargetMatEdgeMarks() {
+  if (!targetMatEdgeGroup) return;
+  scene.remove(targetMatEdgeGroup);
+  disposeGroup(targetMatEdgeGroup);
+  targetMatEdgeGroup = null;
 }
 
 function loadGLTFAsync(url) {
@@ -394,6 +411,7 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     clearLegDimensions();
     clearGroundLayoutMarks();
     clearMatEdgeMarks();
+    clearTargetMatEdgeMarks();
   }
 
   const cached = modelCache[modelKey];
@@ -422,6 +440,10 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingMatEdgeMarks[modelKey]) {
         const ctx = pendingMatEdgeContext[modelKey] || {};
         applyMatEdgeMarks(modelKey, root, pendingMatEdgeMarks[modelKey], ctx.footprint, ctx.calibration);
+      }
+      if (pendingTargetMatEdgeMarks[modelKey]) {
+        const ctx = pendingTargetMatEdgeContext[modelKey] || {};
+        applyTargetMatEdgeMarks(modelKey, root, pendingTargetMatEdgeMarks[modelKey], ctx.footprint, ctx.calibration);
       }
     });
   }
@@ -916,9 +938,18 @@ function makeTextSprite(text, color) {
 // clearly with its label biased toward the far end it's naming, not stuck
 // at the geometric midpoint of a span that starts well before the mat
 // itself even begins.
-function addDimensionLine(group, p1, p2, color, labelText, labelT = 0.5) {
-  const mat = new THREE.LineBasicMaterial({ color });
-  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), mat));
+// dashed: renders the line itself (not the end ticks - dashing something
+// that tiny reads as broken, not as "future") as a dashed stroke instead
+// of solid - used by Target Mat Marks to read as clearly a projected/
+// not-yet-real measurement, same dashed = "if moved" convention already
+// established by the ghost pad boxes elsewhere in this file.
+function addDimensionLine(group, p1, p2, color, labelText, labelT = 0.5, dashed = false) {
+  const mat = dashed
+    ? new THREE.LineDashedMaterial({ color, dashSize: 0.15, gapSize: 0.1 })
+    : new THREE.LineBasicMaterial({ color });
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), mat);
+  if (dashed) line.computeLineDistances();
+  group.add(line);
 
   const dir = new THREE.Vector3().subVectors(p2, p1);
   if (dir.lengthSq() > 1e-9) {
@@ -927,12 +958,13 @@ function addDimensionLine(group, p1, p2, color, labelText, labelT = 0.5) {
     // Perpendicular to the line, in the ground (XZ) plane - a 90 degree
     // rotation of the direction vector about Y.
     const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(tickHalf);
+    const tickMat = new THREE.LineBasicMaterial({ color });
     [p1, p2].forEach((p) => {
       const tick = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(p.x - perp.x, p.y, p.z - perp.z),
         new THREE.Vector3(p.x + perp.x, p.y, p.z + perp.z)
       ]);
-      group.add(new THREE.Line(tick, mat));
+      group.add(new THREE.Line(tick, tickMat));
     });
   }
 
@@ -1148,13 +1180,18 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
   applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration);
 };
 
-// Support Pad Placement's "mat edge marks" toggle - the 3D counterpart of
-// the Bog Mat Marking table (index.html), for a leg that currently has a
-// pad toggled on. marks is an array of {label, color, edgeXMm, insideXMm,
-// outsideXMm, yMm, insideMm, outsideMm} - all x already resolved to
-// site-plan mm by index.html's onMatEdgeToggle() (sharing the exact same
-// computeMatMarkingData() the 2D table itself reads from, so the two can
-// never drift apart).
+// Support Pad Placement's "Current Mat Marks" / "Target Mat Marks" toggles -
+// the 3D counterpart of the Bog Mat Marking table (index.html), for a leg
+// that currently has a pad toggled on. marks is an array of {label, color,
+// edgeXMm, insideXMm, outsideXMm, yMm, insideMm, outsideMm} - all x already
+// resolved to site-plan mm by index.html's onMatEdgeToggle() (sharing the
+// exact same computeMatMarkingData() the 2D table itself reads from, so
+// the two can never drift apart). Current uses each leg's own current
+// (possibly already-shifted-if-required) position; Target uses the "if you
+// chose to relocate this optional leg anyway" spot - see
+// computeMatMarkingData()'s own comment in index.html for why a required
+// leg never appears under Target (its current position already IS its
+// target).
 //
 // Two dimension lines per leg, each its own full, honest span from the
 // carrier's own edge out to the edge it's naming (inside or outside) -
@@ -1169,13 +1206,11 @@ window.__carrier3dSetGroundLayoutMarks = function (modelKey, marks, footprint, c
 // the mat's own two ends - inside toward the near end, outside toward the
 // far end - so the lines themselves read as cleanly separate, same as the
 // reference photo, with a real gap between the two labels for free.
-function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
-  clearMatEdgeMarks();
-  if (!marks || !marks.length) return;
-  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
-  if (!cal) return;
-
-  matEdgeGroup = new THREE.Group();
+// dashed: Target's own lines render dashed (see addDimensionLine) so the
+// two toggles read as visually distinct even when both are on at once for
+// the same leg's neighbours - solid = current/real, dashed = projected,
+// same convention as the ghost pad boxes elsewhere in this file.
+function drawMatEdgeMarks(group, cal, marks, dashed) {
   const center = siteToWorld(cal, 0, 0);
   const y = center.y + 0.04;
 
@@ -1197,11 +1232,31 @@ function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
     const outsidePos = siteToWorld(cal, mark.outsideXMm, outsideYMm);
     const pOutside = new THREE.Vector3(outsidePos.x, y, outsidePos.z);
 
-    addDimensionLine(matEdgeGroup, pInsideEdge, pInside, mark.color, `${mark.label} inside: ${mark.insideMm}mm`);
-    addDimensionLine(matEdgeGroup, pOutsideEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`);
+    addDimensionLine(group, pInsideEdge, pInside, mark.color, `${mark.label} inside: ${mark.insideMm}mm`, 0.5, dashed);
+    addDimensionLine(group, pOutsideEdge, pOutside, mark.color, `${mark.label} outside: ${mark.outsideMm}mm`, 0.5, dashed);
   });
+}
 
+function applyMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
+  clearMatEdgeMarks();
+  if (!marks || !marks.length) return;
+  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
+  if (!cal) return;
+
+  matEdgeGroup = new THREE.Group();
+  drawMatEdgeMarks(matEdgeGroup, cal, marks, false);
   scene.add(matEdgeGroup);
+}
+
+function applyTargetMatEdgeMarks(modelKey, root, marks, footprint, calibration) {
+  clearTargetMatEdgeMarks();
+  if (!marks || !marks.length) return;
+  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
+  if (!cal) return;
+
+  targetMatEdgeGroup = new THREE.Group();
+  drawMatEdgeMarks(targetMatEdgeGroup, cal, marks, true);
+  scene.add(targetMatEdgeGroup);
 }
 
 window.__carrier3dSetMatEdgeMarks = function (modelKey, marks, footprint, calibration) {
@@ -1211,4 +1266,13 @@ window.__carrier3dSetMatEdgeMarks = function (modelKey, marks, footprint, calibr
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
   applyMatEdgeMarks(modelKey, root, marks, footprint, calibration);
+};
+
+window.__carrier3dSetTargetMatEdgeMarks = function (modelKey, marks, footprint, calibration) {
+  pendingTargetMatEdgeMarks[modelKey] = marks;
+  pendingTargetMatEdgeContext[modelKey] = { footprint, calibration };
+  if (currentModelKey !== modelKey || !scene) return;
+  const root = modelCache[modelKey];
+  if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
+  applyTargetMatEdgeMarks(modelKey, root, marks, footprint, calibration);
 };

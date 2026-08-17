@@ -222,7 +222,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.2</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.3</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -576,7 +576,10 @@
             <input type="checkbox" id="carrier-3d-pad-4-toggle" onchange="syncPadToggle(4, this)" style="width:auto; cursor:pointer;"> C4
           </label>
           <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none; margin-left:8px;">
-            <input type="checkbox" id="carrier-3d-show-mat-edges" onchange="onMatEdgeToggle()" style="width:auto; cursor:pointer;"> Mat Marks
+            <input type="checkbox" id="carrier-3d-show-mat-edges-current" onchange="onMatEdgeToggle()" style="width:auto; cursor:pointer;"> Current Mat Marks
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none; margin-left:8px;">
+            <input type="checkbox" id="carrier-3d-show-mat-edges-target" onchange="onMatEdgeToggle()" style="width:auto; cursor:pointer;"> Target Mat Marks
           </label>
         </div>
         <div id="carrier-3d-wrap" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
@@ -2011,7 +2014,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 38;
+    const CARRIER3D_VERSION = 39;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -5209,7 +5212,7 @@
 
         if (shiftX === 0 && shiftYinput === 0) {
           mappedOutriggers.push({ id: item.id, quadrant: item.quadrant, required: false, clash: false, pad: legPad,
-            x: baseX, y: baseY, movedX: baseX, movedY: baseY, accurateX: accurateBaseX,
+            x: baseX, y: baseY, movedX: baseX, movedY: baseY, accurateX: accurateBaseX, accurateTargetX: accurateBaseX,
             r: item.r, dir: dirFor(item.angle), relAngle: Math.abs(item.angle), posX: Math.round(baseX), posY: Math.round(baseY) });
           resultsHtml += `
             <tr>
@@ -5264,10 +5267,16 @@
         // Same required/shift logic as plotX above, applied to the
         // accurate baseline instead of the r/angle-derived one.
         const accuratePlotX = isRequired ? accurateBaseX + shiftX : accurateBaseX;
+        // Unconditionally the accurate TARGET spot (not gated on
+        // isRequired like accuratePlotX above) - for a required leg this
+        // is identical to accuratePlotX (its current position already IS
+        // the target), but for an optional leg it's the "if you chose to
+        // relocate it anyway" spot, used by Target Mat Marks below.
+        const accurateTargetX = accurateBaseX + shiftX;
 
         mappedOutriggers.push({
           id: item.id, quadrant: item.quadrant, required: isRequired, clash, pad: legPad,
-          x: plotX, y: plotY, movedX: newX, movedY: newY, accurateX: accuratePlotX,
+          x: plotX, y: plotY, movedX: newX, movedY: newY, accurateX: accuratePlotX, accurateTargetX,
           r: isRequired ? movedR : stayR, dir: isRequired ? movedDir : stayDir, relAngle: isRequired ? movedAngle : stayAngle,
           posX: Math.round(plotX), posY: Math.round(plotY)
         });
@@ -5327,15 +5336,41 @@
     // Shared by renderMatMarking()'s table below and onMatEdgeToggle()'s 3D
     // version of the same marks - one computation, two presentations, so
     // they can never quietly drift apart from each other.
-    function computeMatMarkingData() {
+    // useTarget switches from a leg's CURRENT position (leg.accurateX/
+    // leg.y - already the shifted target once a "must move" shift makes
+    // that the real current intent, see accuratePlotX in calcCAD()) to its
+    // TARGET position (leg.accurateTargetX/leg.movedY - unconditionally
+    // "if this leg were moved to the shift's target spot", regardless of
+    // whether it's required). For a required leg those are the same
+    // point, so target mode filters those out - showing it again under
+    // Target Mat Marks would just duplicate Current Mat Marks. What's left
+    // is exactly the "if you chose to relocate this optional leg anyway"
+    // case - person's own request, after noticing this same figure
+    // surfacing (as a bug) under Current Mat Marks: "I actually wouldn't
+    // mind these but it would need to be toggled under another button".
+    // Also excludes any leg whose target spot is flagged clash (the "All
+    // Four Legs" table's own NOT POSSIBLE) - moving a pad there would clip
+    // the chassis, so its own edgeToCenterMm can come out smaller than
+    // half the pad's width, making insideMm go negative. That's technically
+    // correct (the pad really would overlap the crane) but not a real
+    // marking figure a crew could ever use, so it's excluded rather than
+    // shown with a confusing negative number.
+    function computeMatMarkingData(useTarget) {
       if (!lastMapped || !lastFp) return [];
       const halfB = lastFp.width / 2;
-      return lastMapped.filter(leg => leg.pad).map(leg => {
-        const side = leg.accurateX >= 0 ? 1 : -1;
-        const edgeToCenterMm = Math.abs(leg.accurateX) - halfB;
+      return lastMapped.filter(leg => {
+        if (!leg.pad) return false;
+        if (!useTarget) return true;
+        if (leg.clash) return false;
+        return leg.accurateTargetX !== leg.accurateX || leg.movedY !== leg.y;
+      }).map(leg => {
+        const x = useTarget ? leg.accurateTargetX : leg.accurateX;
+        const y = useTarget ? leg.movedY : leg.y;
+        const side = x >= 0 ? 1 : -1;
+        const edgeToCenterMm = Math.abs(x) - halfB;
         const halfPadMm = leg.pad.width / 2;
         return {
-          id: leg.id, side, y: leg.y, edgeXMm: side * halfB, padLengthMm: leg.pad.length,
+          id: leg.id, side, y, edgeXMm: side * halfB, padLengthMm: leg.pad.length,
           edgeToCenterMm, insideMm: edgeToCenterMm - halfPadMm, outsideMm: edgeToCenterMm + halfPadMm
         };
       });
@@ -5369,13 +5404,14 @@
     // as a single line with two labels at different points along it,
     // matching how the OEM dimension chains already read elsewhere in this
     // app - not two separate, disconnected measurements.
-    function onMatEdgeToggle() {
-      const checkEl = document.getElementById('carrier-3d-show-mat-edges');
-      const show = checkEl ? checkEl.checked : false;
-      const modelKey = document.getElementById('cad-crane').value;
-      if (!window.__carrier3dSetMatEdgeMarks) return;
-      if (!show) { window.__carrier3dSetMatEdgeMarks(modelKey, []); return; }
-      const marks = computeMatMarkingData().map(m => ({
+    // Drives BOTH toggles (Current Mat Marks / Target Mat Marks) from one
+    // function, same "one computation, two presentations" reasoning as
+    // computeMatMarkingData() itself - each toggle's own checked state is
+    // read fresh here rather than tracked separately, so a change to
+    // either one, or a recalc from calcCAD(), always redraws both from
+    // scratch rather than risking one going stale relative to the other.
+    function buildMatEdgeMarks(useTarget) {
+      return computeMatMarkingData(useTarget).map(m => ({
         label: `C${m.id}`,
         color: GROUND_LAYOUT_COLORS[`C${m.id}`] || '#f8fafc',
         edgeXMm: m.edgeXMm,
@@ -5386,7 +5422,24 @@
         insideMm: Math.round(m.insideMm),
         outsideMm: Math.round(m.outsideMm)
       }));
-      window.__carrier3dSetMatEdgeMarks(modelKey, marks, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+    }
+
+    function onMatEdgeToggle() {
+      const modelKey = document.getElementById('cad-crane').value;
+      const fp = FOOTPRINTS[modelKey];
+      const cal = CARRIER_CALIBRATION[modelKey];
+
+      const currentEl = document.getElementById('carrier-3d-show-mat-edges-current');
+      const currentShow = currentEl ? currentEl.checked : false;
+      if (window.__carrier3dSetMatEdgeMarks) {
+        window.__carrier3dSetMatEdgeMarks(modelKey, currentShow ? buildMatEdgeMarks(false) : [], fp, cal);
+      }
+
+      const targetEl = document.getElementById('carrier-3d-show-mat-edges-target');
+      const targetShow = targetEl ? targetEl.checked : false;
+      if (window.__carrier3dSetTargetMatEdgeMarks) {
+        window.__carrier3dSetTargetMatEdgeMarks(modelKey, targetShow ? buildMatEdgeMarks(true) : [], fp, cal);
+      }
     }
 
     function drawCADCanvas(shiftX, shiftY, outriggers, fp) {
