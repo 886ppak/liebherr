@@ -7446,4 +7446,25 @@ cranes get their own subsections as they're built.
   errors.
   CACHE_VERSION v145->v146, app version v3.15->v3.16.
 
+32. Half carrier width dimension corrected: rear station, C1 side only
+  Person's correction on 29: their own reference drawing had this
+  dimension positioned at the VERY REAR of the carrier, not through the
+  slew centre's own station (Y=0) - and only on one side (C1's side),
+  not both, since it's a fixed symmetric figure with no point drawing it
+  twice.
+  Repositioned the single dimension line from (0,0)->(halfB,0) [drawn
+  twice, ±halfB] to a single line at footprint.rear's own station -
+  (0,footprint.rear)->(halfB,footprint.rear) - reusing the same
+  footprint.rear figure the rear-clearance feature (methodology.txt 26)
+  already established as "distance from slew centre to the rear tip of
+  the chassis body", so this now sits exactly at the carrier's own rear
+  edge, matching the person's drawing. +X only (C1/C2's own side in
+  legSpecs above), not ±X.
+  CARRIER3D_VERSION bumped 44->45 (carrier3d.js changed).
+  Verified via Playwright + screenshot for LTM 1300: single "½ carrier
+  width: 1550mm" label now renders at the very bottom (rear) of the
+  carrier body on the C1 side only, clear of the 4 per-leg lines; full
+  regression sweep, 0 console errors.
+  CACHE_VERSION v146->v147, app version v3.16->v3.17.
+
 ================================================================================
