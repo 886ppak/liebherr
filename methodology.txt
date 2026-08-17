@@ -7230,4 +7230,38 @@ cranes get their own subsections as they're built.
     Radius options); full regression sweep, 0 console errors.
     CACHE_VERSION v140->v141, app version v3.10->v3.11.
 
+27. REMOVED: Crane Layout's "Show outrigger distances (C1-C4, baseline
+    position)" toggle
+  Person's request. Removed cleanly end to end rather than just hiding
+  the checkbox, since nothing else in the app referenced any of it:
+    - index.html: the checkbox itself (renderCarrier3DSlewToggles), its
+      onLegDimensionToggle() handler, and both call sites
+      (renderCarrier3DSlewToggles' own render pass and
+      activateCarrier3DLayout's re-sync on switching back to the Crane
+      Layout sub-tab).
+    - carrier3d.js: legDimensionGroup (the THREE.Group holding the
+      lines), clearLegDimensions()/its 3 call sites (clearScene,
+      sceneBox's Fit View bounding-box union, and the "switching cards"
+      clear block that also clears slew circles/ground layout/mat edge
+      marks), applyLegDimensions(), pendingLegDimensions/
+      pendingLegDimensionContext (the replay-once-loaded state) and
+      their own replay-branch call, and the window.__carrier3dSetLegDimensions
+      export itself. Left a comment cleanup on
+      pendingGroundLayoutMarks's own comment too, since it referenced
+      "pendingLegDimensions above" and "the diagonal C1-C4 lines" by
+      name for context that no longer exists.
+    Nothing else in the app called any of this - it was Crane Layout's
+    own toggle only, entirely separate from Support Pad Placement's own
+    (still-present) C1-C4 diagonal "as the crow flies" distances and its
+    ground layout marks, which use a completely different code path.
+    CARRIER3D_VERSION bumped 42->43 (carrier3d.js changed).
+    Verified via Playwright: checkbox and its label gone from the 3D
+    toggle list; every remaining toggle (radius points, side/rear
+    clearance + tool box, ground layout marks) still renders and
+    functions correctly with 0 console errors; full regression sweep
+    across every crane on both Crane Layout and Support Pad Placement
+    (which shares carrier3d.js) plus the other 4 top-level tabs, 0
+    console errors throughout.
+    CACHE_VERSION v141->v142, app version v3.11->v3.12.
+
 ================================================================================

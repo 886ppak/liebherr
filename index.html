@@ -260,7 +260,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.11</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.12</span></h1>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
     </button>
@@ -2296,7 +2296,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 42;
+    const CARRIER3D_VERSION = 43;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -5317,48 +5317,11 @@
           Include tool box in rear figure (+${(COMBI_BOX_DEPTH_MM[modelKey] / 1000).toFixed(2)}m)
         </label>` : '') +
         `<label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
-          <input type="checkbox" id="carrier-3d-show-legs" onchange="onLegDimensionToggle()" style="width:auto; cursor:pointer;">
-          Show outrigger distances (C1-C4, baseline position)
-        </label>
-        <label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
           <input type="checkbox" id="carrier-3d-show-ground-layout" onchange="onGroundLayoutToggle()" style="width:auto; cursor:pointer;">
           Show ground layout marks (paint-out dimensions)
         </label>`;
       onSlewCircleToggle();
-      onLegDimensionToggle();
       onGroundLayoutToggle();
-    }
-
-    // Outrigger distances (C1-C4, OEM-drawing style: slew centre to each
-    // leg's own baseline position) - Crane Layout's own toggle, separate
-    // from the slew-radius circles above. Uses each leg's BASELINE
-    // (unshifted) r/angle straight from cadFleetData - Crane Layout has
-    // no shift/pad inputs of its own (that's Support Pad Placement's
-    // job), so there's no "current" position to reflect here, only the
-    // standard target one, same figures already shown in the "Baseline"
-    // column of Support Pad Placement's own "All Four Legs" table.
-    function onLegDimensionToggle() {
-      const modelKey = document.getElementById('sc-crane').value;
-      const checkEl = document.getElementById('carrier-3d-show-legs');
-      const show = checkEl ? checkEl.checked : false;
-      if (!window.__carrier3dSetLegDimensions) return;
-      if (!show) { window.__carrier3dSetLegDimensions(modelKey, []); return; }
-      const craneObj = cadFleetData[modelKey];
-      if (!craneObj) return;
-      // Same r/angle -> site-plan x/y conversion as syncCarrier3DOutriggers()
-      // uses for Support Pad Placement's own baseLegs - kept in exact sync
-      // with that formula since siteToWorld() expects the same convention.
-      const legs = [craneObj.C1_RR, craneObj.C2_FR, craneObj.C3_FL, craneObj.C4_RL].map(item => {
-        const rad = item.angle * (Math.PI / 180);
-        return {
-          xMm: item.r * Math.sin(rad),
-          yMm: item.r * Math.cos(rad),
-          r: item.r,
-          label: `C${item.id}`,
-          color: '#f8fafc'
-        };
-      });
-      window.__carrier3dSetLegDimensions(modelKey, legs, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
     }
 
     // Colors reused from SLEW_CIRCLE_COLORS - purely cosmetic, no meaning
@@ -5509,7 +5472,6 @@
       const activate = () => {
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap-layout', 'carrier-3d-label-layout');
         onSlewCircleToggle();
-        onLegDimensionToggle();
         onGroundLayoutToggle();
       };
       if (window.__carrier3dActivate) activate();

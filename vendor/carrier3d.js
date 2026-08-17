@@ -39,7 +39,6 @@ let currentModelKey = null;
 let animating = false;
 let outriggerGroup = null;
 let slewCircleGroup = null;
-let legDimensionGroup = null;
 let groundLayoutGroup = null;
 let matEdgeGroup = null;
 let targetMatEdgeGroup = null;
@@ -75,20 +74,12 @@ const pendingSlewCircles = {};
 // still mid-fetch at the time (see ensureSlewCalibration's own comment
 // on why a fallback calibration needs these).
 const pendingSlewCircleContext = {};
-// Same replay-once-loaded pattern again, for the Crane Layout tab's
-// outrigger-leg dimension lines (slew centre -> each of C1-C4, OEM-
-// drawing style - see __carrier3dSetLegDimensions below). A third
-// independent toggle, kept in its own pair of maps rather than merged
-// into the slew-circle ones since it's a genuinely separate on/off
-// switch the person flips independently of the radius circles.
-const pendingLegDimensions = {};
-const pendingLegDimensionContext = {};
 // Same replay-once-loaded pattern again, for the Crane Layout tab's ground
 // layout marks (paint-it-out-on-soil dimensions - see
-// __carrier3dSetGroundLayoutMarks below). A fourth independent toggle, own
-// pair of maps, same reasoning as pendingLegDimensions above - it's a
-// genuinely separate on/off switch from the diagonal C1-C4 lines, even
-// though both are Crane Layout-only and both key off the same crane.
+// __carrier3dSetGroundLayoutMarks below). A third independent toggle, own
+// pair of maps, same reasoning as pendingSlewCircles above - it's a
+// genuinely separate on/off switch from the radius circles, even though
+// both are Crane Layout-only and both key off the same crane.
 const pendingGroundLayoutMarks = {};
 const pendingGroundLayoutContext = {};
 // Same replay-once-loaded pattern again, for Support Pad Placement's own
@@ -192,7 +183,6 @@ function clearScene() {
   });
   outriggerGroup = null;
   slewCircleGroup = null;
-  legDimensionGroup = null;
   groundLayoutGroup = null;
   matEdgeGroup = null;
   targetMatEdgeGroup = null;
@@ -210,13 +200,6 @@ function clearSlewCircles() {
   scene.remove(slewCircleGroup);
   disposeGroup(slewCircleGroup);
   slewCircleGroup = null;
-}
-
-function clearLegDimensions() {
-  if (!legDimensionGroup) return;
-  scene.remove(legDimensionGroup);
-  disposeGroup(legDimensionGroup);
-  legDimensionGroup = null;
 }
 
 function clearGroundLayoutMarks() {
@@ -280,7 +263,6 @@ function sceneBox() {
   if (root) box.union(new THREE.Box3().setFromObject(root));
   if (outriggerGroup) box.union(new THREE.Box3().setFromObject(outriggerGroup));
   if (slewCircleGroup) box.union(new THREE.Box3().setFromObject(slewCircleGroup));
-  if (legDimensionGroup) box.union(new THREE.Box3().setFromObject(legDimensionGroup));
   if (groundLayoutGroup) box.union(new THREE.Box3().setFromObject(groundLayoutGroup));
   if (matEdgeGroup) box.union(new THREE.Box3().setFromObject(matEdgeGroup));
   return box;
@@ -408,7 +390,6 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
     // actually hitting it - see methodology.txt.
     clearOutriggers();
     clearSlewCircles();
-    clearLegDimensions();
     clearGroundLayoutMarks();
     clearMatEdgeMarks();
     clearTargetMatEdgeMarks();
@@ -428,10 +409,6 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
       if (pendingSlewCircles[modelKey]) {
         const ctx = pendingSlewCircleContext[modelKey] || {};
         applySlewCircles(modelKey, root, pendingSlewCircles[modelKey], ctx.footprint, ctx.calibration, ctx.carrierWidthMm, ctx.rearMm);
-      }
-      if (pendingLegDimensions[modelKey]) {
-        const ctx = pendingLegDimensionContext[modelKey] || {};
-        applyLegDimensions(modelKey, root, pendingLegDimensions[modelKey], ctx.footprint, ctx.calibration);
       }
       if (pendingGroundLayoutMarks[modelKey]) {
         const ctx = pendingGroundLayoutContext[modelKey] || {};
@@ -1094,46 +1071,6 @@ window.__carrier3dSetSlewCircles = function (modelKey, circles, footprint, calib
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
   applySlewCircles(modelKey, root, circles, footprint, calibration, carrierWidthMm, rearMm);
-};
-
-// Crane Layout's "outrigger distances" toggle - OEM-drawing style
-// dimension lines from the slew centre straight out to each of C1-C4's
-// own BASELINE position (index.html's cadFleetData, the same unshifted
-// r/angle the "All Four Legs" table's own "Baseline" column already
-// shows on Support Pad Placement - not whatever a shift/pad input might
-// currently have configured there, since Crane Layout has no shift
-// inputs of its own at all). legs is an array of
-// {xMm, yMm, r, label, color} - x/y already resolved from r/angle by
-// index.html (same site-plan mm convention siteToWorld expects
-// everywhere else), r is the real baseline distance in mm for the label,
-// label/color identify which leg (e.g. "C1").
-function applyLegDimensions(modelKey, root, legs, footprint, calibration) {
-  clearLegDimensions();
-  if (!legs || !legs.length) return;
-  const cal = ensureSlewCalibration(modelKey, root, footprint, calibration);
-  if (!cal) return;
-
-  legDimensionGroup = new THREE.Group();
-  const center = siteToWorld(cal, 0, 0);
-  const y = center.y + 0.04;
-  const p0 = new THREE.Vector3(center.x, y, center.z);
-
-  legs.forEach((leg) => {
-    const pos = siteToWorld(cal, leg.xMm, leg.yMm);
-    const p1 = new THREE.Vector3(pos.x, y, pos.z);
-    addDimensionLine(legDimensionGroup, p0, p1, leg.color || '#f8fafc', `${leg.label}: ${Math.round(leg.r)}mm`);
-  });
-
-  scene.add(legDimensionGroup);
-}
-
-window.__carrier3dSetLegDimensions = function (modelKey, legs, footprint, calibration) {
-  pendingLegDimensions[modelKey] = legs;
-  pendingLegDimensionContext[modelKey] = { footprint, calibration };
-  if (currentModelKey !== modelKey || !scene) return;
-  const root = modelCache[modelKey];
-  if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
-  applyLegDimensions(modelKey, root, legs, footprint, calibration);
 };
 
 // Crane Layout's "ground layout marks" toggle - the paint-it-out-on-soil
