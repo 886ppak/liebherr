@@ -1138,20 +1138,22 @@ function applyGroundLayoutMarks(modelKey, root, marks, footprint, calibration) {
   // centerline-to-edge gap every per-leg lateral line above deliberately
   // leaves unmarked (see this function's own comment above), drawn once
   // here instead of remarking it per leg. Person's own reference: a
-  // CAD-style dimension bracket for this exact figure. Drawn on both
-  // sides at Y=0 (through the slew centre's own station) - a single,
-  // unambiguous reference point clear of every per-leg line above (those
-  // sit at each leg's own stationYMm, essentially never exactly 0) - in
-  // a neutral off-white rather than any one leg's colour, since it isn't
-  // tied to a specific leg.
-  if (footprint && footprint.width) {
+  // CAD-style dimension bracket for this exact figure, positioned at the
+  // VERY REAR of the carrier (footprint.rear station, site convention
+  // rear = positive Y - see siteToWorld's own comment), not through the
+  // slew centre - matches where the person's own reference drawing had
+  // it. C1 side only (+X, same side C1/C2 already use in legSpecs above)
+  // - person's own correction: it's a fixed, symmetric figure, so
+  // there's no point drawing it on both sides. Neutral off-white rather
+  // than any one leg's colour, since it isn't tied to a specific leg.
+  if (footprint && footprint.width && footprint.rear != null) {
     const halfB = footprint.width / 2;
     const halfBMm = Math.round(halfB);
-    [1, -1].forEach((side) => {
-      const edgePos = siteToWorld(cal, side * halfB, 0);
-      const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
-      addDimensionLine(groundLayoutGroup, p0, pEdge, '#f8fafc', `½ carrier width: ${halfBMm}mm`);
-    });
+    const rearPos = siteToWorld(cal, 0, footprint.rear);
+    const pRearCenter = new THREE.Vector3(rearPos.x, y, rearPos.z);
+    const edgePos = siteToWorld(cal, halfB, footprint.rear);
+    const pEdge = new THREE.Vector3(edgePos.x, y, edgePos.z);
+    addDimensionLine(groundLayoutGroup, pRearCenter, pEdge, '#f8fafc', `½ carrier width: ${halfBMm}mm`);
   }
 
   scene.add(groundLayoutGroup);
