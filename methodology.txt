@@ -8064,3 +8064,58 @@ cranes get their own subsections as they're built.
   index.html change.
 
 ================================================================================
+47. LRT 1100: frontAtMinZ was actually wrong, not just the camera
+
+  methodology.txt 46's camera-angle fix made the default 3D view
+  consistent again, but the person came back with the real root cause
+  directly: CARRIER_CALIBRATION's frontAtMinZ: false for the LRT 1100 was
+  itself backward - what methodology.txt 45 identified as the front (the
+  MAX-Z end's raised, ladder-flanked structure) is actually the rear.
+  Concrete symptom that proved it: the "Show ground layout marks" 3D
+  overlay's own half-carrier-width dimension line - explicitly labelled
+  "(rear, C1 side)" in the plain-text Layout Dimensions card - was
+  rendering at the FRONT end of the model instead, on live testing.
+
+  Root cause of the original wrong read: this crane's operator manual
+  lists "Crane cab" as a component of "2 Crane superstructure", not of
+  "1 Crane chassis" (chapter 1.01 Terminology, Fig.146075 vs Fig.146074) -
+  i.e. on an LRT (rough-terrain) crane the only cab is mounted on the
+  ROTATING SUPERSTRUCTURE, used for both driving and operating, not fixed
+  to the carrier. The carrier-only GLB this app renders has no cab on it
+  at all. The raised, ladder-flanked structure methodology.txt 45 found at
+  the MAX-Z end and read as "classic driver's-cab access" was something
+  else entirely - almost certainly the engine bay (a real carrier
+  component per Fig.146074's own parts list, item 5) - which happens to
+  sit at the carrier's REAR, not front, on this particular machine.
+  Everything methodology.txt 45 cross-checked against (cadFleetData's
+  C1-C4 leg assignment, the literal OEM LICCON button labels, the
+  counterweight-radius clearance figure) was and remains correct in its
+  own right - none of that data was wrong. The mistake was narrower: which
+  physical end of the 3D model those correct front/rear labels belonged
+  to. The "independent" cross-check in methodology.txt 45 wasn't actually
+  independent of the error - it rendered its own confirmation using the
+  same (wrong) calibration it was trying to verify, so it validated
+  internal self-consistency, not truth against the real machine. Lesson:
+  a cross-check that itself depends on the value being checked can't
+  catch that value being wrong.
+
+  Fix: CARRIER_CALIBRATION['1100'].frontAtMinZ flipped false -> true -
+  same convention every other carrier in the fleet already uses. Nothing
+  else needed changing: FOOTPRINTS, cadFleetData, GROUND_LAYOUT_DATA and
+  SLEW_CLEARANCE_DATA were all already correct (they were never derived
+  from the 3D model's Z-axis guess in the first place), and
+  computeFormulaCalibration/siteToWorld's dirSign compensation (see
+  vendor/carrier3d.js) was already correctly designed to handle either
+  polarity - it just needed the right input. methodology.txt 46's camera
+  fix stays in place (still correct, still a no-op for every crane except
+  one calibrated with frontAtMinZ: false - currently none, after this
+  fix, but worth keeping for whatever crane needs it next).
+
+  Re-verified via Playwright: the ground-layout half-width dimension line
+  now renders at the C1/rear end as labelled; Support Pad Placement's 3D
+  "if moved" ghost for a forward shift now lands near the correct
+  (min-Z) end; the 3D default view still opens rear-first, unchanged from
+  methodology.txt 46's fix (dirSign is now +1 for this crane too, so that
+  fix is currently a no-op here, by design). 0 console errors.
+
+================================================================================
