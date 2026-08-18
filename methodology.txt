@@ -7990,3 +7990,77 @@ cranes get their own subsections as they're built.
   this one rolls over to v4.0 per CLAUDE.md's own cap).
 
 ================================================================================
+46. LRT 1100: "move forward" looked like it moved backward
+
+  Person's report: on Support Pad Placement, shifting the LRT 1100
+  "forward" visibly moved it backward - works correctly for every other
+  crane. Given methodology.txt 45's frontAtMinZ:false determination was
+  the one genuinely uncertain part of last session's LRT 1100 work, this
+  read at first like that guess might simply be wrong and needed
+  re-checking from scratch.
+
+  It wasn't. Re-verified frontAtMinZ:false from three more independent
+  angles before touching any code: (1) the actual OEM LICCON button
+  labels, straight from the operator manual text ("Select support 3 front
+  left" / "support 2 front right" / "support 4 rear left" / "support 1
+  rear right") - matches cadFleetData's existing C1_RR/C2_FR/C3_FL/C4_RL
+  assignment exactly, so the leg data (separate from the 3D calibration)
+  was never in question; (2) the manual's own Fig.145199 elevation
+  drawing, which shows a real windshield-and-door cab (not just an engine
+  box) sitting at the same end as the "4190" counterweight-radius
+  dimension chain and the boom base - i.e. the true front; (3) rebuilt the
+  calcCAD() math for a 10m forward shift by hand and confirmed C1 (a real
+  rear-right leg, angle 43 deg) lands at 149.5 deg after the shift -
+  correctly swung into the front-angle range. Playwright-tested the 2D
+  Visual Site Plan side-by-side against LTM 1110 for the identical 10m
+  shift - pixel-for-pixel the same behavior, target cluster and "FRONT"
+  label both land on the correct side for both cranes. The underlying
+  math, leg data, and 2D plan were never the bug.
+
+  The actual bug: the 3D preview's DEFAULT camera angle (frameCamera(),
+  shown the instant a carrier model opens, before anyone clicks Fit View)
+  was a fixed local-space offset - always +Z in the model's own raw
+  export coordinates, never adjusted for calibration. For the other six
+  carriers (all frontAtMinZ:true, all exported with front at local min-Z
+  by whatever consistent convention their CAD source used), that fixed
+  +Z offset happens to sit on each model's REAR side, so every one of
+  them opens rear-first: cab small and distant, rear axles filling the
+  foreground - confirmed by rendering LTM 1110's own default view before
+  touching anything, which showed exactly that. LRT 1100 is the one
+  carrier whose raw export has front at local MAX-Z instead (a real
+  difference in this particular Onshape export, not a mistake - see
+  methodology.txt 45) - so that same fixed +Z offset lands on ITS front
+  side, and the crane opened nose-on, cab filling the foreground, unlike
+  every other crane in the fleet. A forward shift was always moving the
+  ghost/target position toward the true front - but with the camera
+  planted in front of the crane instead of behind it like normal, that
+  motion reads on screen as growing toward the viewer instead of
+  receding, which feels exactly like "backward" even though the
+  underlying position was always correct. Confirmed by rendering LRT
+  1100's own default view too: ladders/cab structure filled the
+  foreground, opposite of LTM 1110.
+
+  Fix: frameCamera(root, calibration) now flips the Z offset by the same
+  dirSign convention computeFormulaCalibration already uses (frontAtMinZ
+  true -> +1, false -> -1), so the initial camera always lands on the
+  site-space rear side regardless of which end of the raw GLB happens to
+  sit at local +Z. __carrier3dActivate gained a 5th (optional) calibration
+  parameter to carry this through from both call sites in index.html
+  (activateCarrier3D, activateCarrier3DLayout), each already holding
+  CARRIER_CALIBRATION[modelKey] in scope. Fit View (fitView(), the
+  near-top-down button) was never affected - its tilt is 0.5 degrees off
+  vertical, functionally camera-angle-agnostic regardless of which side
+  it's nominally biased toward.
+
+  Re-verified via Playwright after the fix: LRT 1100's default view now
+  opens rear-first, ladders/cab small and distant - matching LTM 1110's
+  own default view convention exactly. No other crane's default view
+  changed (dirSign is +1 for all six of them, so the fix is a no-op for
+  every carrier except this one).
+
+  CARRIER3D_VERSION 47->48 (vendor/carrier3d.js changed). index.html also
+  changed (the two call-site edits passing calibration through), so
+  CACHE_VERSION and the app version both bump too, same as any other
+  index.html change.
+
+================================================================================
