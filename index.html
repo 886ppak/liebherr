@@ -248,7 +248,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.21</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.22</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -2290,13 +2290,8 @@
     // CARRIER_MODELS entry, since the placement code was always generic
     // (it just reuses each crane's own FOOTPRINTS/CARRIER_CALIBRATION, the
     // same figures the orbit preview and slew-circle features already
-    // trust). LTM 1650's own CARRIER_CALIBRATION entry carries an
-    // `uncertain` flag (frontAtMinZ never visually confirmed, unlike the
-    // other five - see that constant's own comment) - AR placement/
-    // rotation inherits whatever the orbit preview already shows for it,
-    // no new uncertainty introduced here. iOS support (AR Quick Look via a
-    // separately-generated USDZ per model) is still a later phase, not
-    // this list.
+    // trust). iOS support (AR Quick Look via a separately-generated USDZ
+    // per model) is still a later phase, not this list.
     const AR_SUPPORTED_MODELS = Object.keys(CARRIER_MODELS);
 
     // Per-crane calibration for mapping the site plan's own leg/pad
@@ -2306,18 +2301,28 @@
     // straight-down view of each model and visually identifying the
     // driving cab (LTM 1110: cab clearly visible at min Z, high detail
     // 289-part export). LTM 1650's export is much sparser (28 parts, no
-    // cab geometry, only one of the two outrigger-beam pairs modeled) so
-    // this is a best-effort guess using the same front/rear-fraction logic
-    // rather than a visually confirmed one - flagged uncertain so it's
-    // easy to find and flip if it turns out backwards. See methodology.txt
-    // 10.77 and 10.82.
+    // cab geometry, only one of the two outrigger-beam pairs modeled), so
+    // that same visual check isn't possible - this used to carry an
+    // `uncertain` flag for exactly that reason. Confirmed a different way
+    // instead (methodology.txt 37): the export's one modeled leg pair
+    // gives two real ground-level foot plates ~10.66m apart along Z. Two
+    // INDEPENDENT slew-centre estimates - one from computeFormulaCalibration's
+    // own front/rear overhang fractions (ignores leg geometry entirely),
+    // one solved from those two feet against GROUND_LAYOUT_DATA's real
+    // OEM leg-station figures (ignores overhang fractions entirely) - land
+    // within ~1m of each other under frontAtMinZ: true, and ~8.6m apart
+    // under the flipped assumption. Two independently-derived estimates of
+    // the same physical point only agree like that when the underlying
+    // orientation assumption is correct, so this is real evidence, not a
+    // visual read - one notch below the other five cranes' own cab check,
+    // but no longer just a guess either.
     const CARRIER_CALIBRATION = {
       '1110': { frontAtMinZ: true, lateralSign: 1 },
       '1130': { frontAtMinZ: true, lateralSign: 1 },
       '1160': { frontAtMinZ: true, lateralSign: 1 },
       '1250': { frontAtMinZ: true, lateralSign: 1 },
       '1300': { frontAtMinZ: true, lateralSign: 1 },
-      '1650': { frontAtMinZ: true, lateralSign: 1, uncertain: true }
+      '1650': { frontAtMinZ: true, lateralSign: 1 }
     };
 
     // 360-degree slew clearance: how far the superstructure's widest

@@ -7588,4 +7588,41 @@ cranes get their own subsections as they're built.
   carrier3d.js unchanged - CACHE_VERSION v150->v151, app version
   v3.20->v3.21.
 
+37. LTM 1650 CARRIER_CALIBRATION: resolving the `uncertain` flag
+  Person asked how the `uncertain` flag on LTM 1650's frontAtMinZ could
+  actually be fixed, rather than just left as a standing caveat. The
+  other five cranes were confirmed by rendering a straight-down view and
+  visually spotting the driving cab - 1650's export is too sparse for
+  that (28 parts, no cab, only one of the two outrigger-leg pairs
+  modeled), so that check was never possible for it the same way.
+  Cross-checked it a different way instead, using data already in the
+  app: a Playwright script loaded ltm1650-carrier.glb directly (same
+  GLTFLoader/DRACOLoader path carrier3d.js uses) and found the one
+  modeled leg pair as two ~0.7m x 0.7m foot plates at two Z stations,
+  ~10.66m apart. That gave two INDEPENDENT ways to estimate where the
+  slew centre sits, neither one referencing the other:
+    1. computeFormulaCalibration's own estimate, from the chassis's
+       front/rear overhang fractions alone (FOOTPRINTS['1650']: front
+       14585mm, rear 3717mm) - never looks at leg geometry at all.
+    2. Solving for the slew-centre Z that makes the two DETECTED feet
+       match GROUND_LAYOUT_DATA's own real OEM leg-station figures
+       (rear legs C1/C4 ~4000-4529mm, front legs C2/C3 ~6042-6530mm) -
+       never looks at overhang fractions at all.
+  Under the existing frontAtMinZ: true, these two independent estimates
+  land within ~1m of each other (plausible - it's the same kind of
+  formula-vs-refined-geometry gap the other five cranes had before their
+  own full 4-corner refinement). Under the flipped assumption, they land
+  ~8.6m apart - two independently-derived estimates of the same physical
+  point don't do that unless the underlying orientation assumption feeding
+  both of them is wrong. That's real evidence the current value was
+  already correct, not backwards - one notch below the other five cranes'
+  own visual cab confirmation, but a genuine cross-check rather than a
+  guess. Person confirmed removing the flag rather than leaving it
+  pending an in-person check that may never happen.
+  Removed `uncertain: true` from CARRIER_CALIBRATION['1650'] (the
+  frontAtMinZ/lateralSign values themselves are unchanged - this was
+  always just a confidence marker, never read anywhere in the code).
+  Reasoning documented inline in CARRIER_CALIBRATION's own comment.
+  CACHE_VERSION v151->v152, app version v3.21->v3.22.
+
 ================================================================================
