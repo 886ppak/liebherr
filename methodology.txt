@@ -7879,4 +7879,25 @@ cranes get their own subsections as they're built.
   link) - update once the person has somewhere to host the new PDFs.
   CACHE_VERSION v156->v157, app version v3.26->v3.27.
 
+43. Load Chart Finder: highlight "Margin over target"
+  Person asked to brainstorm ways to make this figure stand out, then
+  picked "style just that row" (bold, colour, background tint) over the
+  other options discussed (a standalone badge, a callout box, tiered
+  colour by how thin the margin is).
+  Confirmed first that margin is always >= 0 wherever it's shown - the
+  candidate-filtering loop already discards anything below the target
+  before margin is even computed (`if (usableCapacity < weightInput)
+  continue;`), so this is a "make the good number pop" job, not a
+  pass/fail colour-coding job. Styled with var(--success) (green) +
+  bold + a subtle rgba(16,185,129,0.12) row background - reuses the
+  exact same green already used for .recommendation-box and other
+  positive/confirmed results elsewhere in the app, not a new colour
+  introduced just for this. Applied to both places this row appears
+  (Load Chart Finder's own results and Compare Cranes' per-crane
+  breakdown) so the two stay visually consistent.
+  Verified via Playwright: ran a real Load Chart Finder query, confirmed
+  the row renders with the green tint/bold text across multiple result
+  options, 0 console errors.
+  CACHE_VERSION v157->v158, app version v3.27->v3.28.
+
 ================================================================================

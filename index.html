@@ -265,7 +265,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.27</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.28</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -7518,7 +7518,7 @@
               ${b.colBallastRadius != null ? `<tr><td style="text-align:left;">Ballast radius</td><td>${b.colBallastRadius.toFixed(1)}m</td></tr>` : ''}
               <tr><td style="text-align:left;">Chart capacity at ${o.actualRadius}m</td><td>${b.rawCapacity.toFixed(2)} t</td></tr>
               ${loadChartCompareDerate ? `<tr><td style="text-align:left;">Usable capacity (90% rule)</td><td>${b.usableCapacity.toFixed(2)} t</td></tr>` : ''}
-              <tr><td style="text-align:left;">Margin over target</td><td>${b.margin.toFixed(2)} t</td></tr>
+              <tr style="background:rgba(16,185,129,0.12);"><td style="text-align:left; font-weight:700; color:var(--success);">Margin over target</td><td style="font-weight:700; color:var(--success); font-size:1.05rem;">${b.margin.toFixed(2)} t</td></tr>
               <tr><td style="text-align:left;">Chart reference</td><td>${b.ref || '—'} (code ${b.code || '—'})</td></tr>
             </tbody>
           </table>
@@ -7750,7 +7750,7 @@
               <tr><td style="text-align:left;">Chart capacity at ${actualRadius}m</td><td>${r.rawCapacity.toFixed(2)} t</td></tr>
               ${loadChartDerate ? `<tr><td style="text-align:left;">Usable capacity (90% rule)</td><td>${r.usableCapacity.toFixed(2)} t</td></tr>` : ''}
               ${riggingWeight > 0 ? `<tr><td style="text-align:left;">Rigging weight deducted</td><td>${riggingWeight.toFixed(2)} t</td></tr>` : ''}
-              <tr><td style="text-align:left;">Margin over target</td><td>${r.margin.toFixed(2)} t</td></tr>
+              <tr style="background:rgba(16,185,129,0.12);"><td style="text-align:left; font-weight:700; color:var(--success);">Margin over target</td><td style="font-weight:700; color:var(--success); font-size:1.05rem;">${r.margin.toFixed(2)} t</td></tr>
               <tr><td style="text-align:left;">Chart reference</td><td>${r.ref || '—'} (code ${r.code || '—'})</td></tr>
             </tbody>
           </table>
