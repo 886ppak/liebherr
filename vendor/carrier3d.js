@@ -98,6 +98,23 @@ const pendingMatEdgeContext = {};
 const pendingTargetMatEdgeMarks = {};
 const pendingTargetMatEdgeContext = {};
 
+// AR placement state (Crane Layout's "View in AR" button, Phase 1 - LTM
+// 1110 only, see index.html's AR_SUPPORTED_MODELS). arGroup wraps whichever
+// model is currently placed in AR: the loaded model root sits inside it
+// offset by its own slew-centre/ground point (see __carrier3dEnterAR), so
+// arGroup's own origin IS the slew centre and rotating arGroup pivots the
+// crane around its real slew axis rather than some arbitrary corner of the
+// CAD export's own bounding box. Only ever one of these active at a time -
+// entering AR again while already in a session isn't offered by the UI.
+let xrSession = null;
+let xrHitTestSource = null;
+let xrRefSpace = null;
+let xrReticle = null;
+let arGroup = null;
+let arRoot = null; // the bare model root, so it can be un-wrapped and handed back to the orbit preview on exit
+let arPlaced = false;
+let arOverlayEl = null;
+
 // Creates the renderer on first-ever call; every call after that just
 // re-parents the existing canvas into whichever wrapId was requested (a
 // no-op DOM-wise if it's already there). Returns true when the canvas
@@ -126,6 +143,7 @@ function ensureRenderer(wrapId, labelId) {
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.xr.enabled = true; // harmless when no AR session is active - see onFrame below
   wrap.appendChild(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.7));
@@ -144,13 +162,26 @@ function ensureRenderer(wrapId, labelId) {
 
   if (!animating) {
     animating = true;
-    requestAnimationFrame(function loop() {
-      requestAnimationFrame(loop);
-      controls.update();
-      renderer.render(scene, camera);
-    });
+    // One shared frame callback for both the ordinary orbit-preview loop
+    // AND an active WebXR AR session - renderer.setAnimationLoop() is what
+    // lets three.js transparently swap between window.requestAnimationFrame
+    // and the XRSession's own frame timing, which a hand-rolled rAF chain
+    // (what this used to be) can't do. Hit-testing only makes sense while
+    // presenting (frame is only ever non-null then); controls.update() only
+    // makes sense while NOT presenting (OrbitControls has no meaning once
+    // the device's own camera pose is driving the view).
+    renderer.setAnimationLoop(onFrame);
   }
   return true;
+}
+
+function onFrame(timestamp, frame) {
+  if (renderer.xr.isPresenting) {
+    updateARHitTest(frame);
+  } else {
+    controls.update();
+  }
+  renderer.render(scene, camera);
 }
 
 function resizeRenderer() {
@@ -1275,4 +1306,186 @@ window.__carrier3dSetTargetMatEdgeMarks = function (modelKey, marks, footprint, 
   const root = modelCache[modelKey];
   if (!root) return; // still loading - replayed once it's in, see __carrier3dActivate
   applyTargetMatEdgeMarks(modelKey, root, marks, footprint, calibration);
+};
+
+// --- AR real-world-scale placement (Crane Layout, Phase 1: LTM 1110 only -
+// see index.html's AR_SUPPORTED_MODELS) ---------------------------------
+//
+// Android Chrome / WebXR only - iOS Safari has no WebXR AR support at all
+// (a future phase would add AR Quick Look via a separately-generated USDZ
+// file, a completely different path). index.html feature-detects via
+// __carrier3dARSupported() before ever showing the button, so this code
+// only ever runs on a device that already claimed to support it.
+//
+// Called each frame (see onFrame above) only while renderer.xr.isPresenting
+// - runs the hit-test query against the device's own detected planes and
+// moves the reticle to the nearest result, or hides it when the phone
+// isn't currently looking at a surface.
+function updateARHitTest(frame) {
+  if (!frame || !xrHitTestSource || !xrReticle) return;
+  const results = frame.getHitTestResults(xrHitTestSource);
+  if (results.length) {
+    const pose = results[0].getPose(xrRefSpace);
+    xrReticle.visible = true;
+    xrReticle.matrix.fromArray(pose.transform.matrix);
+  } else {
+    xrReticle.visible = false;
+  }
+}
+
+function buildReticle() {
+  const geo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xe5a900 });
+  const reticle = new THREE.Mesh(geo, mat);
+  reticle.matrixAutoUpdate = false;
+  reticle.visible = false;
+  return reticle;
+}
+
+// A plain HTML overlay composited on top of the camera feed via WebXR's
+// dom-overlay feature (optional - degrades to no on-screen UI at all on a
+// device that supports hit-test but not dom-overlay, which is why Exit is
+// ALSO reachable by the browser's own in-session UI, not just this button).
+// Styled inline rather than via the app's stylesheet since this element is
+// appended straight to document.body, outside the app's own DOM tree, and
+// only exists for the lifetime of one AR session.
+function buildAROverlay() {
+  const overlay = document.createElement('div');
+  overlay.id = 'carrier3d-ar-overlay';
+  overlay.style.cssText = 'position:fixed; inset:0; pointer-events:none;';
+  overlay.innerHTML = `
+    <div style="position:absolute; top:16px; left:50%; transform:translateX(-50%); background:rgba(15,23,42,0.85); color:#f8fafc; padding:8px 14px; border-radius:8px; font-size:13px; text-align:center; max-width:80vw; font-family:sans-serif;">Tap the ground to place the crane. Tap again to move it.</div>
+    <div style="position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:10px; pointer-events:auto;">
+      <button id="carrier3d-ar-rotate-ccw" style="width:48px; height:48px; border-radius:50%; border:1px solid rgba(255,255,255,0.4); background:rgba(15,23,42,0.85); color:#e5a900; font-size:20px; cursor:pointer;">⟲</button>
+      <button id="carrier3d-ar-exit" style="padding:0 20px; height:48px; border-radius:24px; border:1px solid rgba(255,255,255,0.4); background:rgba(15,23,42,0.85); color:#f8fafc; font-size:14px; font-family:sans-serif; cursor:pointer;">Exit AR</button>
+      <button id="carrier3d-ar-rotate-cw" style="width:48px; height:48px; border-radius:50%; border:1px solid rgba(255,255,255,0.4); background:rgba(15,23,42,0.85); color:#e5a900; font-size:20px; cursor:pointer;">⟳</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#carrier3d-ar-exit').onclick = () => { if (xrSession) xrSession.end(); };
+  overlay.querySelector('#carrier3d-ar-rotate-ccw').onclick = () => rotateARModel(-15);
+  overlay.querySelector('#carrier3d-ar-rotate-cw').onclick = () => rotateARModel(15);
+  return overlay;
+}
+
+// Rotates arGroup, not arRoot directly - arGroup's own origin sits exactly
+// on the model's real slew centre (see __carrier3dEnterAR), so this pivots
+// the crane the same way it'd actually swing on site, not around some
+// arbitrary corner of the CAD export's own bounding box.
+function rotateARModel(deg) {
+  if (!arGroup) return;
+  arGroup.rotation.y += THREE.MathUtils.degToRad(deg);
+}
+
+// Places (or re-places) the crane at the reticle's current position -
+// deliberately not a one-shot "first tap locks it" placement: a person's
+// first guess at where to stand relative to a wall/fence is rarely exactly
+// right, and re-tapping is the obvious, discoverable way to nudge it
+// without a separate "unlock" control. Rotation (set by the overlay's own
+// buttons) is untouched by a re-tap, so nudging position doesn't throw away
+// an orientation already dialled in.
+function onARSelect() {
+  if (!xrReticle || !xrReticle.visible || !arGroup) return;
+  const pos = new THREE.Vector3().setFromMatrixPosition(xrReticle.matrix);
+  arGroup.position.copy(pos);
+  if (!arPlaced) {
+    scene.add(arGroup);
+    arPlaced = true;
+  }
+}
+
+function onARSessionEnd() {
+  if (xrHitTestSource) { xrHitTestSource.cancel(); xrHitTestSource = null; }
+  xrRefSpace = null;
+  xrSession = null;
+
+  if (xrReticle) { scene.remove(xrReticle); xrReticle = null; }
+  if (arGroup) {
+    scene.remove(arGroup);
+    if (arRoot) {
+      // Hand the model back to the orbit preview exactly as it found it -
+      // arRoot's own position was only ever offset to make arGroup's
+      // origin land on the slew centre (see __carrier3dEnterAR), never
+      // touched after that, so undoing it is just zeroing it back out.
+      arGroup.remove(arRoot);
+      arRoot.position.set(0, 0, 0);
+      if (currentModelKey && modelCache[currentModelKey] === arRoot) scene.add(arRoot);
+    }
+  }
+  arGroup = null;
+  arRoot = null;
+  arPlaced = false;
+
+  if (arOverlayEl) { arOverlayEl.remove(); arOverlayEl = null; }
+  resizeRenderer(); // the WebXR session owns the canvas size while presenting; restore the card's own size on the way out
+  window.__carrier3dOnAREnded && window.__carrier3dOnAREnded();
+}
+
+// Feature-detection only - index.html calls this before ever showing the
+// "View in AR" button, so the button simply doesn't appear on iOS Safari or
+// any desktop browser rather than appearing and failing on tap.
+window.__carrier3dARSupported = function () {
+  if (!navigator.xr || !navigator.xr.isSessionSupported) return Promise.resolve(false);
+  return navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+};
+
+// footprint/calibration = FOOTPRINTS[modelKey]/CARRIER_CALIBRATION[modelKey]
+// (index.html) - the same OEM-sourced figures already used everywhere else
+// in this file to locate a crane's slew centre within its own CAD export,
+// reused here (via computeFormulaCalibration) so "tap to place" means tap
+// where you want the SLEW CENTRE to sit, matching how a crew actually
+// thinks about crane position, rather than some arbitrary point on the
+// model's own bounding box that happens to be the CAD export's origin.
+// Only ever called for a model that's already loaded via the ordinary
+// orbit preview (index.html only shows the AR button once that's true), so
+// there's no loading state to handle here.
+window.__carrier3dEnterAR = async function (modelKey, footprint, calibration) {
+  if (!renderer || !navigator.xr) return;
+  const root = modelCache[modelKey];
+  if (!root) return;
+
+  arOverlayEl = buildAROverlay();
+
+  let session;
+  try {
+    session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: arOverlayEl }
+    });
+  } catch (err) {
+    console.error('carrier3d AR session request failed', err);
+    if (arOverlayEl) { arOverlayEl.remove(); arOverlayEl = null; }
+    return;
+  }
+
+  xrSession = session;
+  session.addEventListener('end', onARSessionEnd);
+  session.addEventListener('select', onARSelect);
+
+  const cal = (footprint && calibration) ? computeFormulaCalibration(root, footprint, calibration) : null;
+  const box = new THREE.Box3().setFromObject(root);
+  const groundY = cal ? cal.groundY : box.min.y;
+  const slewX = cal ? cal.lateralCenter : (box.min.x + box.max.x) / 2;
+  const slewZ = cal ? cal.slewZ : (box.min.z + box.max.z) / 2;
+
+  scene.remove(root); // pulled out of the orbit-preview position until placed - see onARSessionEnd for how it's handed back
+  root.position.set(-slewX, -groundY, -slewZ);
+  arGroup = new THREE.Group();
+  arGroup.add(root);
+  arRoot = root;
+  arPlaced = false;
+
+  xrReticle = buildReticle();
+  scene.add(xrReticle);
+
+  renderer.xr.setReferenceSpaceType('local');
+  await renderer.xr.setSession(session);
+  const viewerSpace = await session.requestReferenceSpace('viewer');
+  xrHitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+  xrRefSpace = await session.requestReferenceSpace('local');
+};
+
+window.__carrier3dExitAR = function () {
+  if (xrSession) xrSession.end();
 };
