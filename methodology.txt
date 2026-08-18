@@ -7839,4 +7839,90 @@ cranes get their own subsections as they're built.
   errors.
   CACHE_VERSION v155->v156, app version v3.25->v3.26.
 
+42. LTM 1300 global + LTM 1160 UK: real OEM counterweight charts
+  Person got hold of both variants' own OEM operator manuals (via a
+  Nextcloud share - the first link given was file-drop/upload-only,
+  server rejected reads outright ("Only PUT, MKCOL and MOVE are allowed
+  on files drop") - a second, properly read-enabled share link worked).
+  Extracted chapter 4.07 Counterweight from each via pdftotext/pdftoppm
+  (poppler-utils, installed fresh - pypdf was present but broken, a
+  cffi/cryptography native-module crash unrelated to this task):
+    - LTM 1300-6-2-003 (24006-06-02), PDF pages 930-958.
+    - LTM 1160-5-2-003 (25310-09-02), PDF pages 841-874.
+  Cross-checked every extracted table against a rendered page image
+  before trusting any of it (safety-relevant numeric data) - caught a
+  genuine anomaly this way: LTM 1160 UK's 13.5t combo is printed TWICE
+  in the actual source PDF with identical composition, confirmed via
+  the rendered page image, not a text-extraction artifact - only
+  entered once in the app's own data (no reason to duplicate an
+  identical combo).
+
+  LTM 1300 global (COUNTERWEIGHT_DATA['1300'], top-level/non-UK entry):
+  Real chart REPLACES the previous provisional data, which had mirrored
+  a different (EU) variant's chart and invented a "Counterweight Plate
+  5" component with no basis in this crane's own real chart. That
+  invented component had also been baked into the 3D model's own
+  partMap (a GLB node literally named "5" mapped to it) - so fixing the
+  data alone wasn't enough; the 3D model needed correcting too.
+  Investigated the actual GLB geometry directly (Playwright + the
+  vendored GLTFLoader, same technique as the LTM 1650 orientation check
+  in section 37) rather than guessing: node "5" turned out to be REAL
+  geometry (same 4.06x~0.18x2.4m footprint as every other main-stack
+  plate), sitting physically ABOVE node "4" - but the model only had
+  TWO Plate 3 copies (nodes "3"/"3_1"), one short of the chart's
+  required three, and the OEM chart explicitly warns Plate 4 must sit
+  on TOP of the stack (a warning tied to a specific 46t-tier accident
+  risk) - contradicting "5" being a genuine 5th plate on top of "4".
+  Rendered the model with node "5" highlighted magenta and the two
+  confirmed Plate 3 copies green (side/iso/top views) and sent them to
+  the person to check against the manual directly rather than guessing
+  further - person confirmed: node "4" is actually a mislabelled THIRD
+  Plate 3, and node "5" is actually the real Plate 4 (matches the
+  geometry findings exactly: 10 slabs total when counting every node,
+  matching the real max-combo part count of 1+1+3+1+2+2=10).
+  Fixed model3d.partMap: '4' -> 'p3c' (was 'p4'), '5' -> 'p4' (was
+  'p5'). Component list: added p3c (3rd interchangeable Plate 3,
+  reusing the OLD p4's hotspot polygon unchanged - the diagram already
+  drew 6 main-stack slabs, just 2 of them mislabelled), removed the
+  invented p5, renamed the real Plate 4 to reuse the OLD p5's hotspot
+  polygon. Combos rebuilt from the real chart: 0/6/16/26/36/46/56t
+  (sequential stacking) plus 66/86t ("special ballast" tiers - spacer
+  pins replace the 3rd Plate 3, not modelled as a component, same
+  convention already used for the un-modelled spacer pins) and 76/96t
+  (all three Plate 3 + one or two aux ballast pairs). manualPage
+  corrected 931->930 (actual chapter start).
+
+  LTM 1160 UK (COUNTERWEIGHT_DATA['1160'].ukVariant): clean upgrade, no
+  ambiguity - the existing ukVariant block was built from a person-
+  supplied WhatsApp reference photo with generic descriptive names
+  ("Base Block Centre", "Top Plate", etc) and an empty combo list, since
+  no OEM chart existed for this variant at the time. This chart's own
+  weights (3.5/5/5/6.5/10/10/14t) matched that photo-traced version's 7
+  pieces exactly, confirming it's the same hardware - AND the reference
+  photo itself already had the real OEM part numbers ("5","4","3","2",
+  "6","6") printed on the pieces, visually confirming the id assignment
+  after the fact (matched independently via weight + the OEM's own
+  Fig.126856 showing part 5 as the topmost plate). Kept every existing
+  hotspot polygon unchanged, only renamed ids/labels and added the real
+  combo list (16 tiers - genuinely branching, not a simple ladder:
+  Plate 3 and Plate 5 are both 5t but tracked as distinct named parts,
+  not an interchangeableGroup, since the chart uses them independently
+  in different combos, sometimes together). 44t is a "special ballast"
+  tier needing adapters 7/8 in place of Plate 3/Plate 5 - adapters not
+  modelled as components, same convention as 1300's spacer pins. Added
+  manualUrl/manualPage (previously absent - no source doc existed to
+  link).
+  Verified via Playwright: computed every combo's total directly against
+  the components' own weights for both cranes - all 27 combined tiers
+  (11 for 1300, 16 for 1160 UK) match the OEM chart exactly, 0 mismatches.
+  3D view: selected 1300's max 96t combo, confirmed all 8 parts highlight
+  correctly, "OEM-approved" flag shows, composition table lists the
+  correct 3x Plate 3. 1160 UK: selected max 54t combo, confirmed OEM-
+  approved flag and correct composition against the reference photo's own
+  printed numbers. 0 console errors throughout.
+  Not yet done: neither variant has a permanent hosted manualUrl for
+  this specific document yet (1300 still points at its old placeholder
+  link) - update once the person has somewhere to host the new PDFs.
+  CACHE_VERSION v156->v157, app version v3.26->v3.27.
+
 ================================================================================
