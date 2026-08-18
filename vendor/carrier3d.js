@@ -274,12 +274,26 @@ function loadGLTFAsync(url) {
 // person has had a chance to click Fit View - just the model's own
 // bounding box, since the outrigger sync (markers/pads/ghosts) hasn't run
 // yet at this point (see __carrier3dActivate below).
-function frameCamera(root) {
+//
+// The Z offset is flipped by dirSign (same convention as
+// computeFormulaCalibration: frontAtMinZ true -> +1, false -> -1) so every
+// crane's default view looks at the model from the same site-space side
+// (rear-first, front pointing away from camera), regardless of which end
+// of that particular GLB export happens to sit at local +Z. Without this,
+// a crane calibrated with frontAtMinZ false (currently only LRT 1100)
+// opened facing the camera nose-on instead of rear-first like every other
+// crane - the model itself and every position/shift calculation were
+// still completely correct, but a "move forward" shift then visually grew
+// toward/approached the camera instead of receding like it does for every
+// other crane, which read as the crane moving backward even though it
+// wasn't - a person's own report. See methodology.txt 46.
+function frameCamera(root, calibration) {
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
-  camera.position.set(center.x + maxDim * 0.75, center.y + maxDim * 0.55, center.z + maxDim * 0.75);
+  const dirSign = (calibration && calibration.frontAtMinZ === false) ? -1 : 1;
+  camera.position.set(center.x + maxDim * 0.75, center.y + maxDim * 0.55, center.z + maxDim * 0.75 * dirSign);
   camera.near = maxDim / 100;
   camera.far = maxDim * 20;
   camera.updateProjectionMatrix();
@@ -397,8 +411,10 @@ async function loadModel(modelKey, url, onDone) {
 // Placement's own card, or Crane Layout's own card - see index.html).
 // Both share this one renderer/scene (see ensureRenderer's own comment on
 // why), so switching between them re-parents the canvas rather than
-// spinning up a second WebGL context.
-window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
+// spinning up a second WebGL context. calibration (CARRIER_CALIBRATION[
+// modelKey], optional) is only used to orient the initial default camera
+// angle consistently across cranes - see frameCamera's own comment.
+window.__carrier3dActivate = function (modelKey, url, wrapId, labelId, calibration) {
   if (!url) return;
   const wrapChanged = ensureRenderer(wrapId, labelId);
   resizeRenderer();
@@ -437,13 +453,13 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId) {
   const cached = modelCache[modelKey];
   if (cached) {
     scene.add(cached); // safe even if already a child of this scene
-    frameCamera(cached);
+    frameCamera(cached, calibration);
     setLabel('');
   } else {
     loadModel(modelKey, url, (root) => {
       if (currentModelKey !== modelKey) return; // user switched away while loading
       scene.add(root);
-      frameCamera(root);
+      frameCamera(root, calibration);
       if (pendingSync[modelKey]) applySync(modelKey, root, pendingSync[modelKey]);
       if (pendingSlewCircles[modelKey]) {
         const ctx = pendingSlewCircleContext[modelKey] || {};
