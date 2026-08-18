@@ -98,20 +98,28 @@ const pendingMatEdgeContext = {};
 const pendingTargetMatEdgeMarks = {};
 const pendingTargetMatEdgeContext = {};
 
-// AR placement state (Crane Layout's "View in AR" button, Phase 1 - LTM
-// 1110 only, see index.html's AR_SUPPORTED_MODELS). arGroup wraps whichever
-// model is currently placed in AR: the loaded model root sits inside it
-// offset by its own slew-centre/ground point (see __carrier3dEnterAR), so
-// arGroup's own origin IS the slew centre and rotating arGroup pivots the
-// crane around its real slew axis rather than some arbitrary corner of the
-// CAD export's own bounding box. Only ever one of these active at a time -
-// entering AR again while already in a session isn't offered by the UI.
+// AR placement state ("View in AR" button, both Support Pad Placement's
+// and Crane Layout's own toolbars - see index.html's AR_SUPPORTED_MODELS).
+// arGroup wraps whichever model is currently placed in AR: the loaded
+// model root sits inside it offset by its own slew-centre/ground point
+// (see __carrier3dEnterAR), so arGroup's own origin IS the slew centre and
+// rotating arGroup pivots the crane around its real slew axis rather than
+// some arbitrary corner of the CAD export's own bounding box.
+// arCarriedGroups holds whichever overlay groups (bog mat marks, slew
+// clearance circles, ground layout marks, outrigger ghost pads) were
+// active on the orbit preview at the moment AR was entered - reparented
+// into arGroup the same way as root, so they move/rotate with the placed
+// model instead of being left behind, still drawn at their old orbit-
+// preview position, once the model itself moves into AR space. Only ever
+// one AR session active at a time - entering AR again while already in
+// one isn't offered by the UI.
 let xrSession = null;
 let xrHitTestSource = null;
 let xrRefSpace = null;
 let xrReticle = null;
 let arGroup = null;
 let arRoot = null; // the bare model root, so it can be un-wrapped and handed back to the orbit preview on exit
+let arCarriedGroups = [];
 let arPlaced = false;
 let arOverlayEl = null;
 
@@ -1411,9 +1419,20 @@ function onARSessionEnd() {
       arRoot.position.set(0, 0, 0);
       if (currentModelKey && modelCache[currentModelKey] === arRoot) scene.add(arRoot);
     }
+    // Same hand-back for whichever overlays were carried into AR (see
+    // __carrier3dEnterAR) - undo the slew-centre offset and reparent
+    // straight into scene, so the orbit preview looks exactly as it did
+    // before AR was entered, and toggling the same checkbox off/on
+    // afterwards behaves normally.
+    arCarriedGroups.forEach((group) => {
+      arGroup.remove(group);
+      group.position.set(0, 0, 0);
+      scene.add(group);
+    });
   }
   arGroup = null;
   arRoot = null;
+  arCarriedGroups = [];
   arPlaced = false;
 
   if (arOverlayEl) { arOverlayEl.remove(); arOverlayEl = null; }
@@ -1463,7 +1482,17 @@ window.__carrier3dEnterAR = async function (modelKey, footprint, calibration) {
   session.addEventListener('end', onARSessionEnd);
   session.addEventListener('select', onARSelect);
 
-  const cal = (footprint && calibration) ? computeFormulaCalibration(root, footprint, calibration) : null;
+  // ensureSlewCalibration, not a fresh computeFormulaCalibration call -
+  // it returns the SAME cached calibration (refined, if Support Pad
+  // Placement already synced this model; otherwise the formula-only
+  // estimate) that every overlay group below was itself drawn with (see
+  // applySlewCircles/applyGroundLayoutMarks/applyMatEdgeMarks/applySync,
+  // all of which go through ensureSlewCalibration or computeCalibration -
+  // both check the same calibrationCache first). Computing a fresh,
+  // unrefined estimate here instead would silently re-offset the model
+  // relative to its own already-drawn mats/circles/marks once both are
+  // reparented below.
+  const cal = (footprint && calibration) ? ensureSlewCalibration(modelKey, root, footprint, calibration) : null;
   const box = new THREE.Box3().setFromObject(root);
   const groundY = cal ? cal.groundY : box.min.y;
   const slewX = cal ? cal.lateralCenter : (box.min.x + box.max.x) / 2;
@@ -1475,6 +1504,22 @@ window.__carrier3dEnterAR = async function (modelKey, footprint, calibration) {
   arGroup.add(root);
   arRoot = root;
   arPlaced = false;
+
+  // Bring along whatever's currently drawn on top of the model - bog mat
+  // marks, slew clearance circles, ground layout marks, outrigger ghost
+  // pads - so AR shows the same picture the orbit preview did, not just a
+  // bare carrier. Each of these was drawn via siteToWorld(cal, x, y),
+  // which resolves through the same (slewX, groundY, slewZ) point - giving
+  // the group that same position offset before reparenting it puts it in
+  // the exact same slew-centre-relative local space as root, so it moves
+  // and rotates with the placed model instead of staying behind at its old
+  // orbit-preview position.
+  arCarriedGroups = [outriggerGroup, slewCircleGroup, groundLayoutGroup, matEdgeGroup, targetMatEdgeGroup].filter(Boolean);
+  arCarriedGroups.forEach((group) => {
+    scene.remove(group);
+    group.position.set(-slewX, -groundY, -slewZ);
+    arGroup.add(group);
+  });
 
   xrReticle = buildReticle();
   scene.add(xrReticle);

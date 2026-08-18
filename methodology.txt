@@ -7671,4 +7671,63 @@ cranes get their own subsections as they're built.
   Reasoning documented inline in CARRIER_CALIBRATION's own comment.
   CACHE_VERSION v151->v152, app version v3.21->v3.22.
 
+38. AR: carry bog mats + slew circles (and other active overlays) along
+  Person asked whether the bog mat marks and slew radius circles could
+  show up in AR too, not just the bare carrier. They were right to ask -
+  as shipped, entering AR pulled the model out of the orbit-preview scene
+  into its own arGroup, but left slewCircleGroup/matEdgeGroup/etc exactly
+  where they were, still drawn at the OLD orbit-preview position - once
+  the crane moved into AR space those groups would've been left behind as
+  stray floating geometry with nothing to do with the placed model. Real
+  bug, not just a missing feature.
+  Fix: reparent whichever overlay groups are currently populated
+  (outriggerGroup, slewCircleGroup, groundLayoutGroup, matEdgeGroup,
+  targetMatEdgeGroup - all five, not just the two asked about, since
+  there's no extra cost to including all of them and each tab's own
+  toggles only ever populate the groups relevant to it anyway - Support
+  Pad Placement never has slew circles active, Crane Layout never has mat
+  edges) into arGroup alongside the model root, each carrying the SAME
+  slew-centre offset as root. Every one of these groups was drawn via
+  siteToWorld(cal, x, y), which resolves through cal.lateralCenter/
+  groundY/slewZ - the exact same point root gets offset by - so giving
+  the group that identical offset before reparenting puts its geometry in
+  the same slew-centre-relative local space as the model, and it now
+  moves/rotates with arGroup exactly like the model does.
+  One correctness fix bundled in along the way: __carrier3dEnterAR used
+  to call computeFormulaCalibration() fresh for root's own offset, an
+  UNREFINED estimate - while the overlay groups themselves were drawn
+  using whatever computeCalibration()/ensureSlewCalibration() had
+  actually cached (the REFINED, leg-geometry-corrected calibration, once
+  Support Pad Placement has synced that model). Using two different
+  calibrations for root vs its own overlays would have silently
+  reintroduced the exact "real visible offset" bug refineCalibration
+  FromGeometry was built to fix (methodology.txt 10.78/10.81) - the mats/
+  circles would render at a small but real offset from the placed model
+  in AR. Switched to ensureSlewCalibration(modelKey, root, footprint,
+  calibration) instead, which returns the same cached value (refined if
+  available, else the formula fallback) that every overlay-drawing
+  function already prefers - guarantees root and its overlays always
+  share one calibration.
+  Verified: the offset/reparent math itself proven exactly (not just
+  visually) via a standalone Node script using vendor/three's own Vector3/
+  Group/Matrix4 directly - placed a simulated overlay point through the
+  same offset-then-reparent-then-translate-and-rotate sequence
+  __carrier3dEnterAR/onARSelect/rotateARModel actually perform, compared
+  the resulting world position against the analytically expected one
+  (rotate the slew-centre-relative offset, then translate to the tap
+  point) - matched to float precision (8.8e-16m). Playwright regression
+  on the unmodified surrounding code: toggled all 8 of LTM 1650's slew-
+  circle/ground-layout checkboxes and both of LTM 1110's mat-edge/pad
+  checkboxes via direct event dispatch (Playwright's own actionability
+  checks were timing out on this environment's software-WebGL GPU stalls
+  once enough scene geometry piled up - an environment rendering-
+  performance issue unrelated to this change, confirmed by the fact that
+  dispatching the same change event directly worked instantly with zero
+  errors) - 0 console errors either way, AR button still correctly hidden
+  in headless Chromium. The actual reparented overlays' on-device
+  appearance in a live AR session still needs real-hardware verification,
+  same standing limitation as the rest of this feature.
+  CARRIER3D_VERSION 46->47, CACHE_VERSION v152->v153, app version
+  v3.22->v3.23.
+
 ================================================================================
