@@ -265,7 +265,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.26</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.27</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1737,15 +1737,21 @@
           { items: ['p1', 'p2', 'p3a', 'p3b', 'p3c', 'p4'] }
         ],
         // UK-market variant - genuinely different hardware from the
-        // Global/EU stack above (7 pieces vs 5, different weights
-        // entirely), not an alternate naming of the same plates. No OEM
-        // combination chart exists for this variant (the document that
-        // would say which subsets are actually approved), so combos is
-        // deliberately empty - this is a tap-to-total calculator only,
-        // never flags anything as OEM-approved. Same components/hotspots
-        // shape as every other crane's diagram, reusing all of
-        // renderCwtTab()'s existing tap/zoom machinery via cwtData()
-        // rather than a bespoke UI.
+        // Global/EU stack above (6 main pieces vs 4, different weights
+        // entirely), not an alternate naming of the same plates. Now
+        // confirmed straight from this variant's own OEM operator manual
+        // (Liebherr doc LTM 1160-5-2-003, 25310-09-02, chapter 4.07
+        // Counterweight, PDF pages 841-874) - methodology.txt 42.
+        // Supersedes the earlier version, which was built from a person-
+        // supplied WhatsApp reference photo with no OEM chart available at
+        // the time (generic descriptive names, empty combo list). The
+        // photo-traced weights (3.5/5/5/6.5/10/10/14t) matched this real
+        // chart's own components exactly, so the existing hotspot polygons
+        // (traced in AutoCAD from that photo, see the geometry note below)
+        // carry over unchanged - only ids/names/combos needed correcting.
+        // Same components/hotspots shape as every other crane's diagram,
+        // reusing all of renderCwtTab()'s existing tap/zoom machinery via
+        // cwtData() rather than a bespoke UI.
         //
         // Diagram image and hotspot polygons: person supplied a WhatsApp
         // photo (532x458px) of the exploded-view diagram with weights
@@ -1765,34 +1771,77 @@
         // piece's silhouette, confirming the transform and (by matching
         // outline to the weight label already inside that outline) which
         // shape is which weight, all 7 unambiguous by inspection - no
-        // guessing required. Pieces named descriptively from their role
-        // in the exploded view (top plate stack vs base blocks vs base
-        // spacer), not OEM part names, since no source document supplies
-        // those either.
+        // guessing required. Real OEM part numbers now assigned by
+        // matching each traced piece's weight (unique per piece except the
+        // two 5t plates and the two 10t base blocks - see below) against
+        // this chart's own components, cross-checked against the OEM's own
+        // exploded-view figure (Fig.126856) for stacking order: part 5 is
+        // the TOPMOST plate, part 3 sits lower in the stack directly above
+        // the part-2/part-1 base - matching "Top Plate" -> p5, "Lower
+        // Plate" -> p3.
         ukVariant: {
-          sourceNote: 'UK-market variant — different hardware from the Global/EU stack above. No OEM combination chart exists for this variant, so tapping a piece here only totals the weight — nothing is ever flagged as an approved combination. Cross-check against current documentation before use on site.',
+          sourceNote: 'Source: Liebherr doc LTM 1160-5-2-003 (25310-09-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2021, for combination data. Diagram is the person’s own reference photo, not OEM artwork. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
           diagramImage: './counterweight/img/ltm1160-cwt-uk-exploded.png',
           diagramAlt: 'LTM 1160-5.2 UK variant counterweight exploded-view photo, 7 pieces with weights labelled',
           diagramWidth: 532,
           diagramHeight: 458,
           figRef: 'Diagram is the person’s own reference photo, not OEM artwork — hotspot outlines traced over it in AutoCAD.',
+          manualUrl: 'https://drive.google.com/file/d/1QiSOemRH-Zevx3wlf11-RouN-hZsCw8a/view?usp=drive_link',
+          manualPage: 841,
           components: [
-            { id: 'uk-center', name: 'Base Block (Centre)', weight: 14, shortLabel: '',
+            { id: 'p2', name: 'Counterweight Plate 2', weight: 14, shortLabel: '2',
               hotspots: [{ points: '75.8,308.7 75.6,298.9 75.6,267.4 83.1,260.3 194.7,237.5 289.4,244.4 296.2,250.8 297,256 312.6,252.5 315.3,251.2 321.2,256.4 321.2,273.7 326.6,283.4 326.9,311.1 321.9,316.7 313.7,317.7 312.1,325.4 309.2,329.4 291.8,335.2 278.4,337.7 261.8,335.2 242.8,330.2 208.5,326.1 138.7,318.2 94.2,317.3 82.6,316' }] },
-            { id: 'uk-left', name: 'Base Block (Left)', weight: 10, shortLabel: '',
-              hotspots: [{ points: '74.3,299.1 73.5,267.3 81.3,259.5 157,243.4 157.5,239.5 162,232.8 162.1,214.2 157.5,212.3 156.8,201.9 152.7,200.7 78.8,197.4 4.4,212 4,238.1 3.6,292.3 48.6,304.4' }] },
-            { id: 'uk-right', name: 'Base Block (Right)', weight: 10, shortLabel: '',
-              hotspots: [{ points: '322.4,251.7 429.5,229.5 472.8,241.7 472.8,322.2 401.8,336.5 321.2,334.4 322.2,317.7 328.4,311.1 327.9,283.7 327.8,281.2 323,274.1 323.2,256.7' }] },
-            { id: 'uk-top3', name: 'Lower Plate', weight: 5, shortLabel: '',
+            // Side-mounted pair, always both-or-neither (same "separate"
+            // toggle-together modeling as the Global/EU stack's own
+            // Auxiliary Ballast pairs above). This variant's chart calls
+            // both halves "Auxiliary ballast 6" (10t each, 20t combined) -
+            // no separate "5" ballast pair exists for this variant, unlike
+            // the Global/EU stack's aux5+aux6.
+            { id: 'aux6', name: '2x Auxiliary Ballast 6', weight: 20, separate: true, shortLabel: '6',
+              hotspots: [
+                { points: '74.3,299.1 73.5,267.3 81.3,259.5 157,243.4 157.5,239.5 162,232.8 162.1,214.2 157.5,212.3 156.8,201.9 152.7,200.7 78.8,197.4 4.4,212 4,238.1 3.6,292.3 48.6,304.4' },
+                { points: '322.4,251.7 429.5,229.5 472.8,241.7 472.8,322.2 401.8,336.5 321.2,334.4 322.2,317.7 328.4,311.1 327.9,283.7 327.8,281.2 323,274.1 323.2,256.7' }
+              ] },
+            { id: 'p3', name: 'Counterweight Plate 3', weight: 5, shortLabel: '3',
               hotspots: [{ points: '81.6,190.1 101.3,193.4 105.5,192.1 133.7,191.8 135.7,194.9 182.6,198.4 236.3,204.8 249.9,206.4 259.2,208.3 270.9,212.8 281.7,212.3 357.8,196.3 394.8,189.2 394.8,177.6 339.9,168.7 267.5,160.8 213,156.7 194,156.7 82.7,178.4 81.4,180 81.4,186.3' }] },
-            { id: 'uk-top2', name: 'Middle Plate', weight: 6.5, shortLabel: '',
+            { id: 'p4', name: 'Counterweight Plate 4', weight: 6.5, shortLabel: '4',
               hotspots: [{ points: '81.6,138.8 104.2,138.8 135.9,140.6 181.5,143.6 206.3,146.4 241.5,151.9 259.9,156.2 271.4,157.6 282.1,157.8 394.4,135.5 394,120.9 355.2,112.3 284.3,104.5 218.6,100 196.9,98.3 178.5,101.4 177.5,106 171.9,104.5 169.8,96.7 162.9,96.3 159.8,105.3 81.6,121.2' }] },
-            { id: 'uk-top1', name: 'Top Plate', weight: 5, shortLabel: '',
+            { id: 'p5', name: 'Counterweight Plate 5', weight: 5, shortLabel: '5',
               hotspots: [{ points: '76.7,56.6 195.2,31.2 238.1,33.6 397.8,54.2 400.4,59.5 400.4,65.6 400.2,74.1 388.1,80.7 339.1,91 291.4,100.7 274.9,100.7 255.5,97.4 231.8,94.7 212.6,90.9 179.4,86.9 132.4,82.7 90.9,82.7 78.8,79.1 76.1,74.7' }] },
-            { id: 'uk-spacer', name: 'Base Spacer', weight: 3.5, shortLabel: '',
+            { id: 'p1', name: 'Receptacle Plate 1', weight: 3.5, shortLabel: '1',
               hotspots: [{ points: '103.1,429.1 103.3,419.3 106.9,414 158.2,402.5 158.3,364.1 159.9,361.5 159.9,354.6 158.7,352.1 159.2,348.7 168.9,342.1 182.7,341.6 188.3,345.2 191.4,350.1 191.3,380.7 191,400.7 295.4,411.4 295.4,365.5 302.6,356.5 308.1,358.4 311,356.5 321.7,356.8 328.4,364.4 328.4,415.2 374.8,419.7 380,422.5 383.3,427 383.8,437.1 380.6,441.3 375.6,444.1 370.4,445.2 364.5,445.2 360.5,447.5 353.7,448.8 347.5,448.2 342.3,449.5 336.8,449.9 333,452.7 326.6,453.2 311.7,457 281.4,454.3 201.7,444.9 111.7,436.1 105.9,433' }] }
           ],
-          combos: []
+          // Confirmed straight from this variant's own OEM chart
+          // (methodology.txt 42) - a genuinely branching set, not a simple
+          // stacking ladder: Plate 3 and Plate 5 are both 5t but tracked as
+          // distinct named parts (not an interchangeableGroup like the
+          // Global/EU stack's repeated Plate 3), since the chart lists
+          // combos using either one alone, or both together. The 13.5t
+          // combo is printed TWICE in the source with identical
+          // composition - confirmed genuine (not a text-extraction
+          // artifact) by rendering the actual PDF page - only entered once
+          // here, no reason to duplicate an identical combo. 44t is the
+          // "special ballast" tier (needs adapters 7/8 fitted in place of
+          // Plate 3/Plate 5 - adapters aren't modeled as components, same
+          // convention as the Global/EU stack's unmodeled spacer pins).
+          combos: [
+            { items: [] },
+            { items: ['p1'] },
+            { items: ['p5'] },
+            { items: ['p1', 'p3'] },
+            { items: ['p1', 'p3', 'p5'] },
+            { items: ['p1', 'p2'] },
+            { items: ['p1', 'p3', 'p4', 'p5'] },
+            { items: ['p1', 'p2', 'p3'] },
+            { items: ['p1', 'p2', 'p5'] },
+            { items: ['p1', 'p2', 'p4'] },
+            { items: ['p1', 'p2', 'p3', 'p5'] },
+            { items: ['p1', 'p2', 'p3', 'p4'] },
+            { items: ['p1', 'p2', 'p3', 'p4', 'p5'] },
+            { items: ['p1', 'p2', 'p4', 'aux6'] },
+            { items: ['p1', 'p2', 'p3', 'p4', 'aux6'] },
+            { items: ['p1', 'p2', 'p3', 'p4', 'p5', 'aux6'] }
+          ]
         }
       },
       // Source: Liebherr doc LTM 1650-8-1-000 (0213131-03), chapter 4.07
@@ -2006,26 +2055,29 @@
       },
       // Global/export LTM 1300-6.2 - NOT the EU-market variant (different
       // road-axle load limits; see methodology.txt 10.11 for the held EU
-      // extraction). Component identities/weights/positions came from a
-      // user-supplied DXF of this crane's actual counterweight stack,
-      // cross-checked box by box against the person's own knowledge of the
-      // physical plates. PROVISIONAL COMBO LIST - see sourceNote and
-      // methodology.txt 10.23 before trusting the "OEM-approved" flag here.
+      // extraction). Confirmed straight from this variant's own OEM
+      // operator manual (Liebherr doc LTM 1300-6-2-003, 24006-06-02,
+      // chapter 4.07 Counterweight, PDF pages 930-958) - methodology.txt
+      // 42. Supersedes the earlier provisional data, which had mirrored a
+      // DIFFERENT (EU) variant's chart and invented a "Counterweight Plate
+      // 5" component that doesn't exist in this crane's own real chart -
+      // see this crane's model3d.partMap comment for how that also carried
+      // into a genuine node-labelling mixup in the 3D model itself.
       '1300': {
         label: 'LTM 1300-6.2',
-        sourceNote: "PROVISIONAL DATA — this variant's own OEM counterweight combination chart has not been supplied yet. The combinations shown are estimated from a related EU-market variant's chart and are NOT confirmed for this crane. Do NOT use for real lift planning. Do not use on site until this variant's own OEM combination chart is available.",
+        sourceNote: 'Source: Liebherr doc LTM 1300-6-2-003 (24006-06-02), chapter 4.07 Counterweight, © Liebherr-Werk Ehingen GmbH 2019. Reference tool only — cross-check against the current OEM load chart and assembly drawing before use on site.',
         diagramImage: './counterweight/img/ltm1300-cwt-exploded.png',
-        diagramAlt: 'LTM 1300-6.2 (global/export variant) counterweight exploded CAD line diagram, plates 1-5 plus side-mounted auxiliary ballast pairs',
+        diagramAlt: 'LTM 1300-6.2 (global/export variant) counterweight exploded CAD line diagram, plates 1-4 (plate 3 mounted up to 3x) plus side-mounted auxiliary ballast pairs',
         diagramWidth: 4643,
         diagramHeight: 1300,
         figRef: 'Diagram re-drawn as clean line art from this variant’s actual counterweight stack — not OEM artwork.',
         manualUrl: 'https://drive.google.com/file/d/1fU-VjDgFGx8NcbJajghazvFk08wdlkDP/view?usp=drive_link',
-        manualPage: 931,
+        manualPage: 930,
         // Person-supplied Onshape GLB, parts labelled to match the app's
-        // own numbering directly (not inferred from geometry). Two things
-        // about the labelling this map has to account for, both handled
-        // generically in cwt3d.js rather than as one-off cases (see
-        // partMapKeyFor(), methodology.txt 10.63):
+        // own numbering directly (not inferred from geometry). Three
+        // things about the labelling this map has to account for, all
+        // handled generically in cwt3d.js rather than as one-off cases
+        // (see partMapKeyFor(), methodology.txt 10.63):
         //  - Wing weights 5/6 labelled "5L"/"5R" and "6L"/"6R" (left/right)
         //    - both sides of each pair map to the SAME id (aux5/aux6), same
         //    as the app's own "2x Auxiliary Ballast" both-or-neither
@@ -2033,55 +2085,60 @@
         //  - The receptacle (Plate 1) is 5 separate small CAD bodies, all
         //    labelled plain "1" - GLTFLoader auto-renames the duplicates
         //    ("1", "1_1".."1_4").
-        //  - Plate 3 has two identical, interchangeable physical copies,
-        //    both labelled "3" (GLTFLoader -> "3"/"3_1") - since
-        //    interchangeable means there's truly no real difference between
-        //    them, `['p3a', 'p3b']` lets cwt3d.js split the two instances
-        //    by position rather than needing a way to tell them apart by
-        //    name.
-        // Redone by the person in their own already-exploded layout
-        // (preExploded: true, methodology.txt 10.67/10.71) - superseding
-        // the original auto-explode this crane needed 10.63-10.65's
-        // fixes for (bottom-edge stack sort, extra L/R pair clearance).
-        // partMap unchanged from the original - same node-naming
-        // convention, still a direct confirmed lookup either way.
+        //  - Plate 3 has THREE identical, interchangeable physical copies -
+        //    two are labelled "3" (GLTFLoader -> "3"/"3_1", split by
+        //    ['p3a', 'p3b']), but the third was mislabelled as a distinct
+        //    node named "4" during export - genuinely confusing, since the
+        //    node also literally named "5" (mapped below to 'p4') carries
+        //    the SAME mislabel pattern one step further, both discovered
+        //    only once the real OEM chart (methodology.txt 42) exposed
+        //    that this crane's actual stack is 1x receptacle + 1x plate 2 +
+        //    3x plate 3 + 1x plate 4, not the previously-assumed plate
+        //    1/2/3/3/4/5. Confirmed against the model's own geometry
+        //    (node "4" is the same 4.06x0.18x2.4m footprint as "3"/"3_1",
+        //    node "5" sits physically ABOVE node "4" in the stack, matching
+        //    the OEM chart's own explicit warning that Plate 4 must sit on
+        //    TOP - i.e. node "5" is the real Plate 4, not a 5th plate) and
+        //    directly by the person against their own Onshape assembly.
         model3d: {
           url: './counterweight/models/ltm1300-cwt.glb?v=2',
           preExploded: true,
           partMap: {
-            '1': 'p1', '2': 'p2', '3': ['p3a', 'p3b'], '4': 'p4', '5': 'p5',
+            '1': 'p1', '2': 'p2', '3': ['p3a', 'p3b'], '4': 'p3c', '5': 'p4',
             '5L': 'aux5', '5R': 'aux5', '6L': 'aux6', '6R': 'aux6'
           }
         },
+        // Confirmed straight from this variant's own OEM chart
+        // (methodology.txt 42) - max stack is 1x receptacle plate 1, 1x
+        // plate 2, 3x plate 3, 1x plate 4, 2x auxiliary ballast 5, 2x
+        // auxiliary ballast 6. Hotspot polygons unchanged from the
+        // superseded provisional data - the diagram already drew 6 main-
+        // stack slabs (it just had the top two mislabelled as Plate 4/
+        // Plate 5 instead of the 3rd Plate 3/the real Plate 4), so only
+        // the id/name/interchangeableGroup on those two slabs' entries
+        // needed correcting, not the artwork itself.
         components: [
           { id: 'p1', name: 'Receptacle Plate 1', weight: 6, shortLabel: '1',
             hotspots: [{ points: '1618,818 3027,818 3027,1203 1618,1203' }] },
           { id: 'p2', name: 'Counterweight Plate 2', weight: 10, shortLabel: '2',
             hotspots: [{ points: '1363,643 3282,643 3282,773 1363,773' }] },
-          // p3a/p3b: two physically identical/interchangeable 10t plates,
-          // not a mounted pair - same modeling as LTM 1160's repeated
-          // Plate 3 (methodology.txt 10.9). The held EU-model chart shows
-          // this crane family uses 0, 1, or 2 copies depending on tier,
-          // and at two of its tiers a set of spacer pins physically
-          // replaces the second copy rather than a plate actually being
-          // there - not modeled as a component here since it carries no
-          // weight and isn't confirmed to apply identically to this
-          // variant's hardware. interchangeableGroup so the combo
-          // matcher accepts either p3a or p3b alone as the single-copy
-          // tier, not just the one literally listed in combos below -
-          // same fix as LTM 1160's identical latent bug, methodology.txt
-          // 10.33.
+          // p3a/p3b/p3c: three physically identical/interchangeable 10t
+          // plates, not a mounted pair - same modeling as LTM 1160's
+          // repeated Plate 3 (methodology.txt 10.9). This crane's own
+          // chart shows two of its tiers (66t/86t) use a set of spacer
+          // pins in place of the third plate 3 rather than a plate
+          // actually being there - not modeled as a component here since
+          // it carries no weight. interchangeableGroup so the combo
+          // matcher accepts any subset of these three for a given tier,
+          // not just the ones literally listed in combos below - same fix
+          // as LTM 1160's identical latent bug, methodology.txt 10.33.
           { id: 'p3a', name: 'Counterweight Plate 3', weight: 10, interchangeableGroup: 'plate3_1300', shortLabel: '3',
             hotspots: [{ points: '1363,510 3282,510 3282,596 1363,596' }] },
           { id: 'p3b', name: 'Counterweight Plate 3', weight: 10, interchangeableGroup: 'plate3_1300', shortLabel: '3',
             hotspots: [{ points: '1363,378 3282,378 3282,463 1363,463' }] },
-          { id: 'p4', name: 'Counterweight Plate 4', weight: 10, shortLabel: '4',
+          { id: 'p3c', name: 'Counterweight Plate 3', weight: 10, interchangeableGroup: 'plate3_1300', shortLabel: '3',
             hotspots: [{ points: '1363,246 3282,246 3282,331 1363,331' }] },
-          // Unique to this (global/export) variant - makes up the 10t
-          // difference between this variant's lighter 6t single-piece
-          // Receptacle Plate 1 and the EU variant's 16t combined
-          // Receptacle+Plate7. Person's own account, not from any OEM doc.
-          { id: 'p5', name: 'Counterweight Plate 5', weight: 10, shortLabel: '5',
+          { id: 'p4', name: 'Counterweight Plate 4', weight: 10, shortLabel: '4',
             hotspots: [{ points: '1363,104 3282,104 3282,194 1363,194' }] },
           // Side-mounted pairs, always both-or-neither (same "separate"
           // toggle-together modeling as LTM 1130's p8, methodology.txt
@@ -2089,14 +2146,8 @@
           // each side of the crane), NOT the two boxes drawn adjacent on
           // the same side of the exploded-view layout - confirmed by the
           // person after the first pass paired them wrong way round (see
-          // methodology.txt 10.24). Named "Auxiliary Ballast 5"/"6" per
-          // the person's confirmation that this numbering is shared across
-          // variants (global/export and EU alike) even though the main
-          // plate numbering differs - unlike the main stack's numbering,
-          // this one carries over directly from the held EU chart
-          // (methodology.txt 10.11), so it's treated as confirmed, not
-          // provisional, despite the rest of this crane's combo data
-          // still being provisional.
+          // methodology.txt 10.24). Confirmed straight from this variant's
+          // own OEM chart now, same as the rest of this crane's data.
           { id: 'aux5', name: '2x Auxiliary Ballast 5', weight: 20, separate: true, shortLabel: '5',
             hotspots: [
               { points: '3457,416 3916,416 3916,1196 3457,1196' },
@@ -2108,22 +2159,22 @@
               { points: '3977,416 4540,416 4540,1196 3977,1196' }
             ] }
         ],
-        // PROVISIONAL - structural mirror of the verified EU-model tier
-        // table (16/26/36/46/56/66/76/86/96t there), re-expressed with
-        // this variant's p1+p5 replacing the EU p1+p7 base pair at every
-        // tier. Not yet confirmed against this variant's own OEM chart -
-        // see sourceNote and methodology.txt 10.23.
+        // Confirmed straight from this variant's own OEM chart
+        // (methodology.txt 42) - 66t/86t are the "special ballast" tiers
+        // (spacer pins in place of the 3rd Plate 3, see p3a's own comment
+        // above).
         combos: [
           { items: [] },
-          { items: ['p1', 'p5'] },
-          { items: ['p1', 'p5', 'p2'] },
-          { items: ['p1', 'p5', 'p2', 'p3a'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p4'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'aux5'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p4', 'aux5', 'aux6'] },
-          { items: ['p1', 'p5', 'p2', 'p3a', 'p3b', 'p4', 'aux5', 'aux6'] }
+          { items: ['p1'] },
+          { items: ['p1', 'p2'] },
+          { items: ['p1', 'p2', 'p3a'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b', 'p4'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b', 'p3c', 'p4'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b', 'p4', 'aux5'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b', 'p3c', 'p4', 'aux5'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b', 'p4', 'aux5', 'aux6'] },
+          { items: ['p1', 'p2', 'p3a', 'p3b', 'p3c', 'p4', 'aux5', 'aux6'] }
         ],
         // UK variant - confirmed straight from the crane's own OEM operator
         // manual, chapter 4.07 "Counterweight" (LWE/LTM 1300-6-2-003, doc
