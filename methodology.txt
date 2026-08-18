@@ -8215,3 +8215,24 @@ cranes get their own subsections as they're built.
   source and then get treated as settled fact by everything downstream.
 
 ================================================================================
+50. CWT Combinations: auto-scroll to centre on switching to 3D
+
+  Person's request: clicking "3D Model" on the Counterweight Stack card
+  should bring that card front-and-centre in the viewport, not just flip
+  the toggle and leave the page wherever it happened to be scrolled -
+  same UX carrier3d.js's own Fit View button already provides (see its
+  own comment: on a phone the card can sit mostly below the fold, so a
+  view change alone can leave a person still having to scroll manually to
+  see it). CWT's 3D view doesn't have a Fit View button of its own to
+  piggyback on, so this fires directly from setCwtView('3d') instead:
+  `document.getElementById('cwt-stack-card').scrollIntoView({ behavior:
+  'smooth', block: 'center' })`. Scrolls the whole card (toggle buttons,
+  viewer, hint text, total-weight readout) rather than just the 3D wrap
+  div, so the person lands on the complete context, not just the model
+  floating with no surrounding UI visible. Only fires switching TO 3D,
+  not away from it - matches "when I click the 3d model tab" specifically.
+  Verified via Playwright at both a laptop-ish viewport and a phone-sized
+  one (390x844): card's own vertical centre lands within a pixel of the
+  viewport's centre in both, 0 console errors.
+
+================================================================================
