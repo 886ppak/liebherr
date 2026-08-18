@@ -7684,4 +7684,26 @@ cranes get their own subsections as they're built.
   CARRIER3D_VERSION 46->47, CACHE_VERSION v152->v153, app version
   v3.22->v3.23.
 
+39. Hide LRT 1100-2.1 from Support Pad Placement's crane select
+  Person's request: LRT 1100-2.1 has no CARRIER_MODELS entry (it never
+  has, unlike every LTM in that list) - Support Pad Placement's own 3D
+  Carrier Preview has nothing to show for it, so hide it from that one
+  tab's crane select until the person provides its 3D model.
+  Removed the <option value="1100"> from #cad-crane only - left it in
+  every other crane select that doesn't depend on a 3D model (sc-crane/
+  Crane Layout, r-model/Rope Retentioning, and the CWT/Driving with
+  Equipment tabs' own selects), since those all work fine for LRT 1100
+  today. Left a comment in place of the removed option explaining exactly
+  what re-adding it needs (an outrigger/models/ltm1100-carrier.glb file
+  plus CARRIER_MODELS/CARRIER_CALIBRATION/FOOTPRINTS entries), so it's a
+  one-line restore once that model exists rather than something to
+  rediscover later.
+  cadFleetData['1100'] and every other '1100' data table are untouched -
+  this only affects which option this one <select> offers; the crane's
+  underlying data still exists everywhere it's used.
+  Verified via Playwright: cad-crane's option list no longer includes
+  1100 (defaults to LTM 1110-5.1 instead), sc-crane and r-model both
+  still list it, 0 console errors.
+  CACHE_VERSION v153->v154, app version v3.23->v3.24.
+
 ================================================================================
