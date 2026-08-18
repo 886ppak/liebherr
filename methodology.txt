@@ -7946,4 +7946,44 @@ cranes get their own subsections as they're built.
   options, 0 console errors.
   CACHE_VERSION v157->v158, app version v3.27->v3.28.
 
+44. Load Chart Finder: default hook block selections
+  Person's request: "Hook Block Fitted" should default to that crane's
+  own 3-sheave block, "Winch 2 Block Fitted" should default to its load
+  block - both selects previously just took whatever FLEET_BLOCK_SPEC
+  happened to list first for that crane, no real default logic at all.
+  New defaultLoadChartBlockId(blocks, wantLoadHook) helper: matches by
+  NAME against the same FLEET_BLOCK_SPEC catalog already used elsewhere
+  (Minimum Hook Block Weights tab) rather than hardcoding per-crane
+  answers - every one of the 7 cranes currently in this catalog has
+  exactly one block whose name contains "3-Sheave" (confirmed by
+  reading every entry), so that's the main block's default with no
+  per-crane exception needed. Winch 2 prefers a block whose name
+  contains "Load Hook" - only 3 of the 7 cranes actually stock one in
+  this catalog (1650-t3, 1300, 1100); the other 4 (1250/1220[unused by
+  this tab]/1160/1130/1110) fall back to the LIGHTEST block available
+  instead of being left on an arbitrary first entry - the closest real
+  equivalent to "just a hook" when the catalog has nothing plainer.
+  Verified every crane's resulting default against the real catalog by
+  hand before trusting it (both defaults, all 7 cranes) - full table
+  matched exactly.
+  Found and fixed a real latent bug while testing this: onLoadChartCrane
+  Change()'s fetch had no guard against a stale response landing after
+  a newer one - switching cranes fast enough (well beyond normal click
+  speed, only surfaced by automated rapid-fire testing) could let an
+  in-flight fetch for the PREVIOUS crane resolve after the new one and
+  silently overwrite its already-correct render, including these new
+  block defaults, with stale data. Added a one-line guard (bail if
+  document.getElementById('lc-crane').value no longer matches the
+  crane this fetch was actually for) - pre-existing bug, not introduced
+  by this change, but directly threatened the new feature's reliability
+  so fixed alongside it rather than filed away.
+  Verified via Playwright: single fresh-page-load check per crane
+  (isolates the defaulting logic itself) - all 7 correct. Rapid
+  sequential crane-switching on one page (the scenario that exposed the
+  race) - re-ran after the guard, all 7 still correct, 0 stale
+  carryover. Visual check: LTM 1300 with Winch 2 toggled on shows
+  "12.5t Single Load Hook (0.50 t)" as the Winch 2 Block Fitted default.
+  0 console errors throughout.
+  CACHE_VERSION v158->v159, app version v3.28->v3.29.
+
 ================================================================================
