@@ -7539,4 +7539,72 @@ cranes get their own subsections as they're built.
   modes both directions; full regression sweep, 0 console errors.
   CACHE_VERSION v148->v149, app version v3.18->v3.19.
 
+35. AR real-world-scale placement, Phase 1 (LTM 1110, Android only)
+  Person asked whether the 3D models could be viewed at real-world scale
+  in a physical space via AR, to check clearances. Scoped it first (own
+  discussion, not logged as a section since no code changed), person
+  approved Phase 1: Android WebXR only, LTM 1110's carrier model only, as
+  a single real-device pilot before wiring the other 5 carriers or
+  building the separate iOS path (AR Quick Look needs a per-model USDZ
+  conversion this app has no pipeline for yet - a later phase, not this
+  one).
+  No new library - vendor/three/ already ships GLTFLoader/DRACOLoader/
+  OrbitControls fully offline (see this file's earlier entries), so
+  hand-rolled WebXR hit-test code fits that existing pattern far better
+  than pulling in Google's separate <model-viewer> web component, which
+  would duplicate a three.js runtime already vendored here.
+  carrier3d.js: renderer.xr.enabled = true at creation (harmless with no
+  session active). The render loop itself had to change from a hand-
+  rolled self-chaining requestAnimationFrame chain to renderer.
+  setAnimationLoop(onFrame) - that's the only mechanism three.js has for
+  transparently swapping between plain rAF and an active XRSession's own
+  frame timing, which hit-testing needs access to (frame.
+  getHitTestResults() only exists on the WebXR frame callback's own
+  argument, never on a plain rAF tick). onFrame branches on renderer.xr.
+  isPresenting: controls.update() only while NOT presenting (OrbitControls
+  has no meaning once the device's own camera pose drives the view),
+  hit-test only while presenting.
+  Placement anchor: "tap to place" places the model's own SLEW CENTRE at
+  the tapped point, not the CAD export's raw local origin (wherever
+  Onshape happened to put it) - reuses computeFormulaCalibration (already
+  written for the slew-circle/ground-layout features) to find that point,
+  wraps the loaded model in a THREE.Group offset so the group's own
+  origin lands exactly on the slew centre/ground point, and both
+  positions (tap-to-place) and rotations (the overlay's own ⟲/⟳ buttons)
+  are applied to that GROUP, not the model directly - rotating a crane
+  around its own slew axis is what a crew actually needs to check
+  clearance against a wall at different orientations, not a spin around
+  some arbitrary CAD-export corner.
+  Re-tappable, not one-shot: every tap while the reticle's visible moves
+  the crane to that new spot, rotation carries over across a re-tap
+  (only the overlay's own buttons change it) - a first guess at
+  placement is rarely exactly right and re-tapping is the obvious way to
+  nudge it without a separate unlock control.
+  index.html: new AR_SUPPORTED_MODELS = ['1110'] gates which crane shows
+  the button at all; window.__carrier3dARSupported() (navigator.xr.
+  isSessionSupported('immersive-ar')) is also checked before showing it,
+  so the button never appears on iOS Safari or desktop rather than
+  appearing and failing on tap. Button added to both 3D-preview toolbars
+  (Support Pad Placement's own card and Crane Layout's) since both
+  already share the one carrier3d.js viewer instance.
+  Known Phase 1 limitations, flagged for the person rather than silently
+  shipped as if complete: no auto-orientation (the crane always loads
+  facing whatever direction it was placed at last, no compass/north
+  alignment); only LTM 1110 has the button; no iOS support yet; I have no
+  camera/motion-sensor hardware to test real AR placement/scale accuracy
+  myself, so this needs verification on an actual Android device before
+  being trusted for a real clearance check.
+  Verified via Playwright (as far as it's possible without real AR
+  hardware): both toolbar buttons stay hidden in headless Chromium
+  (navigator.xr exists but isSessionSupported resolves false, same as a
+  desktop/non-AR browser would see) - confirms the feature-detect gate
+  itself works and the button doesn't appear where it shouldn't. Full
+  regression sweep on the ordinary orbit-preview render path (now running
+  through setAnimationLoop instead of the old rAF chain) - both 3D cards
+  still load/render/rotate correctly, 0 console errors. The actual AR
+  session code (hit-test, placement, rotation) could NOT be exercised by
+  this testing - no WebXR-capable device available in this environment.
+  CARRIER3D_VERSION 45->46, CACHE_VERSION v149->v150, app version
+  v3.19->v3.20.
+
 ================================================================================

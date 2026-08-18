@@ -286,7 +286,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v3.19</span></h1>
+    <h1>MYSLEWER <span class="app-version">v3.20</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -724,6 +724,7 @@
         <button class="toolbar-btn" id="carrier-3d-toggle-btn" style="width:100%;" onclick="toggleCarrier3D()">Show 3D Carrier Model</button>
         <div class="toolbar-row" id="carrier-3d-toolbar" style="display:none; margin-top:10px;">
           <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
+          <button class="toolbar-btn" id="carrier-3d-ar-btn" style="display:none;" onclick="enterCarrier3DAR('cad-crane')">View in AR</button>
           <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; text-transform:none; margin-left:4px;">
             <input type="checkbox" id="carrier-3d-compare-toggle" onchange="toggleCompareMode(this)" style="width:auto; cursor:pointer;"> Compare old/new position
           </label>
@@ -811,6 +812,7 @@
         <button class="toolbar-btn" id="carrier-3d-toggle-btn-layout" style="width:100%;" onclick="toggleCarrier3DLayout()">Show 3D Carrier Model</button>
         <div class="toolbar-row" id="carrier-3d-toolbar-layout" style="display:none; margin-top:10px;">
           <button class="toolbar-btn" onclick="window.__carrier3dFitView && window.__carrier3dFitView()">Fit View</button>
+          <button class="toolbar-btn" id="carrier-3d-ar-btn-layout" style="display:none;" onclick="enterCarrier3DAR('sc-crane')">View in AR</button>
         </div>
         <div id="carrier-3d-slew-toggles" style="display:none; margin-top:10px;"></div>
         <div id="carrier-3d-wrap-layout" style="display:none; position:relative; width:100%; height:420px; border-radius:8px; overflow:hidden; background:#0f172a; margin-top:10px;">
@@ -2378,7 +2380,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 45;
+    const CARRIER3D_VERSION = 46;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -2391,6 +2393,14 @@
       '1300': './outrigger/models/ltm1300-carrier.glb',
       '1650': './outrigger/models/ltm1650-carrier.glb'
     };
+
+    // Cranes offered the "View in AR" button (WebXR real-world-scale
+    // placement, Android Chrome only - see updateARButtonVisibility/
+    // carrier3d.js's own AR section). Phase 1: LTM 1110 only, as a single
+    // real-device pilot before wiring the rest of CARRIER_MODELS. iOS
+    // support (AR Quick Look via a separately-generated USDZ per model) is
+    // a later phase, not this list.
+    const AR_SUPPORTED_MODELS = ['1110'];
 
     // Per-crane calibration for mapping the site plan's own leg/pad
     // positions onto the loaded CAD model - see vendor/carrier3d.js's own
@@ -5608,6 +5618,7 @@
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap', 'carrier-3d-label');
         syncCarrier3DOutriggers();
         onMatEdgeToggle();
+        updateARButtonVisibility(modelKey, 'carrier-3d-ar-btn');
       };
       if (window.__carrier3dActivate) activate();
       else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
@@ -5634,9 +5645,41 @@
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap-layout', 'carrier-3d-label-layout');
         onSlewCircleToggle();
         onGroundLayoutToggle();
+        updateARButtonVisibility(modelKey, 'carrier-3d-ar-btn-layout');
       };
       if (window.__carrier3dActivate) activate();
       else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
+    }
+
+    // Feature-detected, not just gated on AR_SUPPORTED_MODELS - a crane on
+    // that list still gets no button on iOS Safari or desktop, since
+    // navigator.xr.isSessionSupported('immersive-ar') only ever resolves
+    // true on a WebXR-capable Android Chrome. Async because the support
+    // check itself is (per the WebXR spec, isSessionSupported always
+    // returns a Promise) - the button stays hidden until it resolves, so
+    // there's no flash of a button that's about to disable itself.
+    function updateARButtonVisibility(modelKey, btnId) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      if (!AR_SUPPORTED_MODELS.includes(modelKey) || !window.__carrier3dARSupported) {
+        btn.style.display = 'none';
+        return;
+      }
+      window.__carrier3dARSupported().then((supported) => {
+        btn.style.display = supported ? '' : 'none';
+      });
+    }
+
+    // craneSelectId: which crane <select> to read the current model from -
+    // 'cad-crane' for Support Pad Placement's own toolbar button, 'sc-crane'
+    // for Crane Layout's (see the two onclick= wirings above). footprint/
+    // calibration passed straight through to carrier3d.js so AR placement
+    // can anchor on the model's own slew centre - see __carrier3dEnterAR's
+    // own comment in carrier3d.js.
+    function enterCarrier3DAR(craneSelectId) {
+      const modelKey = document.getElementById(craneSelectId).value;
+      if (!window.__carrier3dEnterAR) return;
+      window.__carrier3dEnterAR(modelKey, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
     }
 
     // Pushes calcCAD()'s own leg/pad positions (lastMapped/lastFp - the
