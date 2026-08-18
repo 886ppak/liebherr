@@ -4,7 +4,7 @@
 // reeving diagrams (see CONTENT_CACHE below) — those persist across updates
 // so a crew doesn't lose offline access to plans they've already viewed just
 // because an app update shipped.
-const CACHE_VERSION = 'myslewer-v155';
+const CACHE_VERSION = 'myslewer-v156';
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 
 // Fetched-on-demand content (reeving diagrams, etc). Fixed name, never
@@ -22,6 +22,15 @@ const CONTENT_CACHE = 'app-content-v1';
 // seeing a diagram fixed weeks ago after every possible cache-version bump -
 // the fix landed in CONTENT_CACHE the first time, which nothing here ever
 // clears. See methodology.txt 10.28.
+//
+// reeving/manifest.json gets the same treatment, for the same reason - the
+// SVG diagrams it references genuinely don't change once shipped (real
+// OEM reeving diagrams), but the manifest also carries the PROSE around
+// them (labels, notes) which does occasionally need correcting - see
+// methodology.txt 41 (the "these four models" note that didn't name them).
+// Only the manifest itself is listed here, not the dozens of SVG files -
+// those stay in CONTENT_CACHE, matching the stable-content reasoning this
+// whole comment describes.
 const APP_SHELL = [
   './',
   './index.html',
@@ -38,7 +47,8 @@ const APP_SHELL = [
   './counterweight/img/ltm1650-cwt-exploded.jpg',
   './counterweight/img/ltm1300-cwt-exploded.png',
   './counterweight/img/ltm1300-cwt-uk-exploded.png',
-  './counterweight/img/ltr1220-cwt-exploded.png'
+  './counterweight/img/ltr1220-cwt-exploded.png',
+  './reeving/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {

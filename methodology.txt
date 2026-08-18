@@ -7755,4 +7755,42 @@ cranes get their own subsections as they're built.
   for real.
   CACHE_VERSION v154->v155, app version v3.24->v3.25.
 
+41. Reeving Plans: name the models in the "shared" folding jib note
+  Person noticed the Folding Jib (shared) config's note reads "Same
+  accessory reeving plan used across these four models." without saying
+  which four - the crane/config DROPDOWN label does name them ("Folding
+  Jib (1110/1130/1160/1200-1)"), but the separate note shown below it
+  didn't repeat them, so a person looking at just the note has to go
+  back and cross-reference the dropdown.
+  Text lives in reeving/manifest.json (fetched at runtime, not in
+  index.html - grep for the exact phrase came up empty until checking
+  there), specifically the folding-jib-shared entry's own "note" field.
+  Checked every other entry in the manifest for the same vague-note
+  pattern ("these X models"/"these models") - only this one had it.
+  Reworded to "Same accessory reeving plan used across LTM 1110, LTM
+  1130, LTM 1160, and LTM 1200-1." - matches the models already named in
+  that entry's own "label" field (LTM 1200-1 isn't one of this app's own
+  supported cranes, kept as-is since it's the pre-existing sourced model
+  list, not something to second-guess without the OEM reference in
+  hand). Confirmed via a JSON-level diff against the pre-edit file that
+  this was the ONLY field that changed anywhere in the manifest - no
+  incidental reformatting/reordering from the edit script.
+  Bundled in a related fix while touching this file: reeving/manifest.
+  json wasn't in sw.js's own APP_SHELL, so it was falling into the
+  weaker CONTENT_CACHE (cache-forever, never refreshed on a CACHE_
+  VERSION bump) - the exact same bug class methodology.txt 10.28 already
+  documented for counterweight diagrams, and for the same underlying
+  reason: this file's SVG diagrams genuinely don't change once shipped
+  (real OEM diagrams), but the manifest ALSO carries editable prose
+  (labels, notes) around them, which this very fix just proved does
+  occasionally need correcting. Added './reeving/manifest.json' to
+  APP_SHELL (not the SVGs themselves, which stay in CONTENT_CACHE,
+  matching the stable-content reasoning) - without this, a person who'd
+  already opened Reeving Plans once would keep seeing the old vague
+  wording forever, even after this exact update shipped.
+  Verified via Playwright: reeve-crane's "Shared Accessory" group ->
+  folding-jib-shared config renders the corrected note text, 0 console
+  errors.
+  CACHE_VERSION v155->v156, app version v3.25->v3.26.
+
 ================================================================================
