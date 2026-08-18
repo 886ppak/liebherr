@@ -7986,4 +7986,53 @@ cranes get their own subsections as they're built.
   0 console errors throughout.
   CACHE_VERSION v158->v159, app version v3.28->v3.29.
 
+45. LRT 1100-2.1 carrier model
+  Person supplied their own Onshape GLB for the LRT 1100 (via Nextcloud -
+  the first share link given was file-drop/upload-only again, same as
+  methodology.txt 42's first attempt; a second, read-enabled link to the
+  actual "myslewer" project folder worked, with a Carrier/ subfolder
+  holding this file alongside re-confirmed copies of the other five
+  carriers already in the repo, matching their existing file sizes).
+  Saved as outrigger/models/lrt1100-carrier.glb (not ltm1100-, matching
+  this crane's own real designation - same convention already used for
+  LTR 1220's counterweight model, ltr1220-cwt.glb).
+  This is the crane the "hide until you provide the 3D model" fix
+  (methodology.txt 39) was explicitly waiting on - re-added the
+  <option value="1100">LRT 1100-2.1</option> to #cad-crane (Support Pad
+  Placement) that was pulled then, following the comment left in its
+  place verbatim (CARRIER_MODELS/CARRIER_CALIBRATION both gained a '1100'
+  entry, FOOTPRINTS already had one). AR_SUPPORTED_MODELS needed no
+  separate change - it's already Object.keys(CARRIER_MODELS), so this
+  crane picked up "View in AR" for free.
+  frontAtMinZ determination: this crane's own FOOTPRINTS/GROUND_LAYOUT_
+  DATA front/rear figures are both nearly symmetric (4300mm/4388mm
+  overhang, ~7300mm span either way) - unlike LTM 1650's case
+  (methodology.txt 37), a geometry-only cross-check against real leg-
+  station figures wouldn't have reliably distinguished a wrong guess
+  from a right one here, since both hypotheses would solve to similarly
+  self-consistent slew-centre estimates. Needed an actual visual read
+  instead: rendered both ends close-up (not just a single straight-down
+  pass, which was ambiguous for this crane on first look) and found the
+  MAX-Z end has a raised cab structure with ladders on both sides
+  (classic driver's-cab access), while the MIN-Z end is just the flat
+  deck with the slew bearing bore and a small mirror/vent - unambiguous
+  once actually rendered close-up. frontAtMinZ: false - the OPPOSITE of
+  every other crane in CARRIER_CALIBRATION, a real difference in this
+  particular export, not an inconsistency to "fix".
+  Cross-checked the result against an independent, already-trusted
+  number rather than taking the visual read alone: toggled the "beyond
+  rear of carrier" clearance measurement (built in an earlier session,
+  computed straight from FOOTPRINTS - never depended on the 3D
+  calibration at all) against the Counterweight radius circle - got
+  "-198mm" drawn at the flat-deck end, exactly matching radius(4190) -
+  rear overhang(4388) computed independently. The dimension line landing
+  at the flat-deck end (not the cab end) confirms frontAtMinZ: false is
+  wired correctly, not just visually plausible.
+  Verified via Playwright: model loads and renders in both Support Pad
+  Placement and Crane Layout's 3D previews, cad-crane's option list has
+  1100 back, AR button correctly present-but-hidden (feature-detected,
+  same as every other crane in headless Chromium), 0 console errors.
+  CACHE_VERSION v159->v160, app version v3.29->v3.30 (next bump after
+  this one rolls over to v4.0 per CLAUDE.md's own cap).
+
 ================================================================================
