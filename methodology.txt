@@ -8204,3 +8204,60 @@ cranes get their own subsections as they're built.
   on screen when it's this cheap to just look.
 
 ================================================================================
+49. LRT 1100: methodology.txt 48 was ALSO wrong - the original 45 render
+    had the two ends mislabelled at the source
+
+  Person came back a third time with concrete, specific evidence: "C1 is
+  in C2 pos and vice versa, C4 and C3 are in each other's spot, half
+  width dimensions still on the front, needs to move to the rear" - then
+  sent an annotated screenshot of the app's own ground-layout-marks view
+  with C3/C2 hand-labelled "front" (top) and C4/C1 hand-labelled "rear"
+  (bottom).
+
+  This time, instead of re-reasoning from the existing (evidently
+  unreliable) close-up renders, rebuilt the identification from scratch
+  with a throwaway page (not the live app - a bare Three.js scene loading
+  ONLY outrigger/models/lrt1100-carrier.glb directly, full manual camera
+  control, no OrbitControls polar-angle limits, no possibility of the
+  live app's own calibration influencing what's on screen) and rendered
+  genuine close-ups of both ends. Result: MIN-Z has a real ladder (clear
+  rungs), an oval mirror/sensor disc, and a stepped platform. MAX-Z has a
+  plain louvred radiator/engine grille - no ladder, nothing cab-adjacent
+  about it. This is the OPPOSITE of what methodology.txt 45 originally
+  reported ("MAX-Z has the raised, ladder-flanked structure"). Comparing
+  both fresh renders directly against the person's own two reference
+  photos from earlier in this saga: their "front" photo (bore, disc,
+  ladder, stepped platform) matches the MIN-Z render exactly, feature for
+  feature - not the MAX-Z one. methodology.txt 45's very first close-up
+  pass had the two ends' renders mixed up at the source - a mistake in
+  that one ad-hoc script, not a genuine ambiguity in the model - and
+  every subsequent round this session (46 kept it, 47 correctly sensed
+  something was wrong but landed on the wrong theory to explain it, 48
+  reverted back to the original wrong value on the strength of photos
+  that, on this re-examination, actually confirm the OPPOSITE) inherited
+  that one original mislabelling.
+
+  Fix: CARRIER_CALIBRATION['1100'].frontAtMinZ back to true - the third
+  flip this session (45: false, 47: true, 48: false, 49: true). Re-
+  verified by rendering the live app's own actual ground-layout-marks
+  view (not just the throwaway comparison) and confirming pixel-for-pixel
+  agreement with the person's annotated screenshot: C3/C2 at the top
+  (front), C4/C1 at the bottom (rear), half-width dimension now at the
+  rear. 0 console errors.
+
+  Why trust this one over the previous three: this is the first round
+  built on a direct side-by-side of a labelled reference photo against a
+  freshly, independently rendered close-up of each end - not on
+  describing what a structure "reads like" from a screenshot that could
+  itself have been mislabelled, and not on reasoning about which theory
+  sounds more plausible. Every earlier round in this saga skipped
+  straight to reasoning about calibration flags without first re-
+  deriving the one fact everything else depends on: which physical end
+  is which. That's the actual lesson here, sharper than
+  methodology.txt 48's "look before reasoning" - it's specifically LOOK
+  AT THE RAW MODEL AGAIN FROM SCRATCH before trusting any earlier
+  session's own claimed visual identification, because that identifi-
+  cation is exactly the kind of thing that can be silently wrong at the
+  source and then get treated as settled fact by everything downstream.
+
+================================================================================
