@@ -7561,4 +7561,31 @@ cranes get their own subsections as they're built.
   CARRIER3D_VERSION 45->46, CACHE_VERSION v149->v150, app version
   v3.19->v3.20.
 
+36. AR real-world-scale placement: widen to all six carriers
+  Person tried Phase 1 (LTM 1110 only), came back happy with it and
+  asked for the next step. The placement/rotation code in carrier3d.js
+  was never LTM-1110-specific - it always just reused whichever crane's
+  own FOOTPRINTS/CARRIER_CALIBRATION entry the caller passed in (same
+  figures the orbit preview, slew circles and ground layout marks
+  already trust for that crane), so widening AR_SUPPORTED_MODELS to
+  Object.keys(CARRIER_MODELS) - all six carriers with a 3D model at all
+  - was the whole change, no carrier3d.js edit needed.
+  One flagged caveat, not a blocker: LTM 1650's own CARRIER_CALIBRATION
+  entry carries an `uncertain` flag (frontAtMinZ never visually
+  confirmed against a straight-down render with a real cab, unlike the
+  other five - see that constant's own comment, methodology.txt 10.77/
+  10.82). AR inherits exactly whatever the orbit preview already shows
+  for 1650 - no new uncertainty introduced by AR itself, just carried
+  forward unchanged.
+  Verified via Playwright: toggled the 3D Carrier Preview for all six
+  cranes (1110/1130/1160/1250/1300/1650) in Crane Layout, confirmed the
+  AR button's feature-detect gate behaves identically for every one of
+  them (stays hidden in headless Chromium, same as a real non-WebXR
+  browser would see), 0 console errors including for 1300/1650's larger
+  GLBs. Real on-device placement/rotation for the five newly-added
+  carriers still needs verification on an actual Android device, same
+  standing limitation as Phase 1.
+  carrier3d.js unchanged - CACHE_VERSION v150->v151, app version
+  v3.20->v3.21.
+
 ================================================================================
