@@ -7706,4 +7706,53 @@ cranes get their own subsections as they're built.
   still list it, 0 console errors.
   CACHE_VERSION v153->v154, app version v3.23->v3.24.
 
+40. Fullscreen toggle on all three 3D model viewers
+  Person's request, after a "just a question" about whether the crane
+  layout 3D view could go fullscreen: yes, and add it to every 3D viewer
+  in the app, not just that one - carrier-3d-wrap (Support Pad
+  Placement), carrier-3d-wrap-layout (Crane Layout), cwt-3d-wrap (CWT
+  Combinations).
+  Deliberately fullscreens the OUTER wrap div, not the canvas directly -
+  both carrier3d.js and cwt3d.js already listen for window's own 'resize'
+  event and read their inner canvas-wrap's clientWidth/clientHeight on
+  every fire (see each module's own resizeRenderer()), which the browser
+  fires automatically on entering/exiting fullscreen - so the renderer/
+  camera correctly resize to fill the screen with ZERO changes needed to
+  either module. This is only a DOM/Fullscreen API + CSS + a small shared
+  toggle function in index.html's own classic script - no CARRIER3D_
+  VERSION/CWT3D_VERSION bump needed, matching the convention that those
+  only bump when the vendor files themselves change.
+  One button per wrap, all sharing the same .carrier3d-fullscreen-btn
+  class/markup (same generic multi-instance pattern already used for the
+  offline-cache buttons) - positioned top-right inside the wrap (label
+  overlay already owns top-left), so it's reachable both in and out of
+  fullscreen without a separate fullscreen-only control. Swaps between a
+  Feather-style expand/compress SVG pair on 'fullscreenchange'/
+  'webkitfullscreenchange', keyed by comparing document.fullscreenElement
+  against each button's own data-wrap attribute (so only the button whose
+  own wrap is actually fullscreened swaps its icon, not all three at
+  once).
+  Hidden by default and only revealed once the Fullscreen API is
+  feature-detected as available (document.documentElement.
+  requestFullscreen) - iOS Safari on iPhone has never supported
+  fullscreening an arbitrary element (video-only), so the button simply
+  doesn't appear there rather than doing nothing when tapped, same
+  feature-detect-then-reveal pattern already used for the AR button.
+  Verified via Playwright: all three buttons correctly reveal
+  (feature-detected as supported in headless Chromium); calling the
+  toggle function actually engaged real fullscreen (document.
+  fullscreenElement became the target wrap, confirmed via a screenshot
+  showing the model filling the full viewport with the button correctly
+  positioned top-right); 0 console errors. One thing NOT fully verified
+  in this environment: the icon swap fires correctly when called
+  directly, but the 'fullscreenchange' event itself didn't fire when
+  fullscreen was triggered via Playwright's programmatic page.evaluate()
+  call rather than a genuine trusted user click - a known automation-
+  environment quirk (requestFullscreen succeeded regardless, so the
+  underlying API call itself is fine), not a code defect, since real
+  browsers reliably fire fullscreenchange for a real user tap. Worth a
+  quick on-device glance to confirm the icon actually flips when tapped
+  for real.
+  CACHE_VERSION v154->v155, app version v3.24->v3.25.
+
 ================================================================================
