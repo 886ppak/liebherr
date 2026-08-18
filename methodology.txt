@@ -8119,3 +8119,42 @@ cranes get their own subsections as they're built.
   fix is currently a no-op here, by design). 0 console errors.
 
 ================================================================================
+48. LRT 1100: methodology.txt 47 was itself wrong - reverted
+
+  Person sent their own reference photos of the real machine, one end at
+  a time, plainly labelled "front" and "rear". The "front" photo shows
+  the MAX-Z end - bore, raised ladder-flanked structure, stepped platform
+  - the exact same end methodology.txt 45 originally (and correctly)
+  called the front, before methodology.txt 47 flipped it. The "rear"
+  photo shows the plain MIN-Z end. methodology.txt 47's theory (cab lives
+  on the superstructure, so the carrier model can't have one, so the
+  structure found must be something else at the other end) was a
+  plausible-sounding chain of reasoning built without ever actually
+  confirming which end the person's original complaint was about -
+  wrong conclusion from a real fact (this crane's cab genuinely is
+  superstructure-mounted) stretched into an unsupported one (therefore
+  the carrier's own front must be the other end).
+
+  Reverted CARRIER_CALIBRATION['1100'].frontAtMinZ back to false, the
+  original methodology.txt 45 value. methodology.txt 46's camera-
+  consistency fix is untouched and still correct - that was always a
+  separate, genuinely real bug (the default view opening nose-on instead
+  of rear-first) and is very likely what the person's original "half
+  width dimensions on the front" report was actually seeing: a confusing
+  default camera angle, not a wrong calibration value. Best current
+  understanding is the ground-layout half-width dimension line was
+  probably already rendering at the geometrically correct (rear, C1 side)
+  end all along under frontAtMinZ: false - methodology.txt 47 never
+  actually screenshotted the "before" state to confirm the reported
+  symptom before changing the value, only reasoned from the report
+  itself; that gap is exactly how a plausible wrong fix got shipped.
+  Re-verified via Playwright after reverting: default 3D view still
+  opens rear-first (methodology.txt 46 intact), 0 console errors.
+
+  Lesson for next time a front/rear report comes in on any crane: get a
+  screenshot of the actual current (allegedly wrong) state FIRST, before
+  reasoning toward a fix - a mid-air diagnosis, however internally
+  consistent it seems, isn't a substitute for looking at what's actually
+  on screen when it's this cheap to just look.
+
+================================================================================

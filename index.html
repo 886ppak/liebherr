@@ -265,7 +265,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.1</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.2</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -2397,21 +2397,19 @@
     // orientation assumption is correct, so this is real evidence, not a
     // visual read - one notch below the other five cranes' own cab check,
     // but no longer just a guess either.
-    // LRT 1100: frontAtMinZ: true - same convention as every other crane
-    // here. An earlier visual read (methodology.txt 45) called this false,
-    // reading the MAX-Z end's raised, ladder-flanked structure as a
-    // driver's cab - wrong: this crane's cab is mounted on the
-    // SUPERSTRUCTURE (see the operator manual's own component list,
-    // "2 Crane superstructure" -> "2 Crane cab"), not the carrier this
-    // model represents, so there's no carrier-mounted cab to visually
-    // find at all. That structure is something else entirely (most likely
-    // the engine bay - the carrier's own real component list). Corrected
-    // per the person's own direct, real-world correction after the wrong
-    // guess made "move forward" render as backward on Support Pad
-    // Placement's 3D preview and put the ground-layout half-width
-    // dimension line on the wrong end of the model. See methodology.txt 47.
+    // LRT 1100: frontAtMinZ: false - the OPPOSITE of every other crane
+    // here, confirmed correct. methodology.txt 45's original visual read
+    // (MAX-Z end's raised, ladder-flanked structure = the front) briefly
+    // got second-guessed and flipped to true in methodology.txt 47, then
+    // flipped straight back here once the person sent their own reference
+    // photos of the real machine confirming the ladder/bore end genuinely
+    // is the front - methodology.txt 47's "superstructure cab, not
+    // carrier cab" reasoning was a plausible-sounding but wrong theory.
+    // See methodology.txt 48. The actual bug the person was reporting was
+    // always just methodology.txt 46's default-camera inconsistency,
+    // already fixed there and untouched by this revert.
     const CARRIER_CALIBRATION = {
-      '1100': { frontAtMinZ: true, lateralSign: 1 },
+      '1100': { frontAtMinZ: false, lateralSign: 1 },
       '1110': { frontAtMinZ: true, lateralSign: 1 },
       '1130': { frontAtMinZ: true, lateralSign: 1 },
       '1160': { frontAtMinZ: true, lateralSign: 1 },
