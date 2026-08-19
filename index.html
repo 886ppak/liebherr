@@ -299,13 +299,15 @@
         </div>
         <button type="submit" class="btn" id="access-gate-submit" style="margin-top:14px;">Sign In</button>
         <button type="button" id="access-gate-use-link" style="display:block; width:100%; background:none; border:none; color:var(--text-muted); font-size:0.8rem; margin-top:10px; text-decoration:underline; cursor:pointer;">Sign in with an email link instead</button>
+        <button type="button" id="access-gate-forgot" style="display:block; width:100%; background:none; border:none; color:var(--text-muted); font-size:0.8rem; margin-top:6px; text-decoration:underline; cursor:pointer;">Forgot your password?</button>
       </form>
 
-      <!-- Doubles as both "request a link" and (when this page was opened
-           from a link clicked somewhere other than the browser context that
-           requested it - see completingLink below) "confirm the address the
-           link was sent to" - same form, same fields, dataset.mode picks
-           which submit behaviour applies. -->
+      <!-- Shared by three jobs: "request a sign-in link", "request a
+           password reset", and (when this page was opened from a link
+           clicked somewhere other than the browser context that requested
+           it - see completingLink below) "confirm the address the link was
+           sent to". Same form, same fields, dataset.mode picks which
+           submit behaviour applies. -->
       <form id="access-gate-linkform" autocomplete="on" style="display:none;">
         <div class="form-group" style="text-align:left;">
           <label>Email</label>
@@ -323,16 +325,15 @@
     import { initializeApp } from './vendor/firebase/firebase-app.js';
     import {
       getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-      sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink
+      sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
+      sendPasswordResetEmail
     } from './vendor/firebase/firebase-auth.js';
 
-    // PLACEHOLDER - replace with this project's real config once it
-    // exists (Firebase console -> Project settings -> General -> "Your
-    // apps" -> SDK setup and configuration). This object is NOT a
-    // secret - Firebase's actual access control is enforced by the
-    // project's own sign-in settings and (for any data added later)
-    // security rules, not by hiding these values - see methodology.txt
-    // 53 for the full reasoning already worked through on this.
+    // Real myslewer-ed06f project config. This object is NOT a secret -
+    // Firebase's actual access control is enforced by the project's own
+    // sign-in settings and (for any data added later) security rules,
+    // not by hiding these values - see methodology.txt 53 for the full
+    // reasoning already worked through on this.
     const firebaseConfig = {
       apiKey: 'AIzaSyA8m8506vAMNJUZMnfVX9Hze8O4Y75JmaA',
       authDomain: 'myslewer-ed06f.firebaseapp.com',
@@ -350,6 +351,7 @@
     const submitEl = document.getElementById('access-gate-submit');
     const errorEl = document.getElementById('access-gate-error');
     const useLinkBtn = document.getElementById('access-gate-use-link');
+    const forgotBtn = document.getElementById('access-gate-forgot');
     const usePasswordBtn = document.getElementById('access-gate-use-password');
     const linkFormEl = document.getElementById('access-gate-linkform');
     const linkEmailEl = document.getElementById('access-gate-link-email');
@@ -488,14 +490,30 @@
           });
       });
 
-      useLinkBtn.addEventListener('click', () => {
+      // Base URL (no query string) used as the "Continue" target on
+      // Firebase's own hosted reset-password page - deliberately not
+      // window.location.href verbatim, since that could carry stray
+      // params along for the ride (e.g. leftovers from a previous
+      // email-link attempt) that have no business being on a plain
+      // "come back to the app" link.
+      const cleanAppUrl = window.location.origin + window.location.pathname;
+
+      const LINK_MODES = {
+        request: { submitLabel: 'Send Sign-In Link', sendingLabel: 'Sending…', sentText: 'Check your email for a sign-in link, then open it on this device.' },
+        reset: { submitLabel: 'Send Reset Link', sendingLabel: 'Sending…', sentText: 'Check your email for a password reset link.' }
+      };
+
+      function showLinkForm(mode) {
         errorEl.style.display = 'none';
         linkSentEl.style.display = 'none';
         formEl.style.display = 'none';
-        linkFormEl.dataset.mode = 'request';
-        linkSubmitEl.textContent = 'Send Sign-In Link';
+        linkFormEl.dataset.mode = mode;
+        linkSubmitEl.textContent = LINK_MODES[mode].submitLabel;
         linkFormEl.style.display = '';
-      });
+      }
+
+      useLinkBtn.addEventListener('click', () => showLinkForm('request'));
+      forgotBtn.addEventListener('click', () => showLinkForm('reset'));
 
       usePasswordBtn.addEventListener('click', () => {
         errorEl.style.display = 'none';
@@ -508,36 +526,49 @@
         e.preventDefault();
         errorEl.style.display = 'none';
         const email = linkEmailEl.value.trim();
+        const mode = linkFormEl.dataset.mode;
 
-        if (linkFormEl.dataset.mode === 'confirm') {
+        if (mode === 'confirm') {
           linkSubmitEl.disabled = true;
           linkSubmitEl.textContent = 'Signing In…';
           completeEmailLinkSignIn(email);
           return;
         }
 
+        const { sendingLabel, submitLabel, sentText } = LINK_MODES[mode];
         linkSubmitEl.disabled = true;
-        linkSubmitEl.textContent = 'Sending…';
-        // handleCodeInApp: true means Firebase sends a link straight back
-        // to this same page (rather than an intermediate Firebase-hosted
-        // page) with a code in the query string that isSignInWithEmailLink
-        // recognises above.
-        const actionCodeSettings = { url: window.location.href, handleCodeInApp: true };
-        withTimeout(sendSignInLinkToEmail(auth, email, actionCodeSettings), 20000)
+        linkSubmitEl.textContent = sendingLabel;
+
+        const sendPromise = mode === 'reset'
+          // handleCodeInApp left false (default) here on purpose - the
+          // reset itself stays on Firebase's own hosted page (no
+          // in-app "set new password" UI has been built), but passing
+          // a plain continue url makes that page show a "Continue"
+          // link/button back into MYSLEWER once the password's changed,
+          // instead of just stranding the person there.
+          ? sendPasswordResetEmail(auth, email, { url: cleanAppUrl })
+          // handleCodeInApp: true means Firebase sends a link straight
+          // back to this same page (rather than an intermediate
+          // Firebase-hosted page) with a code in the query string that
+          // isSignInWithEmailLink recognises above.
+          : sendSignInLinkToEmail(auth, email, { url: window.location.href, handleCodeInApp: true });
+
+        withTimeout(sendPromise, 20000)
           .then(() => {
-            window.localStorage.setItem(LINK_EMAIL_STORAGE_KEY, email);
+            if (mode === 'request') window.localStorage.setItem(LINK_EMAIL_STORAGE_KEY, email);
             linkFormEl.style.display = 'none';
+            linkSentEl.textContent = sentText;
             linkSentEl.style.display = '';
           })
           .catch((err) => {
             errorEl.textContent = err.code === 'auth/timeout'
               ? 'That took too long - check your signal and try again.'
-              : (FRIENDLY_ERRORS[err.code] || 'Couldn’t send the link - try again.');
+              : (FRIENDLY_ERRORS[err.code] || 'Couldn’t send that - try again.');
             errorEl.style.display = '';
           })
           .finally(() => {
             linkSubmitEl.disabled = false;
-            linkSubmitEl.textContent = 'Send Sign-In Link';
+            linkSubmitEl.textContent = submitLabel;
           });
       });
     }
@@ -546,7 +577,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.8</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.9</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>

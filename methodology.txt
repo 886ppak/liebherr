@@ -8472,3 +8472,55 @@ cranes get their own subsections as they're built.
   one feature.
 
 ================================================================================
+54. Access gate: "Forgot your password?" flow, using continueUrl to fix
+    the reset page stranding people [CONVERSATION]
+
+  Two real problems surfaced once the gate was actually being used: (1)
+  Firebase's password-reset email (sent from the shared
+  noreply@<project>.firebaseapp.com address) landed in Gmail's Spam
+  folder for a first-time invite, and (2) after successfully changing
+  the password, Firebase's own generic hosted confirmation page ("You
+  can now sign in with your new password") had no link back into
+  MYSLEWER at all, leaving the person stranded on a blank Firebase page.
+
+  The spam issue has no real fix available without standing up a
+  dedicated transactional-email service on a verified custom domain
+  (SendGrid/Mailgun/etc, driven server-side via generatePasswordResetLink
+  on the Admin SDK) - a genuine backend, which this app deliberately does
+  not have. Practical guidance given instead: don't depend on email for
+  a person's very first sign-in at all - hand them the throwaway
+  password directly (text, verbally, however you'd already tell them
+  about the app), so nothing time-sensitive is riding on an email that
+  might sit in spam. The Reset/email-link flows remain there for
+  whenever they want to change it later, with no urgency attached.
+
+  The redirect problem DOES have a real fix, but only from a client-
+  triggered request, not the admin's console "Reset password" button
+  (the console UI has no field for it): sendPasswordResetEmail() accepts
+  an actionCodeSettings.url, and Firebase's own hosted action page reads
+  that as a continueUrl and shows a "Continue" link back to it once the
+  password's been changed - handleCodeInApp deliberately left false/
+  unset here, unlike the email-link flow, since the reset itself should
+  still happen on Firebase's own page (no in-app "set new password" UI
+  exists, and building one wasn't worth it just to avoid one extra page
+  hop). Added a "Forgot your password?" button next to the existing
+  "sign in with an email link instead" one on the password form - both
+  now share the same #access-gate-linkform, distinguished by
+  dataset.mode ('request' vs 'reset' vs the pre-existing 'confirm'),
+  with a small LINK_MODES lookup supplying each mode's button label and
+  success message instead of three near-duplicate submit handlers.
+  continueUrl is built from window.location.origin + pathname rather
+  than the raw href, so it can't accidentally carry forward stray query
+  params (e.g. a previous half-finished email-link attempt) onto what's
+  supposed to be a plain "come back to the app" link.
+
+  Verified the same way as the rest of the gate: a direct REST call to
+  identitytoolkit.googleapis.com's sendOobCode with requestType
+  PASSWORD_RESET and a continueUrl returned 200 against the live
+  project, confirming the mechanism itself is accepted server-side.
+  Playwright confirmed the UI wiring (button click swaps to the reset
+  form, correct "Send Reset Link" label, request fires) - the actual
+  network leg hit the same sandbox ERR_CONNECTION_RESET limitation
+  already documented in section 53's testing notes, not a real failure.
+
+================================================================================
