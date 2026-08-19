@@ -8371,3 +8371,104 @@ cranes get their own subsections as they're built.
   covers both.
 
 ================================================================================
+53. Access gate: Firebase Authentication, invite-only, main only [CONVERSATION]
+
+  Person wanted MYSLEWER gated so it isn't usable by someone who just
+  stumbles onto the GitHub Pages URL, without turning it into something
+  that pesters an actual crew member for credentials repeatedly. Explicit
+  requirements, worked out over a long back-and-forth: invite-only (no
+  public sign-up - accounts are created manually by the person, not
+  self-registered), individual accounts rather than a shared code (stated
+  reasoning: shared codes handle "keep strangers out" fine today but don't
+  scale to "one person's access needs revoking without breaking it for
+  everyone else" if the user base grows), sign in once per device and
+  then stay signed in until that device's browser data is cleared or a
+  new device is used (not a re-check-in-after-N-days scheme), and - this
+  one explicit - the gate applies to main only, never to beta-trial /
+  myslewer-beta.
+
+  Considered and rejected before landing on Firebase: a 50-shared-code
+  scheme (built once, then explicitly reverted per "hold off, still
+  brainstorming" - doesn't support per-person revocation); Supabase,
+  Clerk, Cloudflare Access, and Authentik were each compared on free-tier
+  limits, offline tolerance, and how account data would migrate if the
+  provider ever had to change - concluded password-hash portability is a
+  non-issue everywhen (every provider forces a reset on migration
+  regardless), so the real deciding factors were free-tier headroom and
+  offline behaviour. Landed on Firebase Authentication: generous free
+  tier for a small crew's worth of accounts, and - the deciding point -
+  its default session persistence is IndexedDB-based and entirely local,
+  so "am I signed in" is answered from on-device storage with no network
+  round-trip, matching "sign in once, stay in" exactly rather than
+  needing extra engineering to fake that behaviour on top of a
+  server-checking-by-default provider.
+
+  Sign-in provider choice: Email/Password as the primary path, Email
+  Link (passwordless) as a fallback reachable via a "sign in with an
+  email link instead" toggle on the same form - this single mechanism
+  doubles as password recovery (no separate forgot-password flow needed)
+  and as the invite-completion step (create the account with any
+  password, the invited person never needs to know it if they'd rather
+  use the link instead). "Sign in with Google" was offered by the
+  Firebase console's own setup flow and explicitly rejected - Google
+  sign-in has no account-creation step under the site owner's control, so
+  it doesn't compose with "invite-only" without bolting on a separate
+  email allowlist check; email/password's "an account exists" already IS
+  the invite mechanism, for free. Enabling both Email/Password and Email
+  Link concurrently on one account was confirmed safe - Firebase resolves
+  both to the same user record by matching email address, neither
+  provider weakens the other's own security, and the one real access
+  vector (compromising the invited person's actual email inbox) already
+  exists independent of which sign-in methods are enabled.
+
+  Built as a fixed full-screen overlay (#access-gate) inserted right
+  after <body>, before <header> - the rest of the page still loads
+  underneath it, so once onAuthStateChanged confirms a signed-in user the
+  overlay just hides instantly with no re-render or reload needed. Firebase
+  SDK v10.14.1 vendored locally into vendor/firebase/ (curl'd from
+  gstatic, one internal absolute-CDN import inside firebase-auth.js
+  patched to a relative one via sed) rather than CDN-loaded, matching how
+  every other dependency (Three.js, GLTFLoader, Draco) is handled in this
+  app - offline-reliability consistency, not a security measure. No
+  change needed to sw.js's precache list: vendor JS files aren't
+  explicitly listed there for any library in this app (Three.js included)
+  - they get pulled into CONTENT_CACHE automatically on first successful
+  fetch and never evicted, same pattern this app already relies on
+  elsewhere, so Firebase's vendored files inherit the same offline
+  guarantee without any special-casing.
+
+  A 20s client-side timeout races every Firebase Auth call
+  (signInWithEmailAndPassword, sendSignInLinkToEmail, signInWithEmailLink)
+  since the SDK has no built-in one - real defensive value for a job site
+  on marginal signal, not just theoretical: a stalled attempt is
+  abandoned locally rather than left hanging with the "Signing In…"
+  button stuck forever, and a late resolution after the timeout fires is
+  silently discarded rather than acted on twice. FRIENDLY_ERRORS
+  deliberately maps user-not-found and wrong-password to the identical
+  message ("Email or password not recognised") - standard practice so a
+  failed attempt can't be used to fish for which addresses have accounts.
+
+  Verified against the real myslewer-ed06f Firebase project before
+  shipping, not just against placeholder config: direct REST calls to
+  identitytoolkit.googleapis.com (bypassing the browser entirely, since
+  Playwright's own launched Chromium doesn't route through this sandbox's
+  HTTPS_PROXY the way curl does - a testing-environment limitation
+  documented earlier in this project, not a real bug) confirmed
+  signInWithPassword rejects bad credentials with a proper
+  INVALID_LOGIN_CREDENTIALS (not a config/API error, proving the API key
+  and Email/Password provider are both good), sendOobCode for
+  EMAIL_SIGNIN returns 200 (proving Email Link is enabled and reachable),
+  and - once the person created their own real account - signInWithPassword
+  with the real credentials returned a valid idToken/refreshToken,
+  confirming an actual successful sign-in end to end. A Playwright pass
+  against the live config separately confirmed the gate's own JS runs
+  clean (Firebase initialises, the password form renders, no console
+  errors) independent of those two hangs, which were purely the known
+  sandbox network limitation, not app bugs.
+
+  Shipped to main only, per the person's explicit instruction - not
+  shadowed to beta-trial or myslewer-beta, breaking from this project's
+  usual every-change-goes-to-both-channels habit deliberately for this
+  one feature.
+
+================================================================================
