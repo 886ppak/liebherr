@@ -298,13 +298,33 @@
           <input type="password" id="access-gate-password" autocomplete="current-password" required>
         </div>
         <button type="submit" class="btn" id="access-gate-submit" style="margin-top:14px;">Sign In</button>
+        <button type="button" id="access-gate-use-link" style="display:block; width:100%; background:none; border:none; color:var(--text-muted); font-size:0.8rem; margin-top:10px; text-decoration:underline; cursor:pointer;">Sign in with an email link instead</button>
       </form>
+
+      <!-- Doubles as both "request a link" and (when this page was opened
+           from a link clicked somewhere other than the browser context that
+           requested it - see completingLink below) "confirm the address the
+           link was sent to" - same form, same fields, dataset.mode picks
+           which submit behaviour applies. -->
+      <form id="access-gate-linkform" autocomplete="on" style="display:none;">
+        <div class="form-group" style="text-align:left;">
+          <label>Email</label>
+          <input type="email" id="access-gate-link-email" autocomplete="username" required>
+        </div>
+        <button type="submit" class="btn" id="access-gate-link-submit" style="margin-top:14px;">Send Sign-In Link</button>
+        <button type="button" id="access-gate-use-password" style="display:block; width:100%; background:none; border:none; color:var(--text-muted); font-size:0.8rem; margin-top:10px; text-decoration:underline; cursor:pointer;">Back to password sign-in</button>
+      </form>
+      <div id="access-gate-linksent" style="display:none; color:var(--text-muted); font-size:0.85rem; margin-top:8px;">Check your email for a sign-in link, then open it on this device.</div>
+
       <div id="access-gate-error" style="display:none; color:var(--danger); font-size:0.82rem; margin-top:12px;"></div>
     </div>
   </div>
   <script type="module">
     import { initializeApp } from './vendor/firebase/firebase-app.js';
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from './vendor/firebase/firebase-auth.js';
+    import {
+      getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+      sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink
+    } from './vendor/firebase/firebase-auth.js';
 
     // PLACEHOLDER - replace with this project's real config once it
     // exists (Firebase console -> Project settings -> General -> "Your
@@ -329,6 +349,19 @@
     const passwordEl = document.getElementById('access-gate-password');
     const submitEl = document.getElementById('access-gate-submit');
     const errorEl = document.getElementById('access-gate-error');
+    const useLinkBtn = document.getElementById('access-gate-use-link');
+    const usePasswordBtn = document.getElementById('access-gate-use-password');
+    const linkFormEl = document.getElementById('access-gate-linkform');
+    const linkEmailEl = document.getElementById('access-gate-link-email');
+    const linkSubmitEl = document.getElementById('access-gate-link-submit');
+    const linkSentEl = document.getElementById('access-gate-linksent');
+
+    // Where the email address is stashed between "request a link" and
+    // "click the link" - same device/browser only. If the link gets
+    // opened somewhere else (a different browser, or a mail app that opens
+    // its own in-app browser), this is empty and the confirm-mode form
+    // asks for the address instead - see completingLink below.
+    const LINK_EMAIL_STORAGE_KEY = 'myslewerEmailForSignIn';
 
     // Generic message for both "no such user" and "wrong password" -
     // standard practice, so a failed attempt can't be used to fish for
@@ -339,7 +372,10 @@
       'auth/wrong-password': 'Email or password not recognised.',
       'auth/invalid-credential': 'Email or password not recognised.',
       'auth/too-many-requests': 'Too many attempts - wait a bit and try again.',
-      'auth/network-request-failed': 'No connection - check your signal and try again.'
+      'auth/network-request-failed': 'No connection - check your signal and try again.',
+      'auth/invalid-action-code': 'That sign-in link is invalid or already used - request a new one.',
+      'auth/expired-action-code': 'That sign-in link has expired - request a new one.',
+      'auth/missing-email': 'Enter your email first.'
     };
 
     // Wrapped in a function (rather than left at module top level) purely
@@ -358,18 +394,6 @@
         return;
       }
 
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          gateEl.style.display = 'none';
-          return;
-        }
-        // Confirmed signed-out (not just "still checking") - only now is
-        // it safe to show the form without risking a flash of it in front
-        // of someone who was actually already signed in.
-        statusEl.style.display = 'none';
-        formEl.style.display = '';
-      });
-
       // 20s timeout race - Firebase's own SDK has no built-in request
       // timeout, so on a genuinely dead connection (a job site with
       // marginal signal, not actually offline enough to fail outright,
@@ -385,6 +409,64 @@
           new Promise((_, reject) => setTimeout(() => reject({ code: 'auth/timeout' }), ms))
         ]);
       }
+
+      // True if this page load IS someone clicking a sign-in link (Firebase
+      // encodes that as a query param it recognises). Checked once up
+      // front because it changes what the gate shows before the normal
+      // signed-out form appears - either finishing the sign-in silently
+      // (same device that requested the link) or asking them to confirm
+      // their email first (opened somewhere else - see LINK_EMAIL_STORAGE_KEY).
+      const completingLink = isSignInWithEmailLink(auth, window.location.href);
+
+      function completeEmailLinkSignIn(email) {
+        statusEl.textContent = 'Completing sign-in…';
+        statusEl.style.display = '';
+        linkFormEl.style.display = 'none';
+        withTimeout(signInWithEmailLink(auth, email, window.location.href), 20000)
+          .then(() => {
+            window.localStorage.removeItem(LINK_EMAIL_STORAGE_KEY);
+            // Drop the link's one-time code from the URL so a refresh or
+            // an accidental re-share doesn't try to replay it.
+            window.history.replaceState({}, document.title, window.location.pathname);
+          })
+          .catch((err) => {
+            statusEl.style.display = 'none';
+            errorEl.textContent = err.code === 'auth/timeout'
+              ? 'That took too long - check your signal and try again.'
+              : (FRIENDLY_ERRORS[err.code] || 'That sign-in link didn’t work - request a new one.');
+            errorEl.style.display = '';
+            linkSubmitEl.disabled = false;
+            linkSubmitEl.textContent = 'Send Sign-In Link';
+            formEl.style.display = '';
+          });
+      }
+
+      if (completingLink) {
+        const savedEmail = window.localStorage.getItem(LINK_EMAIL_STORAGE_KEY);
+        if (savedEmail) {
+          completeEmailLinkSignIn(savedEmail);
+        } else {
+          statusEl.style.display = 'none';
+          linkFormEl.style.display = '';
+          linkFormEl.dataset.mode = 'confirm';
+          linkSubmitEl.textContent = 'Confirm & Sign In';
+        }
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          gateEl.style.display = 'none';
+          return;
+        }
+        // Confirmed signed-out (not just "still checking") - only now is
+        // it safe to show a form without risking a flash of it in front of
+        // someone who was actually already signed in. Skipped while a
+        // link sign-in is still being resolved above, so that form stays
+        // in charge instead of the password form flashing underneath it.
+        if (completingLink) return;
+        statusEl.style.display = 'none';
+        formEl.style.display = '';
+      });
 
       formEl.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -403,6 +485,59 @@
           .finally(() => {
             submitEl.disabled = false;
             submitEl.textContent = 'Sign In';
+          });
+      });
+
+      useLinkBtn.addEventListener('click', () => {
+        errorEl.style.display = 'none';
+        linkSentEl.style.display = 'none';
+        formEl.style.display = 'none';
+        linkFormEl.dataset.mode = 'request';
+        linkSubmitEl.textContent = 'Send Sign-In Link';
+        linkFormEl.style.display = '';
+      });
+
+      usePasswordBtn.addEventListener('click', () => {
+        errorEl.style.display = 'none';
+        linkSentEl.style.display = 'none';
+        linkFormEl.style.display = 'none';
+        formEl.style.display = '';
+      });
+
+      linkFormEl.addEventListener('submit', (e) => {
+        e.preventDefault();
+        errorEl.style.display = 'none';
+        const email = linkEmailEl.value.trim();
+
+        if (linkFormEl.dataset.mode === 'confirm') {
+          linkSubmitEl.disabled = true;
+          linkSubmitEl.textContent = 'Signing In…';
+          completeEmailLinkSignIn(email);
+          return;
+        }
+
+        linkSubmitEl.disabled = true;
+        linkSubmitEl.textContent = 'Sending…';
+        // handleCodeInApp: true means Firebase sends a link straight back
+        // to this same page (rather than an intermediate Firebase-hosted
+        // page) with a code in the query string that isSignInWithEmailLink
+        // recognises above.
+        const actionCodeSettings = { url: window.location.href, handleCodeInApp: true };
+        withTimeout(sendSignInLinkToEmail(auth, email, actionCodeSettings), 20000)
+          .then(() => {
+            window.localStorage.setItem(LINK_EMAIL_STORAGE_KEY, email);
+            linkFormEl.style.display = 'none';
+            linkSentEl.style.display = '';
+          })
+          .catch((err) => {
+            errorEl.textContent = err.code === 'auth/timeout'
+              ? 'That took too long - check your signal and try again.'
+              : (FRIENDLY_ERRORS[err.code] || 'Couldn’t send the link - try again.');
+            errorEl.style.display = '';
+          })
+          .finally(() => {
+            linkSubmitEl.disabled = false;
+            linkSubmitEl.textContent = 'Send Sign-In Link';
           });
       });
     }
