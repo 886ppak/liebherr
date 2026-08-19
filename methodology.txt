@@ -8282,3 +8282,71 @@ cranes get their own subsections as they're built.
   viewport's centre in both, 0 console errors.
 
 ================================================================================
+51. Chain Shortening: "Mark Cut Point in AR"
+
+  Person's own idea, following an earlier exploratory chat about AR
+  measurement in general: given a computed result like "remove 54 links /
+  2340mm", could AR show exactly where the 54th link physically falls
+  from a chosen starting link, rather than the person having to count
+  links by eye or trust a tape measure end staying put on a hanging
+  chain?
+
+  Ruled out up front: true "point the camera at the chain, it recognises
+  and highlights link 54 automatically" needs reliable per-link computer
+  vision (identify, segment and count individual chain links across
+  lighting/angle/chain type) - not realistic with what's available here,
+  and would be flaky even attempted. What IS genuinely buildable, and
+  what got built: tap the reference link in AR (real-world hit-test
+  placement, not CV), tap a second point further along the same chain to
+  set direction, and get a marker placed at the exact real-world distance
+  computed by the calculator (links-to-remove x pitch) along that
+  direction - the person then counts/aligns the physical chain against a
+  known-correct point in space, rather than trusting an unsupported tape
+  measure to stay put or hold a straight line down a hanging/coiled
+  chain.
+
+  Built as a new standalone module, vendor/armeasure.js, deliberately NOT
+  folded into carrier3d.js despite reusing its WebXR AR patterns
+  (immersive-ar session request with hit-test + optional dom-overlay,
+  ring reticle, canvas-texture text sprite, session lifecycle/cleanup) -
+  this feature has no GLB model to load and no orbit-preview mode, so
+  pulling in carrier3d.js's GLTFLoader/DRACOLoader/OrbitControls would
+  only add dead weight neither this file nor its first-load cost needs.
+  Same dynamic-import-on-first-use convention as cwt3d.js/carrier3d.js -
+  never fetched until "Mark Cut Point in AR" is actually pressed.
+
+  Wired into the Chain Shortening tab: calcChainShortening() now also
+  calls setChainARResult(distanceMm, links) on every recalculation -
+  distanceMm is always "links to remove x pitch" (the physical amount of
+  chain being removed), the same real quantity regardless of which input
+  mode (Current & Desired Length vs Shorten By Amount) produced it, so
+  one code path covers both. The button is feature-detected exactly like
+  every other AR entry point in this app (updateChainARButtonVisibility,
+  same navigator.xr.isSessionSupported('immersive-ar') check as
+  updateARButtonVisibility) and additionally hidden whenever there's no
+  valid result yet or links-to-remove rounds to 0 (nothing meaningful to
+  mark). Added to allOfflineContentUrls() too (armeasure.js + the shared
+  three.js core files, deduped against the two existing viewer bundles'
+  own three.js entries) so "Cache All Offline Content" covers it the same
+  as every other fetched-on-demand asset.
+
+  Verified via Playwright (real WebXR hardware isn't available in this
+  environment, same limitation the original carrier3d.js AR feature was
+  shipped under - see its own "present-but-hidden, feature-detected"
+  testing note): button correctly hidden with no navigator.xr; correctly
+  shown once navigator.xr.isSessionSupported is mocked to resolve true;
+  clicking it triggers the dynamic import, computes the right label from
+  the live calculator result (confirmed against the exact numbers shown
+  in the result table), and calls requestSession with the correct options
+  (requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], a
+  real dom-overlay root) - checked directly by capturing the call rather
+  than assuming it; the on-screen AR overlay renders with the correct
+  first-tap prompt. A session-request failure (mocked, since a fully
+  WebXR-compliant fake session object is impractical to construct without
+  real hardware) is caught and logged without any uncaught exception -
+  confirmed pageerror stayed empty separately from the expected
+  console.error. allOfflineContentUrls() confirmed to include the new
+  file without throwing. 0 uncaught page errors across every test.
+  ARMEASURE_VERSION starts at 1.
+
+================================================================================

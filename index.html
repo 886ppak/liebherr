@@ -303,7 +303,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.4</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.5</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -632,6 +632,7 @@
       <div class="card">
         <div class="card-title" style="color:var(--success);">Result</div>
         <div id="chain-result"></div>
+        <button class="toolbar-btn" id="chain-ar-btn" style="display:none; width:100%; margin-top:10px;" onclick="startChainAR()">Mark Cut Point in AR</button>
         <div class="disclaimer">Pitch per link is looked up from chain diameter (8/10/13/16/19/22/26mm), same table as the reference shortening calculator. Links to remove is rounded to the nearest whole link, so the actual shortened amount can land a few mm off the target — that's the "Difference from Target" figure below. Cross-check against the chain's own data plate/certification before cutting.</div>
       </div>
     </div>
@@ -2461,6 +2462,11 @@
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
     const CARRIER3D_VERSION = 48;
+
+    // Single source of truth for vendor/armeasure.js's cache-busting query
+    // (Chain Shortening's "Mark Cut Point in AR"), same reasoning as
+    // CWT3D_VERSION above.
+    const ARMEASURE_VERSION = 1;
 
     // Which cranes have a 3D carrier (chassis) model available. Keyed the
     // same as cadFleetData/COUNTERWEIGHT_DATA. See methodology.txt 10.76
@@ -5218,6 +5224,7 @@
         const amountToShorten = parseFloat(document.getElementById('chain-amount').value);
         if (isNaN(amountToShorten) || isNaN(diameter)) {
           resultEl.innerHTML = '<div class="disclaimer">Enter a chain diameter and the amount to shorten by above.</div>';
+          setChainARResult(null, null);
           return;
         }
         const linksToRemove = Math.round(amountToShorten / pitch);
@@ -5234,6 +5241,7 @@
               <tr><td style="text-align:left;">Difference from Target</td><td>${diffFromTarget > 0 ? '+' : ''}${diffFromTarget} mm</td></tr>
             </tbody>
           </table>`;
+        setChainARResult(linksToRemove === 0 ? null : actualShortened, linksToRemove);
         return;
       }
 
@@ -5242,6 +5250,7 @@
 
       if (isNaN(current) || isNaN(desired) || isNaN(diameter)) {
         resultEl.innerHTML = '<div class="disclaimer">Enter a chain diameter, current length, and desired length above.</div>';
+        setChainARResult(null, null);
         return;
       }
 
@@ -5260,6 +5269,50 @@
             <tr><td style="text-align:left;">Difference from Target</td><td>${diffFromTarget > 0 ? '+' : ''}${diffFromTarget} mm</td></tr>
           </tbody>
         </table>`;
+      setChainARResult(linksToRemove === 0 ? null : linksToRemove * pitch, linksToRemove);
+    }
+
+    // Feeds the "Mark Cut Point in AR" button (see startChainAR below).
+    // distanceMm is always the physical AMOUNT OF CHAIN BEING REMOVED
+    // (links-to-remove x pitch) regardless of which input mode produced
+    // it - same real-world meaning either way, so one code path covers
+    // both. null distanceMm (no valid result yet, or 0 links to remove -
+    // nothing to mark) hides the button entirely rather than leaving it
+    // clickable with nothing meaningful to show in AR.
+    let chainARDistanceMm = null;
+    let chainARLinks = null;
+    function setChainARResult(distanceMm, links) {
+      chainARDistanceMm = distanceMm;
+      chainARLinks = links;
+      updateChainARButtonVisibility();
+    }
+
+    // Feature-detected, not just "a result exists" - same convention as
+    // updateARButtonVisibility() elsewhere in this file: the button stays
+    // hidden on iOS Safari, desktop, or any browser without WebXR AR
+    // rather than appearing and failing on tap.
+    function updateChainARButtonVisibility() {
+      const btn = document.getElementById('chain-ar-btn');
+      if (!btn) return;
+      if (chainARDistanceMm == null || !navigator.xr || !navigator.xr.isSessionSupported) {
+        btn.style.display = 'none';
+        return;
+      }
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+        btn.style.display = supported ? '' : 'none';
+      }).catch(() => { btn.style.display = 'none'; });
+    }
+
+    // Same dynamic-import-on-first-use pattern as setCwtView()/
+    // activateCarrier3D() - armeasure.js (plus the three.js core it needs)
+    // is never fetched until this button is actually pressed.
+    function startChainAR() {
+      if (chainARDistanceMm == null) return;
+      const links = chainARLinks;
+      const label = `${links} link${Math.abs(links) === 1 ? '' : 's'} / ${chainARDistanceMm}mm`;
+      const activate = () => window.__arMeasureStart(chainARDistanceMm, label, 'the link to start counting from');
+      if (window.__arMeasureStart) activate();
+      else import(`./vendor/armeasure.js?v=${ARMEASURE_VERSION}`).then(activate);
     }
 
     // --- TAB 3: OUTRIGGER SUPPORT POSITIONING LOGIC ---
@@ -7229,9 +7282,22 @@
       // only ones already viewed this session.
       const loadChartUrls = Object.values(LOAD_CHART_FILES);
 
-      // Deduped: cwt3d.js and carrier3d.js share the same vendor/three/*
-      // files, listed by both viewerUrls and carrierViewerUrls above.
-      return [...new Set([...reeveUrls, ...viewerUrls, ...modelUrls, ...carrierViewerUrls, ...carrierModelUrls, ...loadChartUrls])];
+      // Chain Shortening's "Mark Cut Point in AR" - only needs three.js
+      // core, no GLTFLoader/DRACOLoader/OrbitControls (armeasure.js loads
+      // no model and has no orbit-preview mode, see its own header
+      // comment), so it's a much shorter list than the two viewer bundles
+      // above. Unconditional (not gated behind any crane/model data) since
+      // the Chain Shortening tab always exists regardless of fleet.
+      const armeasureUrls = [
+        `./vendor/armeasure.js?v=${ARMEASURE_VERSION}`,
+        './vendor/three/three.module.min.js',
+        './vendor/three/three.core.min.js'
+      ];
+
+      // Deduped: cwt3d.js, carrier3d.js and armeasure.js share the same
+      // vendor/three/* core files, listed by more than one of the arrays
+      // above.
+      return [...new Set([...reeveUrls, ...viewerUrls, ...modelUrls, ...carrierViewerUrls, ...carrierModelUrls, ...loadChartUrls, ...armeasureUrls])];
     }
 
     // Ticks or crosses every .cache-all-status span with the REAL current
