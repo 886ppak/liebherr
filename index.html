@@ -264,6 +264,152 @@
 </head>
 <body>
 
+  <!-- Access gate - Firebase Authentication, email + password, invite-
+       only (no sign-up form anywhere in this app - accounts are created
+       for named people via the Firebase console, not self-served). Goal
+       is deterring strangers from a page that happens to sit on a public
+       GitHub Pages URL, while staying real individual accounts rather
+       than one shared code, for future robustness (roles, revoking one
+       person without touching anyone else, etc.) - the person's own
+       reasoning. See methodology.txt 53.
+       Visible by default (safe fail-open direction, same reasoning as
+       every gate this session considered) - onAuthStateChanged below
+       either hides it (a cached, still-valid session - most repeat
+       visits, works fully offline since Firebase's own SDK checks its
+       local persistence layer first) or reveals the actual sign-in form
+       once it's confirmed there's no session, rather than flashing the
+       form at an already-signed-in person while that check is in
+       flight. Persistence is Firebase's own default (indexedDB/local,
+       not session-only) - deliberately not overridden with
+       setPersistence(), since the default already IS "stay signed in on
+       this device until told otherwise", exactly the person's own
+       request ("login once... till they open it on another device"). -->
+  <div id="access-gate" style="position:fixed; inset:0; z-index:99999; background:var(--bg-dark); display:flex; align-items:center; justify-content:center; padding:24px;">
+    <div style="width:100%; max-width:340px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; padding:28px 24px; text-align:center;">
+      <div style="font-weight:800; letter-spacing:0.02em; color:var(--accent-gold); font-size:1.3rem; margin-bottom:4px;">MYSLEWER</div>
+      <div id="access-gate-status" style="color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Checking sign-in status…</div>
+      <form id="access-gate-form" autocomplete="on" style="display:none;">
+        <div class="form-group" style="text-align:left;">
+          <label>Email</label>
+          <input type="email" id="access-gate-email" autocomplete="username" required>
+        </div>
+        <div class="form-group" style="text-align:left; margin-top:10px;">
+          <label>Password</label>
+          <input type="password" id="access-gate-password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn" id="access-gate-submit" style="margin-top:14px;">Sign In</button>
+      </form>
+      <div id="access-gate-error" style="display:none; color:var(--danger); font-size:0.82rem; margin-top:12px;"></div>
+    </div>
+  </div>
+  <script type="module">
+    import { initializeApp } from './vendor/firebase/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from './vendor/firebase/firebase-auth.js';
+
+    // PLACEHOLDER - replace with this project's real config once it
+    // exists (Firebase console -> Project settings -> General -> "Your
+    // apps" -> SDK setup and configuration). This object is NOT a
+    // secret - Firebase's actual access control is enforced by the
+    // project's own sign-in settings and (for any data added later)
+    // security rules, not by hiding these values - see methodology.txt
+    // 53 for the full reasoning already worked through on this.
+    const firebaseConfig = {
+      apiKey: 'REPLACE_ME',
+      authDomain: 'REPLACE_ME.firebaseapp.com',
+      projectId: 'REPLACE_ME',
+      storageBucket: 'REPLACE_ME.appspot.com',
+      messagingSenderId: 'REPLACE_ME',
+      appId: 'REPLACE_ME'
+    };
+
+    const gateEl = document.getElementById('access-gate');
+    const statusEl = document.getElementById('access-gate-status');
+    const formEl = document.getElementById('access-gate-form');
+    const emailEl = document.getElementById('access-gate-email');
+    const passwordEl = document.getElementById('access-gate-password');
+    const submitEl = document.getElementById('access-gate-submit');
+    const errorEl = document.getElementById('access-gate-error');
+
+    // Generic message for both "no such user" and "wrong password" -
+    // standard practice, so a failed attempt can't be used to fish for
+    // which email addresses actually have accounts.
+    const FRIENDLY_ERRORS = {
+      'auth/invalid-email': 'That email address doesn’t look right.',
+      'auth/user-not-found': 'Email or password not recognised.',
+      'auth/wrong-password': 'Email or password not recognised.',
+      'auth/invalid-credential': 'Email or password not recognised.',
+      'auth/too-many-requests': 'Too many attempts - wait a bit and try again.',
+      'auth/network-request-failed': 'No connection - check your signal and try again.'
+    };
+
+    // Wrapped in a function (rather than left at module top level) purely
+    // so the init failure path below can just `return` out of setting up
+    // the rest, instead of needing an if/else around all of it - a
+    // module body isn't a function, so a bare top-level return isn't
+    // legal JS.
+    function initGate() {
+      let app, auth;
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+      } catch (err) {
+        console.error('Firebase init failed', err);
+        statusEl.textContent = 'Sign-in is temporarily unavailable.';
+        return;
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          gateEl.style.display = 'none';
+          return;
+        }
+        // Confirmed signed-out (not just "still checking") - only now is
+        // it safe to show the form without risking a flash of it in front
+        // of someone who was actually already signed in.
+        statusEl.style.display = 'none';
+        formEl.style.display = '';
+      });
+
+      // 20s timeout race - Firebase's own SDK has no built-in request
+      // timeout, so on a genuinely dead connection (a job site with
+      // marginal signal, not actually offline enough to fail outright,
+      // just slow enough to hang) the sign-in promise can sit pending
+      // indefinitely with no feedback at all otherwise. Rejecting the
+      // race just abandons that stalled attempt locally - if it does
+      // eventually resolve after the timeout fires, its result is
+      // silently ignored (the form's already back to normal), not acted
+      // on twice.
+      function withTimeout(promise, ms) {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => setTimeout(() => reject({ code: 'auth/timeout' }), ms))
+        ]);
+      }
+
+      formEl.addEventListener('submit', (e) => {
+        e.preventDefault();
+        errorEl.style.display = 'none';
+        submitEl.disabled = true;
+        submitEl.textContent = 'Signing In…';
+        withTimeout(signInWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value), 20000)
+          .catch((err) => {
+            errorEl.textContent = err.code === 'auth/timeout'
+              ? 'That took too long - check your signal and try again.'
+              : (FRIENDLY_ERRORS[err.code] || 'Sign-in failed - try again.');
+            errorEl.style.display = '';
+            passwordEl.value = '';
+            passwordEl.focus();
+          })
+          .finally(() => {
+            submitEl.disabled = false;
+            submitEl.textContent = 'Sign In';
+          });
+      });
+    }
+
+    initGate();
+  </script>
+
   <header>
     <h1>MYSLEWER <span class="app-version">v4.7</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
