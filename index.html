@@ -265,7 +265,7 @@
 <body>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.6</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.7</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -2364,7 +2364,7 @@
 
     // Single source of truth for vendor/carrier3d.js's cache-busting query,
     // same reasoning as CWT3D_VERSION above.
-    const CARRIER3D_VERSION = 48;
+    const CARRIER3D_VERSION = 49;
 
     // Single source of truth for vendor/armeasure.js's cache-busting query
     // (Chain Shortening's "Mark Cut Point in AR"), same reasoning as
@@ -5693,7 +5693,7 @@
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap', 'carrier-3d-label', CARRIER_CALIBRATION[modelKey]);
         syncCarrier3DOutriggers();
         onMatEdgeToggle();
-        updateARButtonVisibility(modelKey, 'carrier-3d-ar-btn');
+        updateARButtonVisibility(modelKey, 'carrier-3d-ar-btn', 'carrier-3d-ar-anchor');
       };
       if (window.__carrier3dActivate) activate();
       else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
@@ -5720,7 +5720,7 @@
         window.__carrier3dActivate(modelKey, url, 'carrier-3d-canvas-wrap-layout', 'carrier-3d-label-layout', CARRIER_CALIBRATION[modelKey]);
         onSlewCircleToggle();
         onGroundLayoutToggle();
-        updateARButtonVisibility(modelKey, 'carrier-3d-ar-btn-layout');
+        updateARButtonVisibility(modelKey, 'carrier-3d-ar-btn-layout', 'carrier-3d-ar-anchor-layout');
       };
       if (window.__carrier3dActivate) activate();
       else import(`./vendor/carrier3d.js?v=${CARRIER3D_VERSION}`).then(activate);
@@ -5733,28 +5733,59 @@
     // check itself is (per the WebXR spec, isSessionSupported always
     // returns a Promise) - the button stays hidden until it resolves, so
     // there's no flash of a button that's about to disable itself.
-    function updateARButtonVisibility(modelKey, btnId) {
+    // anchorSelectId (optional): the matching "what does the tap point
+    // represent" <select> - shown/hidden in lockstep with the button
+    // itself, since it's meaningless without AR support either.
+    function updateARButtonVisibility(modelKey, btnId, anchorSelectId) {
       const btn = document.getElementById(btnId);
+      const anchorEl = anchorSelectId && document.getElementById(anchorSelectId);
       if (!btn) return;
       if (!AR_SUPPORTED_MODELS.includes(modelKey) || !window.__carrier3dARSupported) {
         btn.style.display = 'none';
+        if (anchorEl) anchorEl.style.display = 'none';
         return;
       }
       window.__carrier3dARSupported().then((supported) => {
         btn.style.display = supported ? '' : 'none';
+        if (anchorEl) anchorEl.style.display = supported ? '' : 'none';
       });
+    }
+
+    // Site-space (x,y mm, "front = negative Y" convention) for a given
+    // crane's given outrigger leg, straight from cadFleetData's own
+    // r/angle - same formula calcCAD() already uses inline for its own
+    // baseX/baseY. Feeds enterCarrier3DAR below, which lets AR placement
+    // anchor on a specific leg instead of always the slew centre - the
+    // person's own request. See methodology.txt 52.
+    function legSiteXY(modelKey, legKey) {
+      const item = cadFleetData[modelKey] && cadFleetData[modelKey][legKey];
+      if (!item) return null;
+      const rad = item.angle * (Math.PI / 180);
+      return { xMm: item.r * Math.sin(rad), yMm: item.r * Math.cos(rad), legId: item.id };
     }
 
     // craneSelectId: which crane <select> to read the current model from -
     // 'cad-crane' for Support Pad Placement's own toolbar button, 'sc-crane'
-    // for Crane Layout's (see the two onclick= wirings above). footprint/
-    // calibration passed straight through to carrier3d.js so AR placement
-    // can anchor on the model's own slew centre - see __carrier3dEnterAR's
-    // own comment in carrier3d.js.
-    function enterCarrier3DAR(craneSelectId) {
+    // for Crane Layout's (see the two onclick= wirings above).
+    // anchorSelectId: the matching "what does the tap point represent"
+    // <select>, added alongside the button (see its own HTML comment) -
+    // 'slew' (the default) anchors AR placement AND rotation on the slew
+    // centre, same behaviour as before this existed; C1_RR/C2_FR/C3_FL/
+    // C4_RL anchors both on that specific leg instead - a rigger who
+    // knows exactly where one outrigger needs to sit (a known hard point,
+    // an existing mat, a survey mark) can lock the tap to THAT leg and
+    // still rotate freely to dial in heading without the leg drifting off
+    // the point. Anchoring rotation follows directly from anchoring
+    // placement - see __carrier3dEnterAR's own comment in carrier3d.js
+    // for why the two aren't actually separate pieces of work. footprint/
+    // calibration passed straight through to carrier3d.js as before.
+    function enterCarrier3DAR(craneSelectId, anchorSelectId) {
       const modelKey = document.getElementById(craneSelectId).value;
       if (!window.__carrier3dEnterAR) return;
-      window.__carrier3dEnterAR(modelKey, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey]);
+      const anchorEl = anchorSelectId && document.getElementById(anchorSelectId);
+      const anchorValue = anchorEl ? anchorEl.value : 'slew';
+      const anchor = anchorValue === 'slew' ? null : legSiteXY(modelKey, anchorValue);
+      window.__carrier3dEnterAR(modelKey, FOOTPRINTS[modelKey], CARRIER_CALIBRATION[modelKey], anchor);
     }
 
     // Pushes calcCAD()'s own leg/pad positions (lastMapped/lastFp - the

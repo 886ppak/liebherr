@@ -1373,12 +1373,18 @@ function buildReticle() {
 // Styled inline rather than via the app's stylesheet since this element is
 // appended straight to document.body, outside the app's own DOM tree, and
 // only exists for the lifetime of one AR session.
-function buildAROverlay() {
+//
+// anchorLabel: what the tap point represents, e.g. "the crane's slew
+// centre" (default) or "C1" - spelled out in the instruction text so
+// there's no ambiguity about which point is being placed, especially once
+// the anchor can be a specific leg instead of always the slew centre (see
+// __carrier3dEnterAR's own comment).
+function buildAROverlay(anchorLabel) {
   const overlay = document.createElement('div');
   overlay.id = 'carrier3d-ar-overlay';
   overlay.style.cssText = 'position:fixed; inset:0; pointer-events:none;';
   overlay.innerHTML = `
-    <div style="position:absolute; top:16px; left:50%; transform:translateX(-50%); background:rgba(15,23,42,0.85); color:#f8fafc; padding:8px 14px; border-radius:8px; font-size:13px; text-align:center; max-width:80vw; font-family:sans-serif;">Tap the ground to place the crane. Tap again to move it.</div>
+    <div style="position:absolute; top:16px; left:50%; transform:translateX(-50%); background:rgba(15,23,42,0.85); color:#f8fafc; padding:8px 14px; border-radius:8px; font-size:13px; text-align:center; max-width:80vw; font-family:sans-serif;">Tap the ground to place ${anchorLabel || "the crane's slew centre"} there. Tap again to move it.</div>
     <div style="position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:10px; pointer-events:auto;">
       <button id="carrier3d-ar-rotate-ccw" style="width:48px; height:48px; border-radius:50%; border:1px solid rgba(255,255,255,0.4); background:rgba(15,23,42,0.85); color:#e5a900; font-size:20px; cursor:pointer;">⟲</button>
       <button id="carrier3d-ar-exit" style="padding:0 20px; height:48px; border-radius:24px; border:1px solid rgba(255,255,255,0.4); background:rgba(15,23,42,0.85); color:#f8fafc; font-size:14px; font-family:sans-serif; cursor:pointer;">Exit AR</button>
@@ -1393,9 +1399,12 @@ function buildAROverlay() {
 }
 
 // Rotates arGroup, not arRoot directly - arGroup's own origin sits exactly
-// on the model's real slew centre (see __carrier3dEnterAR), so this pivots
-// the crane the same way it'd actually swing on site, not around some
-// arbitrary corner of the CAD export's own bounding box.
+// on the chosen anchor point (the slew centre by default, or a specific
+// leg - see __carrier3dEnterAR's own comment on why anchor drives both),
+// so this pivots the crane around whichever point was actually placed,
+// the same way a crew would swing a crane around an already-set
+// outrigger on site, not around some arbitrary corner of the CAD export's
+// own bounding box.
 function rotateARModel(deg) {
   if (!arGroup) return;
   arGroup.rotation.y += THREE.MathUtils.degToRad(deg);
@@ -1468,18 +1477,43 @@ window.__carrier3dARSupported = function () {
 // (index.html) - the same OEM-sourced figures already used everywhere else
 // in this file to locate a crane's slew centre within its own CAD export,
 // reused here (via computeFormulaCalibration) so "tap to place" means tap
-// where you want the SLEW CENTRE to sit, matching how a crew actually
-// thinks about crane position, rather than some arbitrary point on the
-// model's own bounding box that happens to be the CAD export's origin.
+// where you want a chosen ANCHOR POINT to sit, matching how a crew
+// actually thinks about crane position, rather than some arbitrary point
+// on the model's own bounding box that happens to be the CAD export's
+// origin.
+//
+// anchor (optional): { xMm, yMm, legId } in the same site-space convention
+// siteToWorld expects everywhere else in this file - null/omitted anchors
+// on the slew centre (0,0), same as this always did before anchor
+// existed. index.html's enterCarrier3DAR passes a specific leg's own
+// site coordinates instead when its "what does the tap point represent"
+// <select> is set to C1-C4 - the person's own request: a rigger who
+// knows exactly where one outrigger needs to sit (a known hard point, an
+// existing mat, a survey mark) can lock the tap to THAT leg instead of
+// the slew centre.
+//
+// Anchoring rotation follows for free from anchoring placement, without
+// any separate code path: arGroup's own local origin becomes whichever
+// point (slew centre or the chosen leg) anchorPoint below resolves to,
+// and rotateARModel() has always pivoted arGroup around ITS OWN origin -
+// so once a leg is the anchor, rotating to dial in heading swings the
+// model around that leg instead of the slew centre, keeping the leg
+// locked to the tapped point exactly like a real crew would pivot a
+// crane around one already-set outrigger rather than picking the whole
+// machine up and putting it down again. This is the whole reason anchor
+// threads through the position-placement code below rather than being a
+// separate "anchor rotation" flag - the same one point does both jobs
+// simultaneously, because a Group's origin always does both simultaneously.
+//
 // Only ever called for a model that's already loaded via the ordinary
 // orbit preview (index.html only shows the AR button once that's true), so
 // there's no loading state to handle here.
-window.__carrier3dEnterAR = async function (modelKey, footprint, calibration) {
+window.__carrier3dEnterAR = async function (modelKey, footprint, calibration, anchor) {
   if (!renderer || !navigator.xr) return;
   const root = modelCache[modelKey];
   if (!root) return;
 
-  arOverlayEl = buildAROverlay();
+  arOverlayEl = buildAROverlay(anchor && anchor.legId != null ? `C${anchor.legId}` : null);
 
   let session;
   try {
@@ -1510,12 +1544,19 @@ window.__carrier3dEnterAR = async function (modelKey, footprint, calibration) {
   // reparented below.
   const cal = (footprint && calibration) ? ensureSlewCalibration(modelKey, root, footprint, calibration) : null;
   const box = new THREE.Box3().setFromObject(root);
-  const groundY = cal ? cal.groundY : box.min.y;
-  const slewX = cal ? cal.lateralCenter : (box.min.x + box.max.x) / 2;
-  const slewZ = cal ? cal.slewZ : (box.min.z + box.max.z) / 2;
+  // See this function's own header comment for why this one point drives
+  // both placement AND rotation. Falls back to the model's own bounding-
+  // box centre (ignoring any requested anchor - there's no site-space
+  // calibration to resolve one against) only in the degenerate case where
+  // footprint/calibration weren't supplied at all, same as before anchor
+  // existed.
+  const anchorPoint = cal
+    ? (anchor ? siteToWorld(cal, anchor.xMm, anchor.yMm, anchor.legId) : siteToWorld(cal, 0, 0))
+    : new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+  const anchorX = anchorPoint.x, anchorY = anchorPoint.y, anchorZ = anchorPoint.z;
 
   scene.remove(root); // pulled out of the orbit-preview position until placed - see onARSessionEnd for how it's handed back
-  root.position.set(-slewX, -groundY, -slewZ);
+  root.position.set(-anchorX, -anchorY, -anchorZ);
   arGroup = new THREE.Group();
   arGroup.add(root);
   arRoot = root;
@@ -1525,15 +1566,15 @@ window.__carrier3dEnterAR = async function (modelKey, footprint, calibration) {
   // marks, slew clearance circles, ground layout marks, outrigger ghost
   // pads - so AR shows the same picture the orbit preview did, not just a
   // bare carrier. Each of these was drawn via siteToWorld(cal, x, y),
-  // which resolves through the same (slewX, groundY, slewZ) point - giving
-  // the group that same position offset before reparenting it puts it in
-  // the exact same slew-centre-relative local space as root, so it moves
-  // and rotates with the placed model instead of staying behind at its old
+  // which resolves through the same anchor-point offset - giving the
+  // group that same position offset before reparenting it puts it in the
+  // exact same anchor-relative local space as root, so it moves and
+  // rotates with the placed model instead of staying behind at its old
   // orbit-preview position.
   arCarriedGroups = [outriggerGroup, slewCircleGroup, groundLayoutGroup, matEdgeGroup, targetMatEdgeGroup].filter(Boolean);
   arCarriedGroups.forEach((group) => {
     scene.remove(group);
-    group.position.set(-slewX, -groundY, -slewZ);
+    group.position.set(-anchorX, -anchorY, -anchorZ);
     arGroup.add(group);
   });
 

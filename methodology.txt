@@ -8304,3 +8304,70 @@ cranes get their own subsections as they're built.
   ARMEASURE_VERSION starts at 1.
 
 ================================================================================
+52. Crane AR: choose what the tap point anchors (slew centre or a leg),
+    and rotate around that same point
+
+  Person's own two-part request: (1) can the AR tap point represent
+  something other than the slew centre - specifically a chosen outrigger
+  leg, for a rigger who knows exactly where C1 needs to sit (a known hard
+  point, an existing mat, a survey mark) and wants to lock onto that
+  instead; (2) can the model be rotated around a point for alignment.
+  These turned out to be the same piece of work, not two - see below.
+
+  Added a small "what does the tap point represent" <select> (Slew Centre
+  default, or C1-C4) next to both "View in AR" buttons (Support Pad
+  Placement's and Crane Layout's), shown/hidden in lockstep with the
+  button itself via updateARButtonVisibility()'s new optional third
+  parameter. enterCarrier3DAR() reads it and, for a leg choice, computes
+  that leg's own site-space (x,y) via a new legSiteXY() helper - same
+  r/angle-to-x/y formula calcCAD() already uses inline for its own
+  baseX/baseY, just extracted so AR placement can use it too. Passed
+  through to carrier3d.js's __carrier3dEnterAR() as a new optional 4th
+  parameter, anchor: { xMm, yMm, legId }.
+
+  Inside __carrier3dEnterAR, this replaced the old hardcoded "always
+  offset by the slew centre" logic with siteToWorld(cal, anchor.xMm,
+  anchor.yMm, anchor.legId) when an anchor is given (still siteToWorld(
+  cal, 0, 0) - the slew centre - when it isn't, i.e. unchanged default
+  behaviour). That one substitution answers BOTH halves of the request at
+  once: arGroup's own local origin becomes whichever point was resolved,
+  and rotateARModel() has always pivoted arGroup around its own origin -
+  it never needed to change at all. Once a leg is the anchor, "tap to
+  place" puts that leg at the tapped point, and the existing rotate
+  buttons swing the model around that SAME leg, keeping it locked to the
+  point while heading gets dialled in - exactly the alignment behaviour
+  the person was asking for in their second question, without a single
+  extra line of rotation-specific code. This is why the two requests are
+  documented together instead of as separate features - a Group's origin
+  drives translation and rotation simultaneously, so anchoring one
+  anchors both for free.
+  The AR overlay's own instruction text now names the anchor explicitly
+  ("Tap the ground to place C1 there" vs "...place the crane's slew
+  centre there") via buildAROverlay()'s new optional label parameter, so
+  there's no ambiguity on-screen about which point is being placed.
+
+  Verified via Playwright (mocked navigator.xr, same real-hardware
+  limitation noted in methodology.txt 51's own testing section):
+  legSiteXY('1110','C1_RR') returns {xMm:4185.8, yMm:2823.4, legId:1} -
+  confirmed by hand against cadFleetData's own r=5049/angle=56 for that
+  leg (r*sin(56)=4185.6, r*cos(56)=2823.4, matches to rounding). Captured
+  the actual anchor object enterCarrier3DAR() passes into
+  __carrier3dEnterAR() by wrapping the function - matches legSiteXY's own
+  output exactly, confirming the wiring from the <select> through to
+  carrier3d.js is correct, not just the math in isolation. Confirmed the
+  overlay text updates correctly for all five anchor choices (slew, C1,
+  C2, C3, C4) - the first pass at this test read "slew centre" for every
+  choice, which looked like a real bug at first; turned out to be leftover
+  overlay elements from earlier failed mock session attempts (a
+  necessarily-incomplete fake XRSession can't fully satisfy Three.js's
+  renderer.xr.setSession(), so cleanup never ran) stacking up in the DOM
+  and being matched by a query that should have targeted only the latest
+  one - cleaning up between attempts and querying precisely resolved it,
+  confirming the underlying feature was correct all along and the earlier
+  reading was a test artifact, not app code. Anchor-select visibility
+  toggling confirmed alongside the AR button. Both toolbars (Support Pad
+  Placement, Crane Layout) share the same enterCarrier3DAR()/
+  updateARButtonVisibility() code paths, so verifying one path thoroughly
+  covers both.
+
+================================================================================
