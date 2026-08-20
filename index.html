@@ -781,7 +781,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.15</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.16</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1617,11 +1617,10 @@
         <div class="form-group" style="margin-top:14px;">
           <label>Minimum Counterweight Basis</label>
           <div class="mode-toggle" id="lc-cmp-roadcwt-toggle">
-            <button class="mode-btn active" id="lc-cmp-roadcwt-off" onclick="setLoadChartCompareRoadCwt(false)">Full chart</button>
-            <button class="mode-btn" id="lc-cmp-roadcwt-on" onclick="setLoadChartCompareRoadCwt(true)">Road legal CWT</button>
+            <button class="mode-btn" id="lc-cmp-roadcwt-btn" onclick="toggleLoadChartCompareRoadCwt()">Road legal CWT</button>
           </div>
         </div>
-        <div class="disclaimer" style="margin-top:14px;">No rigging weight deduction here (hook block/Winch 2 vary per crane) — target load is checked straight against each crane's chart capacity. Each crane finds its own minimum counterweight and best-margin boom configuration, at that crane's default wind bracket and ballast radius (widest/most permissive where applicable) — switch to Find Boom Configuration for full control over a single crane. "Road-legal only" only affects cranes with a confirmed road-legal counterweight figure (currently the LTM 1110 and LTM 1130) — everything else falls back to the full chart.</div>
+        <div class="disclaimer" style="margin-top:14px;">No rigging weight deduction here (hook block/Winch 2 vary per crane) — target load is checked straight against each crane's chart capacity. Each crane finds its own minimum counterweight and best-margin boom configuration, at that crane's default wind bracket and ballast radius (widest/most permissive where applicable) — switch to Find Boom Configuration for full control over a single crane. "Road legal CWT" only affects cranes with a confirmed road-legal counterweight figure (currently the LTM 1110 and LTM 1130) — everything else falls back to the full chart, same as when this is off.</div>
       </div>
 
       <div class="card">
@@ -7887,8 +7886,8 @@
     // swapping to a smaller hook block (a truck of its own, defeating the
     // point) - see methodology.txt for the full reasoning. Deliberately
     // sparse rather than guessed/extrapolated for cranes without a
-    // confirmed figure - see setLoadChartCompareRoadCwt's own comment on
-    // how an unlisted crane is handled.
+    // confirmed figure - see toggleLoadChartCompareRoadCwt's own comment
+    // on how an unlisted crane is handled.
     //
     // '1110': sourced from Liebherr's own LTM 1110-5.2 product page,
     // "Driving conditions" diagram - the 12t/axle row, base boom (no
@@ -8122,11 +8121,11 @@
     // toggle at all - computeLoadChartBestForCrane gets no cap for it
     // (maxCwt left undefined), so it falls back to its normal true-minimum
     // search exactly as if the toggle were off, rather than being
-    // excluded or guessed at.
-    function setLoadChartCompareRoadCwt(on) {
-      loadChartCompareRoadCwt = on;
-      document.getElementById('lc-cmp-roadcwt-off').classList.toggle('active', !on);
-      document.getElementById('lc-cmp-roadcwt-on').classList.toggle('active', on);
+    // excluded or guessed at. Single button rather than an on/off pair -
+    // it flips its own state and active styling each click.
+    function toggleLoadChartCompareRoadCwt() {
+      loadChartCompareRoadCwt = !loadChartCompareRoadCwt;
+      document.getElementById('lc-cmp-roadcwt-btn').classList.toggle('active', loadChartCompareRoadCwt);
       renderLoadChartCompare();
     }
 
