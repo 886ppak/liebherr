@@ -520,13 +520,74 @@
         loadchart_compare: '#lc-subtab-compare'
       };
 
+      // Every <select> in the app where a crane model is the value being
+      // chosen - one per tab (Crane Positioning has two, one per sub-
+      // tab). Rope Retentioning's is id="r-model" rather than "*-crane"
+      // like the rest, and has its options hardcoded directly in the
+      // HTML rather than built by JS - worth remembering if a ninth one
+      // ever gets added elsewhere, since it won't match the "-crane"
+      // naming pattern the other seven happen to share.
+      const CRANE_SELECT_IDS = ['h-crane', 'cad-crane', 'sc-crane', 'reeve-crane', 'cwt-crane', 'de-crane', 'lc-crane', 'r-model'];
+
+      // Removes any <option> whose value is a restricted crane key from
+      // every select in CRANE_SELECT_IDS, keyed off a hidden.crane_XXXX
+      // flag (see methodology.txt for the crane_/oem_ naming scheme).
+      // Some of these selects have their options hardcoded in the HTML
+      // (already present when this runs), others get populated later by
+      // the app's own JS the first time their tab is opened - a
+      // MutationObserver on each select, rather than trying to hook
+      // every population function individually, means new options added
+      // at any point in the session get swept too, not just whatever
+      // happened to exist at sign-in time.
+      function stripHiddenCraneOptions(hiddenCraneKeys) {
+        if (!hiddenCraneKeys.length) return;
+        // Strip the "crane_" prefix down to the bare model key (e.g.
+        // "1650") once here, rather than re-deriving it per option below.
+        // Every select's own convention for what actually goes in an
+        // <option>'s value turned out to be inconsistent once checked
+        // against the real DOM rather than assumed: most use the bare
+        // key ("1650"), Rope Retentioning and Load Chart Finder append a
+        // boom-config/spec suffix ("1650-t3", "1650-t5" - see
+        // LOAD_CHART_FILES's own comment on the '1650'/'1650-t3' cross-
+        // reference), and Hook Block Weights (h-crane) uses the full
+        // display label as its value outright ("LTM 1650-8.1") because
+        // its underlying cranesData object happens to be keyed by label
+        // rather than model number. Rather than special-case each
+        // select's convention individually, one regex per hidden model -
+        // matching the key wherever it appears as a standalone number
+        // (not glued to other digits either side, so "1650" can't
+        // accidentally match a hypothetical "11650" or "16500") - is
+        // tested against both an option's value AND its visible text,
+        // which covers all three conventions with the same logic.
+        const patterns = hiddenCraneKeys
+          .map((k) => k.slice('crane_'.length))
+          .map((model) => new RegExp('(^|[^0-9])' + model + '([^0-9]|$)'));
+        function isHidden(opt) {
+          return patterns.some((re) => re.test(opt.value) || re.test(opt.textContent));
+        }
+        function sweep(sel) {
+          Array.from(sel.options).forEach((opt) => {
+            if (isHidden(opt)) opt.remove();
+          });
+        }
+        CRANE_SELECT_IDS.forEach((id) => {
+          const sel = document.getElementById(id);
+          if (!sel) return;
+          sweep(sel);
+          new MutationObserver(() => sweep(sel)).observe(sel, { childList: true });
+        });
+      }
+
       function applyTabRestrictions(hidden) {
+        const craneKeys = [];
         Object.keys(hidden).forEach((key) => {
           if (hidden[key] !== true) return;
+          if (key.startsWith('crane_')) { craneKeys.push(key); return; }
           const selector = TAB_RESTRICTION_TARGETS[key];
           const el = selector && document.querySelector(selector);
           if (el) el.style.display = 'none';
         });
+        stripHiddenCraneOptions(craneKeys);
         // If the tab the page opens on by default got hidden for this
         // person, land them on the first one that's actually visible
         // instead of leaving them stranded on a hidden/blank tab.
@@ -720,7 +781,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.12</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.13</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>

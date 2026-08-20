@@ -8694,3 +8694,88 @@ cranes get their own subsections as they're built.
   something any sandboxed browser session can drive end to end.
 
 ================================================================================
+57. Per-crane restrictions extending the same deny-list framework, plus
+    a scoped service account for real Firebase admin work [CONVERSATION]
+
+  Person wanted to actually test the framework end to end: take away
+  15buzza's access to the Support Pad Placement sub-tab (already
+  covered by section 56's tab framework) AND make the LTM 1650 stop
+  appearing for them anywhere in the app - a genuinely new piece, since
+  hiding whole tabs is a different problem from hiding one option out of
+  several inside a tab that otherwise stays fully visible.
+
+  Extended the exact same hidden map rather than building a separate
+  mechanism - a crane_1650 flag alongside cad_pads on the same
+  userAccess/{uid} document, applyTabRestrictions() branching by key
+  prefix (crane_ vs everything else) rather than needing two separate
+  fetches or documents.
+
+  The actual sweep turned out to need more care than expected once
+  checked against the real DOM instead of assumed: went looking for
+  every crane-select in the app (grepped for select elements, found 8,
+  not the 7 assumed a few messages earlier - Rope Retentioning's is
+  id="r-model", not "*-crane" like the rest, easy to miss by pattern-
+  matching alone) and found three different conventions for what an
+  <option>'s value actually contains: most selects use the bare model
+  key ("1650"), Rope Retentioning and Load Chart Finder append a spec/
+  boom-config suffix ("1650-t3", "1650-t5" - LOAD_CHART_FILES's own
+  comment already documented why '1650' aliases to '1650-t3'), and Hook
+  Block Weights (h-crane) uses the full display label as its value
+  outright ("LTM 1650-8.1"), because its underlying cranesData object
+  happens to be keyed by label rather than model number - an
+  inconsistency that predates this feature and wasn't something to fix
+  here, just to account for. Settled on one regex per hidden model,
+  matching it as a standalone number (not glued to adjacent digits, so
+  "1650" can't accidentally catch a hypothetical "16500") against both
+  an option's value AND its visible text - covers all three conventions
+  with the same logic instead of special-casing each select.
+
+  Population timing varies too - some selects have options hardcoded in
+  the HTML from page load, others get built by JS the first time their
+  tab is opened. Rather than hunting down and patching every population
+  function individually, a MutationObserver on each of the 8 selects
+  re-runs the sweep whenever new options get added, at any point in the
+  session - verified directly: appended a fresh 1650 option to a select
+  after the initial sweep already ran, confirmed the observer caught and
+  removed it too, not just whatever existed at sign-in time.
+
+  Separately, the person also set up a properly-scoped service account
+  (Firebase Authentication Admin + Cloud Datastore User roles only - not
+  the broad default Firebase Admin SDK key, discussed and deliberately
+  avoided) so real admin work - account lookups, Firestore writes -
+  could happen directly instead of walking through console clicks each
+  time. Implemented as a plain JWT-bearer OAuth2 exchange using only
+  Node's built-in crypto module (no firebase-admin or any npm install),
+  kept entirely out of the git repo (worked from the uploaded key's own
+  path, never copied into this project). This immediately paid for
+  itself: listing the actual googleAllowlist documents turned up a real,
+  live bug that had been shipped invisibly - every one of the six
+  documents had the field named "name allowed" or "Name allowed" (a
+  space, inconsistent capitalisation) instead of allowed, meaning Google
+  Sign-In had been silently rejecting every single account since section
+  55 shipped, and aiden.tunupopo@gmail.com's document was missing
+  outright. Fixed directly via the admin token (full-document PATCH
+  overwriting each with just {"allowed": true}, plus creating the
+  missing sixth document) rather than sending the person back through
+  the console a second time.
+
+  Verified via Playwright, but not the same way as previous sections -
+  the sandbox's HTTPS_PROXY limitation blocked a real sign-in from
+  completing even via direct REST-token-obtained sessions (same
+  ERR_CONNECTION_RESET as every other live-network Playwright test in
+  this project), so instead of testing through a full sign-in, the exact
+  shipped sweep logic was copy-pasted into a page.evaluate() call and
+  run directly against the real, already-loaded page's real DOM (every
+  tab visited first so lazily-built selects actually populate) - this
+  tests the real CRANE_SELECT_IDS list and the real matching logic
+  against the real markup, just invoked directly rather than through the
+  Firestore fetch, which was separately proven correct in section 56.
+  First pass (exact key match only) correctly caught 6 of 8 selects and
+  cleanly missed r-model/lc-crane's suffixed values and h-crane's
+  labelled ones - exactly the gap the regex rewrite above was built to
+  close; re-ran after the fix and confirmed 0 of 8 selects had any 1650
+  variant left, with no other crane accidentally caught. Applied for
+  real afterward: 15buzza's actual userAccess document now carries both
+  cad_pads and crane_1650, confirmed by reading it back.
+
+================================================================================
