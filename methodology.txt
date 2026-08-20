@@ -8594,3 +8594,103 @@ cranes get their own subsections as they're built.
   sign-in methods, not on its own live test.
 
 ================================================================================
+56. Firestore-backed Google allowlist + per-user tab/crane permissions
+    [CONVERSATION]
+
+  Two things the person specifically asked for, built together since
+  they share the same infrastructure: (1) get crew email addresses out
+  of GOOGLE_SIGNIN_ALLOWLIST - a plain array in this file's own source,
+  visible to anyone via view-source regardless of the repo's own git
+  visibility; (2) per-user tab/sub-tab restrictions, for a hypothetical
+  future where the same admin runs more than one branded fleet and
+  wants to keep it from being information overload for any one person.
+
+  Deny-list model chosen deliberately over an allow-list, discussed at
+  length beforehand: full access is the default for anyone with no
+  document at all, an admin only ever adds a record for the exceptions.
+  Fits this app's stated goal ("reduce information overload", not lock
+  anything down for security reasons) far better than making every new
+  invite start from zero and requiring an admin to enumerate everything
+  they're ALLOWED to see.
+
+  Two Firestore collections, deliberately keyed differently, because
+  they have different bootstrapping constraints:
+    - googleAllowlist/{lowercased-email} - keyed by email because a
+      Google identity's uid doesn't exist until AFTER they've already
+      completed the OAuth popup once; email is the only thing available
+      to check beforehand. A document's mere existence isn't enough on
+      its own - the client also checks its `allowed` field is exactly
+      `true`, so access can be revoked (flip to false) without deleting
+      the record and losing the paper trail of who was ever invited.
+    - userAccess/{uid} - keyed by uid instead, since restricting someone
+      is never a day-one necessity under the deny-list model - by the
+      time an admin ever wants to add a restriction, that person's
+      already signed in at least once and their uid is sitting right
+      there in Authentication -> Users regardless of which method they
+      used. `hidden` is a flat map (not nested, not an array) of short
+      keys to `true`, chosen specifically so each individual entry shows
+      as a real true/false toggle in Firestore's own console data editor
+      rather than needing raw array text-editing - directly answers the
+      person's own question about whether this could be "managed with a
+      toggle."
+
+  Security rules (firestore.rules): both collections allow `get` only
+  when signed in and the requester's own identity (token email for the
+  allowlist, uid for permissions) exactly matches the document being
+  read - never `list`, never any client write at all (all data entry
+  happens from the console's Data tab, by whoever administers invites).
+  An explicit `match /{document=**} { allow read, write: if false; }`
+  catch-all denies anything not covered by name, so a future unrelated
+  collection can't accidentally inherit access just by sharing the
+  database.
+
+  Client wiring: TAB_RESTRICTION_TARGETS maps each short key to either a
+  new data-tabkey attribute (added to all 8 top-level nav-tab buttons,
+  which had no other unique hook to target) or an existing sub-tab
+  button id (Crane Positioning's two, Load Chart Finder's two - already
+  had ids for their own show/hide logic). applyTabRestrictions() hides
+  matching buttons and, if the page's default-active tab happened to be
+  one of them, clicks the first still-visible tab instead of leaving the
+  person stranded on a hidden one. Fetched once per sign-in (not per tab
+  switch) via loadTabRestrictions(uid), called from inside
+  onAuthStateChanged right where the gate itself hides.
+
+  Firestore initialized with `localCache: persistentLocalCache()` -
+  deliberately not the SDK's own default (memory-only, forgotten on
+  reload), matching this app's standing "works offline after first use"
+  guarantee. Unlike Auth's session persistence this isn't automatic for
+  Firestore and needed asking for explicitly.
+
+  vendor/firebase/firebase-firestore.js vendored the same way as the
+  other two Firebase files (same v10.14.1, same relative-import patch
+  via sed on one internal CDN-absolute import).
+
+  Genuinely blocked partway through: Firestore itself wasn't enabled on
+  the project yet (confirmed via a direct REST probe returning
+  SERVICE_DISABLED) - same "can't ship untested auth changes" discipline
+  as the original gate build, so this was built and committed to a
+  firestore-permissions-wip branch, not main, until the person enabled
+  Firestore, published the rules, and created the six googleAllowlist
+  documents themselves (walked through step by step - Create database
+  in production mode, paste rules into the Rules tab, one document per
+  existing account with an `allowed: true` boolean field).
+
+  Verified once Firestore was live, all via direct REST rather than
+  Playwright's browser (same sandbox HTTPS_PROXY limitation as every
+  other live-network test in this project - confirmed still just a
+  testing-environment artifact by checking the identical
+  signInWithPassword call worked fine over direct curl): created a
+  throwaway Auth account and used its real token to confirm all three
+  rule behaviours independently - reading someone ELSE's googleAllowlist
+  doc returns 403 PERMISSION_DENIED, reading its OWN doc (which doesn't
+  exist, since it was never actually invited) returns 404 NOT_FOUND
+  rather than 403 - proving the rule's identity match genuinely passed
+  and the 404 is a data question, not a rules question - and attempting
+  to list the collection outright is denied. An unauthenticated request
+  also confirmed denied. Deleted the throwaway account afterward via the
+  same REST API. Google's own OAuth popup and the resulting live tab-
+  restriction behaviour still need the person's own confirmation on real
+  hardware, same as Google Sign-In itself did in section 55 - not
+  something any sandboxed browser session can drive end to end.
+
+================================================================================
