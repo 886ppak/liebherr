@@ -43,3 +43,11 @@ from the internal `CACHE_VERSION` build string. Bump its minor number
 Cap the minor number at .30. Once a push would take the minor number past
 .30, roll over to the next major instead: v2.30 -> v3.0 -> v3.1 -> ... ->
 v3.30 -> v4.0, and so on for each future major.
+
+Exception: pure user/account-management edits — adding or removing an
+email from an allowlist (e.g. `GOOGLE_SIGNIN_ALLOWLIST`), or similar
+account-only changes with no feature/UI change attached — bump
+`CACHE_VERSION` only, not the app version. `CACHE_VERSION` still has to
+move every time regardless (that's what actually gets the change out to
+clients), but the visible version number next to the wordmark shouldn't
+climb just because someone's access changed.
