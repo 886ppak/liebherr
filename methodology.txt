@@ -8524,3 +8524,73 @@ cranes get their own subsections as they're built.
   already documented in section 53's testing notes, not a real failure.
 
 ================================================================================
+55. Access gate: "Sign in with Google" as a third option, gated by a
+    client-side email allowlist [CONVERSATION]
+
+  Added as a convenience for crew who'd rather not deal with a password
+  at all - person specifically wanted it alongside the existing two
+  methods, not instead of them, for anyone without a Google account.
+  Google Sign-In is fundamentally different from the other two in one
+  important way that shaped the whole implementation: Firebase creates
+  an account automatically for ANY Google identity that completes the
+  OAuth popup, with no admin-controlled creation step at all - unlike
+  Email/Password and Email Link, where "an account exists" already IS
+  the invite mechanism (see section 53). Left unchecked, that would have
+  reopened exactly the self-registration hole this app has been
+  deliberately closed against from the start.
+
+  Fix: GOOGLE_SIGNIN_ALLOWLIST, a plain array of approved emails
+  (currently the two known accounts - myslewer@gmail.com and Laura's).
+  After signInWithPopup() resolves, the resulting user.email is checked
+  against it (lower-cased on both sides); anyone not on the list is
+  signed straight back out via signOut() before ever seeing the app,
+  with a message pointing them at the email/password option instead.
+  This is a client-side-only check - a stray, permission-less account
+  is left sitting in the Firebase Users list for anyone who tries and
+  fails (harmless clutter, not a real exposure, since it can never get
+  past this check), and the fully airtight version of this would need a
+  Cloud Functions blocking trigger (beforeSignIn), which was explicitly
+  weighed and skipped for the same reason Firestore-backed permissions
+  were flagged as a bigger step than needed elsewhere in this project -
+  real backend infrastructure this app deliberately doesn't have, not
+  proportional to the actual risk for a handful of invited crew.
+  Adding a new approved email means editing this array and redeploying
+  - same workflow as everything else in this app, and the same tradeoff
+  already accepted for the hardcoded-permissions option discussed for
+  future per-user tab/crane restrictions.
+
+  Firebase links sign-in methods to the same account by email match, so
+  this composes cleanly with what's already there: if Laura ever used
+  Google Sign-In with the same Gmail address her password account uses,
+  Firebase resolves it to that same existing user, not a duplicate.
+
+  UI: a "Sign in with Google" button (Google's own four-colour "G" mark,
+  inline SVG - no external asset) sits above the password form behind a
+  plain "or" divider, shown and hidden as a pair with the password form
+  itself via two small helpers (showPasswordForm/hidePasswordForm) so
+  switching to the email-link or reset forms correctly hides it too,
+  rather than leaving it floating above an unrelated form. A 60s timeout
+  wraps the popup call rather than the usual 20s used elsewhere in this
+  file - signInWithPopup() waits on actual human interaction (choosing
+  an account, possibly 2FA) inside a separate window, not just a network
+  round trip, so the shorter timeout used for pure API calls would be
+  too aggressive here. auth/popup-closed-by-user and auth/cancelled-
+  popup-request are deliberately swallowed rather than shown as errors -
+  both just mean the person backed out of the picker themselves.
+
+  Also fixed a stale comment left over from section 53: firebaseConfig's
+  own comment still said "PLACEHOLDER - replace with this project's real
+  config once it exists" from before the real myslewer-ed06f config was
+  swapped in - corrected to describe what's actually there now.
+
+  Verified: Playwright confirmed the button renders with correct label,
+  and that it hides/shows in lockstep with the password form when
+  switching to the link-request, reset, and confirm forms and back - 0
+  console errors. The allowlist logic itself and the actual OAuth popup
+  flow couldn't be exercised end-to-end in this sandboxed environment
+  (real Google sign-in requires an interactive human in a real browser,
+  not something Playwright can drive), so that part rests on the same
+  Firebase Auth mechanics already proven correct for the other two
+  sign-in methods, not on its own live test.
+
+================================================================================
