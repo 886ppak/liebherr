@@ -341,23 +341,9 @@
       sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
       sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signOut
     } from './vendor/firebase/firebase-auth.js';
-
-    // Unlike Email/Password and Email Link, Google Sign-In has no admin-
-    // controlled account-creation step - Firebase creates an account for
-    // ANY Google account that completes the OAuth popup. This list is
-    // what keeps that path invite-only: checked against the signed-in
-    // email after the popup completes (see the signInWithPopup handler
-    // below), and anyone not on it gets signed straight back out. Add an
-    // email here the same way you'd invite someone via Authentication ->
-    // Users for the other two methods - just edit this array and redeploy.
-    const GOOGLE_SIGNIN_ALLOWLIST = [
-      'myslewer@gmail.com',
-      'lauratyrrell59@gmail.com',
-      '15buzza@gmail.com',
-      'dan.darwell@gmail.com',
-      'dickyc_85@hotmail.com',
-      'aiden.tunupopo@gmail.com'
-    ];
+    import {
+      initializeFirestore, persistentLocalCache, doc, getDoc
+    } from './vendor/firebase/firebase-firestore.js';
 
     // Real myslewer-ed06f project config. This object is NOT a secret -
     // Firebase's actual access control is enforced by the project's own
@@ -409,7 +395,8 @@
       'auth/network-request-failed': 'No connection - check your signal and try again.',
       'auth/invalid-action-code': 'That sign-in link is invalid or already used - request a new one.',
       'auth/expired-action-code': 'That sign-in link has expired - request a new one.',
-      'auth/missing-email': 'Enter your email first.'
+      'auth/missing-email': 'Enter your email first.',
+      'permission-denied': 'Sign-in is temporarily unavailable - try again shortly.'
     };
 
     // Wrapped in a function (rather than left at module top level) purely
@@ -418,10 +405,20 @@
     // module body isn't a function, so a bare top-level return isn't
     // legal JS.
     function initGate() {
-      let app, auth;
+      let app, auth, db;
       try {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
+        // localCache: persistentLocalCache() is the deliberate part here
+        // - Firestore's default is memory-only and forgets everything on
+        // reload, unlike Auth's own session persistence. This makes a
+        // user's first successful read of their own permissions doc
+        // (while online) stick around in IndexedDB, so every offline
+        // reload after that resolves from the local cache with no
+        // network round trip - same "works offline after first use"
+        // guarantee as the rest of this app, just needs asking for here
+        // rather than being the default.
+        db = initializeFirestore(app, { localCache: persistentLocalCache() });
       } catch (err) {
         console.error('Firebase init failed', err);
         statusEl.textContent = 'Sign-in is temporarily unavailable.';
@@ -500,9 +497,63 @@
         }
       }
 
+      // Maps a short key (matched against Firestore's userAccess/{uid}.hidden
+      // map) to the button that key should hide. Deny-list model: full
+      // access by default, this only ever hides what an admin explicitly
+      // flipped true - see methodology.txt for the reasoning on why
+      // default-allow suits this app better than the opposite. Sub-tabs
+      // already have their own unique element ids, so those are targeted
+      // directly rather than needing a data-tabkey attribute like the
+      // top-level tabs (which share no other unique hook).
+      const TAB_RESTRICTION_TARGETS = {
+        reeve: '[data-tabkey="reeve"]',
+        cwt: '[data-tabkey="cwt"]',
+        loadchart: '[data-tabkey="loadchart"]',
+        cad: '[data-tabkey="cad"]',
+        driveeq: '[data-tabkey="driveeq"]',
+        hook: '[data-tabkey="hook"]',
+        chain: '[data-tabkey="chain"]',
+        rope: '[data-tabkey="rope"]',
+        cad_pads: '#cad-subtab-pads',
+        cad_layout: '#cad-subtab-layout',
+        loadchart_find: '#lc-subtab-find',
+        loadchart_compare: '#lc-subtab-compare'
+      };
+
+      function applyTabRestrictions(hidden) {
+        Object.keys(hidden).forEach((key) => {
+          if (hidden[key] !== true) return;
+          const selector = TAB_RESTRICTION_TARGETS[key];
+          const el = selector && document.querySelector(selector);
+          if (el) el.style.display = 'none';
+        });
+        // If the tab the page opens on by default got hidden for this
+        // person, land them on the first one that's actually visible
+        // instead of leaving them stranded on a hidden/blank tab.
+        const activeBtn = document.querySelector('.tab-btn.active');
+        if (activeBtn && activeBtn.style.display === 'none') {
+          const firstVisible = Array.from(document.querySelectorAll('.tab-btn')).find((btn) => btn.style.display !== 'none');
+          if (firstVisible) firstVisible.click();
+        }
+      }
+
+      // Fetched once per sign-in, not on every tab switch - a person's
+      // access doesn't change mid-session, and this way the persistent
+      // Firestore cache only needs to be hit once per app load rather
+      // than repeatedly. Absence of a doc (the common case - most people
+      // have no restrictions at all) is treated as "nothing hidden",
+      // matching the deny-list default explicitly rather than by
+      // accident of getDoc()'s own not-found behaviour.
+      function loadTabRestrictions(uid) {
+        getDoc(doc(db, 'userAccess', uid))
+          .then((snap) => applyTabRestrictions((snap.exists() && snap.data().hidden) || {}))
+          .catch((err) => console.error('Could not load tab restrictions', err));
+      }
+
       onAuthStateChanged(auth, (user) => {
         if (user) {
           gateEl.style.display = 'none';
+          loadTabRestrictions(user.uid);
           return;
         }
         // Confirmed signed-out (not just "still checking") - only now is
@@ -571,18 +622,30 @@
         errorEl.style.display = 'none';
         googleBtn.disabled = true;
         withTimeout(signInWithPopup(auth, new GoogleAuthProvider()), 60000)
-          .then((result) => {
+          .then(async (result) => {
             const email = (result.user.email || '').toLowerCase();
-            if (!GOOGLE_SIGNIN_ALLOWLIST.includes(email)) {
+            // Firestore-backed allowlist (see methodology.txt) rather than
+            // a hardcoded array shipped in this file - keeps crew email
+            // addresses out of the public page source. Document ID IS the
+            // lowercased email (has to be, since - unlike the other two
+            // sign-in methods - no account, and so no uid, exists yet for
+            // a brand new Google identity until this popup already
+            // completed; email is the only thing available to check
+            // against beforehand). Security rules only let a signed-in
+            // user read the ONE doc matching their own token email, never
+            // list the collection, so this can't be used to enumerate who
+            // else is invited.
+            const allowSnap = await getDoc(doc(db, 'googleAllowlist', email));
+            if (!allowSnap.exists() || allowSnap.data().allowed !== true) {
               // Firebase already created (or matched) an account for this
               // Google identity by the time we get here - signing back out
               // is the only lever available client-side. A stray, useless
               // account is left sitting in the project's Users list, but
               // it can never get past this check to see the app itself.
-              return signOut(auth).then(() => {
-                errorEl.textContent = 'That Google account isn’t set up for MYSLEWER - ask to be added, or use the email/password option.';
-                errorEl.style.display = '';
-              });
+              await signOut(auth);
+              errorEl.textContent = 'That Google account isn’t set up for MYSLEWER - ask to be added, or use the email/password option.';
+              errorEl.style.display = '';
+              return;
             }
             // Nothing else to do on success - onAuthStateChanged above
             // handles hiding the gate once Firebase's own state updates.
@@ -694,14 +757,14 @@
   </div>
 
   <nav class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
-    <button class="tab-btn" onclick="switchTab('cwt-tab', event)">CWT Combinations</button>
-    <button class="tab-btn" onclick="switchTab('loadchart-tab', event)">Load Chart Finder</button>
-    <button class="tab-btn" id="cad-tab-btn" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
-    <button class="tab-btn" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
-    <button class="tab-btn" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
-    <button class="tab-btn" onclick="switchTab('chain-tab', event)">Chain Shortening</button>
-    <button class="tab-btn" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
+    <button class="tab-btn active" data-tabkey="reeve" onclick="switchTab('reeve-tab', event)">Reeving Plans</button>
+    <button class="tab-btn" data-tabkey="cwt" onclick="switchTab('cwt-tab', event)">CWT Combinations</button>
+    <button class="tab-btn" data-tabkey="loadchart" onclick="switchTab('loadchart-tab', event)">Load Chart Finder</button>
+    <button class="tab-btn" id="cad-tab-btn" data-tabkey="cad" onclick="switchTab('cad-tab', event)">Crane Positioning</button>
+    <button class="tab-btn" data-tabkey="driveeq" onclick="switchTab('driveeq-tab', event)">Driving with Equipment in Place</button>
+    <button class="tab-btn" data-tabkey="hook" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
+    <button class="tab-btn" data-tabkey="chain" onclick="switchTab('chain-tab', event)">Chain Shortening</button>
+    <button class="tab-btn" data-tabkey="rope" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
   </nav>
 
   <div class="container">

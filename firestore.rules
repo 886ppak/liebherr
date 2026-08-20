@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// MYSLEWER access-gate Firestore rules. Two collections, both read-only
+// from the client (all writes happen from the Firebase console's Data
+// tab, by whoever administers invites) and both scoped so a signed-in
+// user can only ever read their OWN record - never list a collection,
+// never read someone else's. See methodology.txt for the full reasoning.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Google Sign-In allowlist. Keyed by the person's lowercased email,
+    // not their uid - unlike Password/Email Link (where an admin-created
+    // Auth account already exists, and so a uid already exists, before
+    // the person ever signs in), Firebase creates a Google-auth account
+    // automatically the moment someone completes the OAuth popup, so
+    // there's no uid to key this by until AFTER that popup already
+    // happened. Email is the only thing available to check beforehand.
+    // A document's mere existence isn't enough on its own - the client
+    // also checks its `allowed` field is exactly `true`, so access can be
+    // revoked by flipping that field to false without deleting the
+    // record (keeps a paper trail of who was ever invited).
+    match /googleAllowlist/{email} {
+      allow get: if request.auth != null
+                  && request.auth.token.email != null
+                  && request.auth.token.email.lower() == email;
+      allow list, write: if false;
+    }
+
+    // Per-user tab/crane restrictions. Keyed by Firebase Auth uid, which
+    // IS always known by the time an admin would ever want to restrict
+    // someone - the deny-list model (see methodology.txt) means nobody
+    // NEEDS a document on day one; full access is the default for anyone
+    // with no document at all, so there's no rush to create one before
+    // a person's first sign-in reveals their uid in Authentication ->
+    // Users. The `hidden` field is a flat map of short tab/sub-tab keys
+    // to `true` for anything specifically hidden from that person -
+    // see TAB_RESTRICTION_TARGETS in index.html for the exact key names.
+    match /userAccess/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // Deny everything else outright - an explicit fallback rather than
+    // relying on Firestore's own "no matching rule = denied" default, so
+    // adding some unrelated collection later can't accidentally inherit
+    // more access than intended just by sitting under the same database.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
