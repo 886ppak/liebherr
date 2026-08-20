@@ -303,7 +303,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.8</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.9</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1213,7 +1213,7 @@
           <label>Minimum Counterweight Basis</label>
           <div class="mode-toggle" id="lc-cmp-roadcwt-toggle">
             <button class="mode-btn active" id="lc-cmp-roadcwt-off" onclick="setLoadChartCompareRoadCwt(false)">Full chart</button>
-            <button class="mode-btn" id="lc-cmp-roadcwt-on" onclick="setLoadChartCompareRoadCwt(true)">Road-legal only (no truck)</button>
+            <button class="mode-btn" id="lc-cmp-roadcwt-on" onclick="setLoadChartCompareRoadCwt(true)">Road legal CWT</button>
           </div>
         </div>
         <div class="disclaimer" style="margin-top:14px;">No rigging weight deduction here (hook block/Winch 2 vary per crane) — target load is checked straight against each crane's chart capacity. Each crane finds its own minimum counterweight and best-margin boom configuration, at that crane's default wind bracket and ballast radius (widest/most permissive where applicable) — switch to Find Boom Configuration for full control over a single crane. "Road-legal only" only affects cranes with a confirmed road-legal counterweight figure (currently the LTM 1110 and LTM 1130) — everything else falls back to the full chart.</div>
@@ -7814,13 +7814,6 @@
         const data = await ensureLoadChartLoadedForCompare(craneKey);
         const roadCap = loadChartCompareRoadCwt ? ROAD_LEGAL_CWT[craneKey] : undefined;
         const outcome = computeLoadChartBestForCrane(data, radiusInput, weightInput, loadChartCompareDerate, roadCap);
-        // When capped to a road-legal limit and nothing within it clears
-        // the target, also run the uncapped search purely to tell the
-        // person what WOULD work if a truck brought extra counterweight -
-        // useful context, not a way of quietly ignoring the cap.
-        if (roadCap != null && outcome.none) {
-          outcome.uncappedUsedCwt = computeLoadChartBestForCrane(data, radiusInput, weightInput, loadChartCompareDerate).usedCwt;
-        }
         return { craneKey, label: data.meta.crane, outcome, roadCap };
       }));
 
@@ -7841,7 +7834,7 @@
         // actually had a figure applied vs fell back to the normal
         // chart-wide search, rather than leaving that invisible.
         const roadNote = !loadChartCompareRoadCwt ? '' : (r.roadCap != null
-          ? `<div style="color:var(--text-muted); font-size:0.78rem; margin-bottom:6px;">Road-legal comparison: capped at ${r.roadCap.toFixed(1)}t for this crane (no truck required)</div>`
+          ? `<div style="color:var(--text-muted); font-size:0.78rem; margin-bottom:6px;">Road-legal comparison: capped at ${r.roadCap.toFixed(1)}t for this crane</div>`
           : `<div style="color:var(--text-muted); font-size:0.78rem; margin-bottom:6px;">No road-legal CWT figure for this crane - showing the normal chart-wide minimum</div>`);
         if (o.outOfRange) {
           return `<div style="border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;">
@@ -7851,14 +7844,10 @@
           </div>`;
         }
         if (o.none) {
-          const truckLine = o.uncappedUsedCwt != null
-            ? `<div style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;">Would clear it at ${o.uncappedUsedCwt.toFixed(1)}t - above this crane's road-legal limit, so that'd need a truck to bring the extra counterweight.</div>`
-            : '';
           return `<div style="border-top:1px solid var(--border-color); margin-top:14px; padding-top:14px;">
             <div style="font-weight:700; margin-bottom:6px;">${r.label}</div>
             ${roadNote}
             <div style="color:var(--text-muted); font-size:0.85rem;">No configuration${r.roadCap != null ? ' within this crane\'s road-legal counterweight' : ', at any counterweight this chart covers,'} clears ${weightInput.toFixed(2)}t at ${o.actualRadius}m.</div>
-            ${truckLine}
           </div>`;
         }
         const b = o.best;
