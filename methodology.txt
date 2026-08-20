@@ -8417,3 +8417,81 @@ cranes get their own subsections as they're built.
   covers both.
 
 ================================================================================
+53. Load Chart Finder Compare: road-legal counterweight as the minimum
+    basis [CONVERSATION]
+
+  Person's own reasoning, in full: some cranes can carry a meaningful
+  amount of counterweight on their own superstructure while driving on
+  public roads and still stay under a 12t/axle limit - meaning that
+  counterweight doesn't need a separate truck to bring it to site, it's
+  already on the deck. Compare Cranes' existing "minimum counterweight
+  needed" figure doesn't distinguish this at all - it just reports
+  whatever the chart's true lowest-clearing CWT level is, silently
+  implying a truck might be needed without ever saying so. The person's
+  point: a smaller crane whose real minimum for a given lift sits AT or
+  UNDER its own road-legal limit can be deployed with zero extra
+  logistics, which can make it the more efficient real-world choice even
+  against a nominally bigger/more capable crane whose own minimum
+  requires trucking extra ballast in - efficiency, not raw capacity, is
+  what the toggle is meant to surface.
+
+  Data: ROAD_LEGAL_CWT = { '1110': 13.4, '1130': 6.6 }. The 1110's
+  figure came from Liebherr's own LTM 1110-5.2 product page, "Driving
+  conditions" section - a diagram (image-only, not extractable by a
+  plain URL fetch; the person sent a screenshot instead) showing three
+  scenarios: ≤10t/axle -> 1.1t CWT, ≤12t/axle with a lattice fly-jib
+  fitted -> 11.3t CWT, ≤12t/axle base boom (no jib) -> 13.4t CWT. 13.4t
+  is the one that applies here (Compare assumes base boom). That page is
+  technically for the 5.2 revision, not the 5.1 already in this app's
+  fleet data - confirmed by the person as materially the same crane
+  (differs only by year of manufacture), so applied directly rather than
+  waiting on 5.1-specific documentation. The 1130's figure has no live
+  source page at all (discontinued, delisted from Liebherr's current
+  site) - it's the person's own figure from direct operational
+  knowledge, tagged as such rather than implying a citable source that
+  doesn't exist. Deliberately sparse beyond these two: per the person's
+  own reasoning, bigger classes (1300+) generally need more CWT than is
+  road-legal, or reaching a useful capacity means swapping to a smaller
+  hook block - which is its own truck, defeating the entire point - so
+  there was no ask to chase down figures for the rest of the fleet.
+
+  Mechanism: computeLoadChartBestForCrane gained an optional maxCwt
+  parameter - the same ascending "find the lowest CWT level that
+  clears" loop it already had, just pre-filtered to exclude any level
+  above the cap when one's supplied. A crane with no ROAD_LEGAL_CWT
+  entry gets no cap at all (maxCwt stays undefined), so the toggle has
+  literally no effect on it - it falls back to today's normal chart-wide
+  search rather than being excluded or guessed at, exactly as discussed
+  with the person beforehand. New "Minimum Counterweight Basis" toggle
+  (Full chart / Road-legal only) sits next to the existing Site Capacity
+  Rule toggle, same mode-toggle pattern. Every result row states plainly
+  which basis actually applied to that specific crane - "capped at
+  13.4t" vs "no road-legal CWT figure for this crane, showing the normal
+  chart-wide minimum" - so a mixed comparison (some cranes capped, some
+  not) can't be misread as uniform. When nothing within the cap clears
+  the target, a second uncapped call (only made in that specific case,
+  not on every render) reports what WOULD have worked, framed as needing
+  a truck - genuinely useful context rather than a bare "no" if the true
+  answer is "yes, but not truck-free."
+
+  Verified directly against real load chart data (not synthetic/made-up
+  numbers) via Playwright: a 12m/10t scenario came back 0.0t minimum for
+  all three test cranes (1110, 1130, 1300) - too light to exercise the
+  cap at all, both modes identical, which is correct behaviour but not a
+  useful proof by itself. Probed computeLoadChartBestForCrane directly
+  across a range of target weights for the 1130 at a fixed radius to
+  find where its true minimum actually crosses the 6.6t cap - at 11t
+  target weight the true minimum (6.6t) sat exactly on the cap boundary
+  and was correctly still included (boundary is inclusive, <=, not <);
+  at 12t the true minimum jumped to 9.8t, above the cap, and the capped
+  search correctly returned "none" instead of silently reporting 9.8t.
+  Confirmed the actual rendered HTML for that exact 12t case shows all
+  three intended pieces together: the "capped at 6.6t" note, "no
+  configuration within this crane's road-legal counterweight clears
+  it", and "would clear it at 9.8t - above this crane's road-legal
+  limit, so that'd need a truck." Also confirmed the "no road-legal CWT
+  figure" note appears correctly for the LTM 1300 (no ROAD_LEGAL_CWT
+  entry) with its own result completely unaffected by the toggle either
+  way, in the same comparison run as the two capped cranes.
+
+================================================================================
