@@ -175,6 +175,20 @@
     .way-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
     .way-btn { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 10px 0; font-size: 0.85rem; font-weight: 700; cursor: pointer; text-align: center; }
     .way-btn.active { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
+
+    /* Service Fill: vertical 10-segment tank gauge. Segments are stacked
+       bottom-to-top with column-reverse, so segment 1 in the DOM (bottom
+       of the tank) is the first child but the last one visually filled. */
+    .fuel-tank-row { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+    .fuel-tank { display: flex; flex-direction: column; align-items: center; width: 140px; }
+    .fuel-tank-name { font-size: 0.8rem; font-weight: 700; text-align: center; margin-bottom: 8px; color: var(--text-main); min-height: 2.2em; }
+    .fuel-gauge { display: flex; flex-direction: column-reverse; width: 56px; height: 220px; border: 2px solid var(--border-color); border-radius: 4px; padding: 3px; gap: 3px; background: var(--input-bg); }
+    .fuel-segment { flex: 1; border-radius: 2px; background: #1c1e22; border: 1px solid var(--border-color); cursor: pointer; }
+    .fuel-segment.filled.diesel { background: var(--accent-gold); border-color: var(--accent-gold); }
+    .fuel-segment.filled.adblue { background: var(--accent-cyan); border-color: var(--accent-cyan); }
+    .fuel-tank-readout { margin-top: 10px; font-size: 0.8rem; text-align: center; line-height: 1.5; }
+    .fuel-tank-readout .fuel-need { color: var(--danger); font-weight: 700; }
+    .fuel-tank-empty-btn { margin-top: 6px; background: none; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 4px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer; text-transform: uppercase; }
     .hook-badge { display: inline-block; background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid var(--success); border-radius: 5px; padding: 4px 10px; font-size: 0.8rem; font-weight: 700; margin-bottom: 12px; }
     .snippet-wrap { width: 100%; min-height: 120px; border-radius: 6px; border: 1px solid var(--border-color); background: #0f172a; margin-bottom: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; touch-action: none; }
     .zoom-inner { transform-origin: 0 0; will-change: transform; }
@@ -615,6 +629,15 @@
         if (user) {
           gateEl.style.display = 'none';
           loadTabRestrictions(user.uid);
+          // Service Fill is a one-off admin-only tab (not part of the
+          // deny-list userAccess framework, which defaults everyone TO
+          // full access - this one needs the opposite default, hidden
+          // unless it's specifically this account) so it's just a plain
+          // hardcoded email check rather than a Firestore-backed rule.
+          if (user.email && user.email.toLowerCase() === 'myslewer@gmail.com') {
+            const sfBtn = document.getElementById('servicefill-tab-btn');
+            if (sfBtn) sfBtn.style.display = '';
+          }
           return;
         }
         // Confirmed signed-out (not just "still checking") - only now is
@@ -781,7 +804,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.16</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.17</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -826,6 +849,7 @@
     <button class="tab-btn" data-tabkey="hook" onclick="switchTab('hook-tab', event)">Minimum Hook Block Weights</button>
     <button class="tab-btn" data-tabkey="chain" onclick="switchTab('chain-tab', event)">Chain Shortening</button>
     <button class="tab-btn" data-tabkey="rope" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
+    <button class="tab-btn" id="servicefill-tab-btn" data-tabkey="servicefill" onclick="switchTab('servicefill-tab', event)" style="display:none;">Service Fill</button>
   </nav>
 
   <div class="container">
@@ -1642,9 +1666,151 @@
       </div>
     </div>
 
+    <!-- ================= SERVICE FILL (admin-only) ================= -->
+    <div id="servicefill-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">Crane</div>
+        <div class="form-group">
+          <label>Select Crane Model</label>
+          <select id="sf-crane" onchange="renderServiceFillTanks()"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Diesel</div>
+        <div class="fuel-tank-row" id="sf-diesel-tanks"></div>
+      </div>
+
+      <div class="card" id="sf-adblue-card" style="display:none;">
+        <div class="card-title">AdBlue</div>
+        <div class="fuel-tank-row" id="sf-adblue-tanks"></div>
+      </div>
+
+      <div class="disclaimer">Tap a segment to set that tank's level (10 segments = full). Litres to fill are estimated in tenths of the tank's rated capacity — top up against the gauge/dipstick on the day, this is a planning figure only. Levels are saved on this device only.</div>
+    </div>
+
   </div>
 
   <script>
+    // Service Fill (admin-only). Diesel/AdBlue tank capacities sourced
+    // from each crane's own OEM Service Fill sheet (Nextcloud), cross-
+    // checked against every page of every PDF, not just the first few -
+    // that's what caught the LTM 1130's second (upper/superstructure)
+    // diesel tank and the LTM 1300's AdBlue tank, both of which sit
+    // further into their respective documents than the carrier section.
+    // The 1130 has two separate diesel ENGINES (older design - one for
+    // the carrier/driving, one for the superstructure), hence two
+    // independently-tracked tanks rather than one combined figure.
+    const SERVICE_FILL_DATA = {
+      '1100': { label: 'LRT 1100-2.1',  diesel: [{ name: 'Diesel', capacity: 350 }] },
+      '1110': { label: 'LTM 1110-5.1',  diesel: [{ name: 'Diesel', capacity: 560 }] },
+      '1130': { label: 'LTM 1130-5.1',  diesel: [{ name: 'Lower Tank (Carrier)', capacity: 480 }, { name: 'Upper Tank (Superstructure)', capacity: 262 }] },
+      '1160': { label: 'LTM 1160-5.2',  diesel: [{ name: 'Diesel', capacity: 750 }] },
+      '1250': { label: 'LTM 1250-5.1',  diesel: [{ name: 'Diesel', capacity: 750 }] },
+      '1300': { label: 'LTM 1300-6.2',  diesel: [{ name: 'Diesel', capacity: 800 }], adblue: [{ name: 'AdBlue', capacity: 78 }] },
+      '1650': { label: 'LTM 1650-8.1',  diesel: [{ name: 'Diesel', capacity: 845 }], adblue: [{ name: 'AdBlue', capacity: 90 }] },
+      '1220': { label: 'LTR 1220',      diesel: [{ name: 'Diesel', capacity: 700 }] }
+    };
+
+    // Segment level per crane+fluid+tank-index, 0-10. Persisted locally
+    // (this device only, per the disclaimer in the tab) since the whole
+    // point is tracking real remaining fuel between visits, not just a
+    // one-off calculator that forgets itself on tab switch.
+    const SERVICE_FILL_STORAGE_KEY = 'myslewer_servicefill_v1';
+    function loadServiceFillLevels() {
+      try { return JSON.parse(localStorage.getItem(SERVICE_FILL_STORAGE_KEY)) || {}; }
+      catch (e) { return {}; }
+    }
+    function saveServiceFillLevels(levels) {
+      try { localStorage.setItem(SERVICE_FILL_STORAGE_KEY, JSON.stringify(levels)); }
+      catch (e) { /* storage unavailable - levels just won't persist */ }
+    }
+
+    function initServiceFillTab() {
+      const sel = document.getElementById('sf-crane');
+      if (sel.options.length) { renderServiceFillTanks(); return; }
+      buildSelect(sel, Object.keys(SERVICE_FILL_DATA), (k) => SERVICE_FILL_DATA[k].label, (k) => k);
+      renderServiceFillTanks();
+    }
+
+    function serviceFillLevelKey(craneKey, fluid, tankIndex) {
+      return craneKey + '_' + fluid + '_' + tankIndex;
+    }
+
+    function renderServiceFillGauge(container, craneKey, fluid, tank, tankIndex) {
+      const levels = loadServiceFillLevels();
+      const key = serviceFillLevelKey(craneKey, fluid, tankIndex);
+      const level = levels[key] || 0;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'fuel-tank';
+
+      const name = document.createElement('div');
+      name.className = 'fuel-tank-name';
+      name.textContent = tank.name;
+      wrap.appendChild(name);
+
+      const gauge = document.createElement('div');
+      gauge.className = 'fuel-gauge';
+      for (let i = 1; i <= 10; i++) {
+        const seg = document.createElement('div');
+        seg.className = 'fuel-segment' + (i <= level ? ' filled ' + fluid : '');
+        seg.onclick = () => {
+          const cur = loadServiceFillLevels();
+          // Clicking the segment that's already the top of the filled
+          // stack empties it back down one, so tapping the same spot
+          // repeatedly can walk a tank all the way down to empty rather
+          // than getting stuck unable to go below the first click.
+          cur[key] = (cur[key] || 0) === i ? i - 1 : i;
+          saveServiceFillLevels(cur);
+          renderServiceFillTanks();
+        };
+        gauge.appendChild(seg);
+      }
+      wrap.appendChild(gauge);
+
+      const litresHave = (level / 10) * tank.capacity;
+      const litresNeed = tank.capacity - litresHave;
+      const readout = document.createElement('div');
+      readout.className = 'fuel-tank-readout';
+      readout.innerHTML = `${level}/10<br>${litresHave.toFixed(0)} L on board<br><span class="fuel-need">${litresNeed.toFixed(0)} L to fill</span>`;
+      wrap.appendChild(readout);
+
+      const emptyBtn = document.createElement('button');
+      emptyBtn.type = 'button';
+      emptyBtn.className = 'fuel-tank-empty-btn';
+      emptyBtn.textContent = 'Reset to 0';
+      emptyBtn.onclick = () => {
+        const cur = loadServiceFillLevels();
+        cur[key] = 0;
+        saveServiceFillLevels(cur);
+        renderServiceFillTanks();
+      };
+      wrap.appendChild(emptyBtn);
+
+      container.appendChild(wrap);
+    }
+
+    function renderServiceFillTanks() {
+      const craneKey = document.getElementById('sf-crane').value;
+      const data = SERVICE_FILL_DATA[craneKey];
+      if (!data) return;
+
+      const dieselEl = document.getElementById('sf-diesel-tanks');
+      dieselEl.innerHTML = '';
+      data.diesel.forEach((tank, i) => renderServiceFillGauge(dieselEl, craneKey, 'diesel', tank, i));
+
+      const adblueCard = document.getElementById('sf-adblue-card');
+      const adblueEl = document.getElementById('sf-adblue-tanks');
+      adblueEl.innerHTML = '';
+      if (data.adblue && data.adblue.length) {
+        adblueCard.style.display = '';
+        data.adblue.forEach((tank, i) => renderServiceFillGauge(adblueEl, craneKey, 'adblue', tank, i));
+      } else {
+        adblueCard.style.display = 'none';
+      }
+    }
+
     // Tab Controller
     function switchTab(tabId, evt) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1663,6 +1829,7 @@
         if (document.getElementById('cad-subtab-layout').classList.contains('active')) initSlewClearanceTab();
       }
       if (tabId === 'reeve-tab') initReeveTab();
+      if (tabId === 'servicefill-tab') initServiceFillTab();
       // Re-checked on every visit, not just after the button runs - content
       // also gets cached one file at a time just by viewing it, so the
       // tick/cross needs to reflect that too, not only a full-download run.
