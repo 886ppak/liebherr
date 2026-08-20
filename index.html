@@ -804,7 +804,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.17</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.18</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1056,13 +1056,17 @@
           <label>Shorten By (mm)</label>
           <input type="number" id="chain-amount" value="500" step="1" min="0" oninput="calcChainShortening()">
         </div>
+        <div class="form-group" id="chain-total-group" style="margin-top:10px; display:none;">
+          <label>Total Chain Length (mm) <span style="font-weight:400; text-transform:none; color:var(--text-muted);">— optional, only needed to also show the count from the other end</span></label>
+          <input type="number" id="chain-total" step="1" min="0" placeholder="e.g. 6000" oninput="calcChainShortening()">
+        </div>
       </div>
 
       <div class="card">
         <div class="card-title" style="color:var(--success);">Result</div>
         <div id="chain-result"></div>
         <button class="toolbar-btn" id="chain-ar-btn" style="display:none; width:100%; margin-top:10px;" onclick="startChainAR()">Mark Cut Point in AR</button>
-        <div class="disclaimer">Pitch per link is looked up from chain diameter (8/10/13/16/19/22/26mm), same table as the reference shortening calculator. Links to remove is rounded to the nearest whole link, so the actual shortened amount can land a few mm off the target — that's the "Difference from Target" figure below. Cross-check against the chain's own data plate/certification before cutting.</div>
+        <div class="disclaimer">Pitch per link is looked up from chain diameter (8/10/13/16/19/22/26mm), same table as the reference shortening calculator. Links to remove is rounded to the nearest whole link, so the actual shortened amount can land a few mm off the target — that's the "Difference from Target" figure below. Where the total chain length is known, the count from the other end is also shown — whichever direction is fewer links is marked quicker to count. Cross-check against the chain's own data plate/certification before cutting.</div>
       </div>
     </div>
 
@@ -5777,6 +5781,12 @@
       document.getElementById('chain-current-group').style.display = mode === 'length' ? '' : 'none';
       document.getElementById('chain-desired-group').style.display = mode === 'length' ? '' : 'none';
       document.getElementById('chain-amount-group').style.display = mode === 'amount' ? '' : 'none';
+      // 'length' mode already has the whole chain's current length as an
+      // input, so total link count (and therefore the other-end count)
+      // comes for free - only 'amount' mode needs the extra optional
+      // field, since a bare "shorten by X mm" request never mentions the
+      // chain's total length at all.
+      document.getElementById('chain-total-group').style.display = mode === 'amount' ? '' : 'none';
       calcChainShortening();
     }
 
@@ -5807,6 +5817,29 @@
     // Current Length input it doesn't need - Actual Finished Length has
     // no meaning without a starting length, so that row is replaced with
     // Actual Amount Shortened (Links to Remove x Pitch per Link) instead.
+    // Shared by both modes: given the whole chain's total length (known
+    // directly in 'length' mode, optional in 'amount' mode), works out
+    // how many links that is and how many links the SAME cut point is
+    // from the opposite end. Physically this is the same link either
+    // way round - counting from whichever end has fewer links to count
+    // is just quicker, not a different result. Returns two empty-string
+    // rows when the total length isn't known, since 'amount' mode can be
+    // used without ever supplying one.
+    function chainLinkCountRows(pitch, linksToRemove, totalLengthMm) {
+      if (isNaN(totalLengthMm) || totalLengthMm <= 0) {
+        return { removeRow: `<tr><td style="text-align:left;"><b>Links to Remove</b></td><td><b>${linksToRemove}</b></td></tr>`, otherEndRow: '' };
+      }
+      const totalLinks = Math.round(totalLengthMm / pitch);
+      const otherEnd = totalLinks - linksToRemove;
+      const removeQuicker = otherEnd < 0 || linksToRemove <= otherEnd;
+      const badge = ' <span style="color:var(--success); font-weight:700;">(quicker)</span>';
+      const removeRow = `<tr><td style="text-align:left;"><b>Links to Remove</b></td><td><b>${linksToRemove}${removeQuicker ? badge : ''}</b></td></tr>`;
+      const otherEndRow = otherEnd >= 0
+        ? `<tr><td style="text-align:left;">Links from Other End</td><td>${otherEnd}${removeQuicker ? '' : badge}</td></tr>`
+        : '';
+      return { removeRow, otherEndRow };
+    }
+
     function calcChainShortening() {
       const diameter = parseFloat(document.getElementById('chain-diameter').value);
       const resultEl = document.getElementById('chain-result');
@@ -5822,13 +5855,16 @@
         const linksToRemove = Math.round(amountToShorten / pitch);
         const actualShortened = linksToRemove * pitch;
         const diffFromTarget = actualShortened - amountToShorten;
+        const totalLengthMm = parseFloat(document.getElementById('chain-total').value);
+        const { removeRow, otherEndRow } = chainLinkCountRows(pitch, linksToRemove, totalLengthMm);
 
         resultEl.innerHTML = `
           <table>
             <tbody>
               <tr><td style="text-align:left;">Pitch per Link</td><td>${pitch} mm</td></tr>
               <tr><td style="text-align:left;">Amount to Shorten</td><td>${amountToShorten} mm</td></tr>
-              <tr><td style="text-align:left;"><b>Links to Remove</b></td><td><b>${linksToRemove}</b></td></tr>
+              ${removeRow}
+              ${otherEndRow}
               <tr><td style="text-align:left;">Actual Amount Shortened</td><td>${actualShortened} mm</td></tr>
               <tr><td style="text-align:left;">Difference from Target</td><td>${diffFromTarget > 0 ? '+' : ''}${diffFromTarget} mm</td></tr>
             </tbody>
@@ -5850,13 +5886,15 @@
       const linksToRemove = Math.round(amountToShorten / pitch);
       const actualFinished = current - (linksToRemove * pitch);
       const diffFromTarget = actualFinished - desired;
+      const { removeRow, otherEndRow } = chainLinkCountRows(pitch, linksToRemove, current);
 
       resultEl.innerHTML = `
         <table>
           <tbody>
             <tr><td style="text-align:left;">Pitch per Link</td><td>${pitch} mm</td></tr>
             <tr><td style="text-align:left;">Amount to Shorten</td><td>${amountToShorten} mm</td></tr>
-            <tr><td style="text-align:left;"><b>Links to Remove</b></td><td><b>${linksToRemove}</b></td></tr>
+            ${removeRow}
+            ${otherEndRow}
             <tr><td style="text-align:left;">Actual Finished Length</td><td>${actualFinished} mm</td></tr>
             <tr><td style="text-align:left;">Difference from Target</td><td>${diffFromTarget > 0 ? '+' : ''}${diffFromTarget} mm</td></tr>
           </tbody>
