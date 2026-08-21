@@ -263,8 +263,9 @@
        identically to object-fit:contain given the same box and the same
        source aspect ratio, so the two stay pixel-aligned automatically.
        See methodology.txt 10.26. */
-    .assembly-image-wrap { position: relative; width: 100%; border-radius: 6px; background: #fff; overflow: hidden; }
-    .assembly-image-wrap img { width: 100%; height: auto; display: block; }
+    .assembly-image-wrap { position: relative; width: 100%; border-radius: 6px; background: #fff; overflow: hidden; touch-action: none; }
+    .assembly-zoom-inner { transform-origin: 0 0; will-change: transform; }
+    .assembly-zoom-inner img { width: 100%; height: auto; display: block; pointer-events: none; }
     .assembly-part-row { padding: 8px 10px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); margin-bottom: 6px; }
     .assembly-part-row .assembly-part-code { font-weight: 700; }
     .assembly-part-row .assembly-part-detail { font-size: 0.8rem; margin-top: 2px; color: var(--text-muted); }
@@ -876,7 +877,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.5</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.6</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1817,12 +1818,15 @@
       <div class="card">
         <div class="card-title">Assembly Drawing</div>
         <div id="assembly-image-wrap" class="assembly-image-wrap">
-          <img id="assembly-image" src="" alt="">
+          <div id="assembly-zoom-inner" class="assembly-zoom-inner">
+            <img id="assembly-image" src="" alt="">
+          </div>
           <button type="button" class="carrier3d-fullscreen-btn" data-wrap="assembly-image-wrap" onclick="toggleWrapFullscreen('assembly-image-wrap')" title="Fullscreen" aria-label="Fullscreen">
             <svg class="fs-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
             <svg class="fs-icon-compress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
           </button>
         </div>
+        <div class="cwt-zoom-hint">Pinch to zoom, drag to pan when zoomed in. Double-tap to zoom in/out.</div>
         <div id="assembly-drawing-ref" style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;"></div>
       </div>
 
@@ -2083,6 +2087,7 @@
       const img = document.getElementById('assembly-image');
       img.src = assemblyImagePath(assemblyType, name);
       img.alt = `Liebherr LTM 1650-8.1 ${assemblyType === 'fixed' ? 'fixed jib' : 'luffing jib'} assembly drawing, ${name}`;
+      assemblyZoomReset();
 
       document.getElementById('assembly-drawing-ref').textContent = assemblyType === 'fixed'
         ? 'Liebherr dwg 98035472 — FESTE SPITZE F-6M to F-62M'
@@ -2116,6 +2121,100 @@
     function initAssemblyTab() {
       populateAssemblyLengthSelect();
       renderAssemblyPlan();
+      initAssemblyZoomGestures();
+    }
+
+    // Pinch-to-zoom/pan on the assembly drawing, same pattern as
+    // #reeve-snippet-wrap's zoom-inner (see initReeveZoomGestures) -
+    // scoped to #assembly-image-wrap only so page-level scroll/pinch
+    // stays untouched everywhere else.
+    let assemblyZoom = { scale: 1, panX: 0, panY: 0 };
+
+    function assemblyApplyZoom() {
+      const inner = document.getElementById('assembly-zoom-inner');
+      if (inner) inner.style.transform = `translate(${assemblyZoom.panX}px, ${assemblyZoom.panY}px) scale(${assemblyZoom.scale})`;
+    }
+
+    function assemblyZoomReset() {
+      assemblyZoom = { scale: 1, panX: 0, panY: 0 };
+      assemblyApplyZoom();
+    }
+
+    function assemblyZoomAround(cx, cy, factor) {
+      const newScale = Math.min(6, Math.max(1, assemblyZoom.scale * factor));
+      const actualFactor = newScale / assemblyZoom.scale;
+      assemblyZoom.panX = cx - (cx - assemblyZoom.panX) * actualFactor;
+      assemblyZoom.panY = cy - (cy - assemblyZoom.panY) * actualFactor;
+      assemblyZoom.scale = newScale;
+      if (assemblyZoom.scale <= 1.001) { assemblyZoom.panX = 0; assemblyZoom.panY = 0; assemblyZoom.scale = 1; }
+      assemblyApplyZoom();
+    }
+
+    function initAssemblyZoomGestures() {
+      const wrap = document.getElementById('assembly-image-wrap');
+      const pointers = new Map();
+      let pinchStartDist = 0, pinchStartScale = 1;
+      let dragStartX = 0, dragStartY = 0, dragStartPanX = 0, dragStartPanY = 0;
+      let lastTapTime = 0;
+
+      const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+      wrap.addEventListener('pointerdown', (e) => {
+        wrap.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 2) {
+          const pts = Array.from(pointers.values());
+          pinchStartDist = dist(pts[0], pts[1]);
+          pinchStartScale = assemblyZoom.scale;
+        } else if (pointers.size === 1) {
+          const rect = wrap.getBoundingClientRect();
+          const now = Date.now();
+          if (now - lastTapTime < 300) {
+            if (assemblyZoom.scale > 1) {
+              assemblyZoomReset();
+            } else {
+              assemblyZoomAround(e.clientX - rect.left, e.clientY - rect.top, 2.5);
+            }
+            lastTapTime = 0;
+          } else {
+            lastTapTime = now;
+          }
+          dragStartX = e.clientX; dragStartY = e.clientY;
+          dragStartPanX = assemblyZoom.panX; dragStartPanY = assemblyZoom.panY;
+        }
+      });
+
+      wrap.addEventListener('pointermove', (e) => {
+        if (!pointers.has(e.pointerId)) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 2) {
+          const pts = Array.from(pointers.values());
+          const newDist = dist(pts[0], pts[1]);
+          if (pinchStartDist > 0) {
+            assemblyZoom.scale = Math.min(6, Math.max(1, pinchStartScale * (newDist / pinchStartDist)));
+            assemblyApplyZoom();
+          }
+        } else if (pointers.size === 1 && assemblyZoom.scale > 1) {
+          assemblyZoom.panX = dragStartPanX + (e.clientX - dragStartX);
+          assemblyZoom.panY = dragStartPanY + (e.clientY - dragStartY);
+          assemblyApplyZoom();
+        }
+      });
+
+      function endPointer(e) {
+        pointers.delete(e.pointerId);
+        if (pointers.size === 1) {
+          const remaining = Array.from(pointers.values())[0];
+          dragStartX = remaining.x; dragStartY = remaining.y;
+          dragStartPanX = assemblyZoom.panX; dragStartPanY = assemblyZoom.panY;
+        }
+        if (assemblyZoom.scale <= 1.001) { assemblyZoom.panX = 0; assemblyZoom.panY = 0; assemblyZoom.scale = 1; assemblyApplyZoom(); }
+      }
+      wrap.addEventListener('pointerup', endPointer);
+      wrap.addEventListener('pointercancel', endPointer);
+      wrap.addEventListener('pointerleave', endPointer);
     }
 
     // Tab Controller
