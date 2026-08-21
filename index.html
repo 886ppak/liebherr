@@ -645,16 +645,18 @@
           // success or failure - so it only ever offers/hides tabs this
           // person actually has access to. finally() covers both
           // outcomes, rather than duplicating the call in both then()
-          // and catch(). Order matters within the three calls too:
+          // and catch(). Order matters within the four calls too:
           // reorder first (repositioning doesn't hide anything, so it's
           // safe before the menu even exists), then BUILD the menu
           // while every admin-allowed tab is still on-screen (so a tab
           // this person hid last visit still has a checkbox to turn it
-          // back on), and only THEN apply personal hides - building
-          // after that would've already hidden it, making it
-          // indistinguishable from an admin-restricted tab and dropping
-          // it from the list for good.
-          .finally(() => { applyTabOrder(); buildTabPrefsMenu(); applyTabPrefs(); });
+          // back on), then apply personal hides - building after that
+          // would've already hidden it, making it indistinguishable
+          // from an admin-restricted tab and dropping it from the list
+          // for good - and only THEN open whichever tab is now first,
+          // since that has to see the final order AND final hidden
+          // state to pick the right one.
+          .finally(() => { applyTabOrder(); buildTabPrefsMenu(); applyTabPrefs(); openFirstTabInOrder(); });
       }
 
       onAuthStateChanged(auth, (user) => {
@@ -836,7 +838,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.22</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.23</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -7627,6 +7629,19 @@
     function closeTabsPanel() {
       document.getElementById('tabs-panel').style.display = 'none';
       document.getElementById('tabs-backdrop').style.display = 'none';
+    }
+
+    // Opens on whatever tab this device's order/hide prefs put first,
+    // rather than always the app's own hardcoded default (Reeving
+    // Plans) - a real click, not just swapping classes, since a tab's
+    // init function (initReeveTab() etc.) needs to actually run the
+    // first time it's shown. No-op if the first-in-order tab is already
+    // the active one (the common case for anyone who hasn't reordered
+    // anything), so this never causes a redundant re-init on a normal
+    // load.
+    function openFirstTabInOrder() {
+      const firstVisible = Array.from(document.querySelectorAll('.tab-btn[data-tabkey]')).find((btn) => btn.style.display !== 'none');
+      if (firstVisible && !firstVisible.classList.contains('active')) firstVisible.click();
     }
 
     function renderShareQR() {
