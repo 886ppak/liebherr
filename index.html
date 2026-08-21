@@ -885,7 +885,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.7</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.8</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1874,8 +1874,8 @@
           </div>
         </div>
         <div class="form-group" id="sling-angle-direct-group" style="margin-top:14px;">
-          <label>Angle from Horizontal (°)</label>
-          <input type="number" id="sling-angle" step="1" min="1" max="89" value="60" oninput="calcSlingAngle()">
+          <label>Included Angle (°) — angle between the two legs at the hook</label>
+          <input type="number" id="sling-angle" step="1" min="1" max="179" value="60" oninput="calcSlingAngle()">
         </div>
         <div class="grid" id="sling-angle-dims-group" style="margin-top:14px; display:none;">
           <div class="form-group">
@@ -1888,7 +1888,7 @@
           </div>
         </div>
         <div id="sling-angle-computed-wrap" style="display:none; margin-top:10px;">
-          <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Computed Angle from Horizontal</label>
+          <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Computed Included Angle</label>
           <div id="sling-angle-computed" style="font-weight:700; color:var(--accent-gold);">—</div>
         </div>
       </div>
@@ -1914,7 +1914,7 @@
           </div>
         </div>
         <div id="sling-result-box"></div>
-        <div class="disclaimer">Conservative 2-leg-share convention applied regardless of leg count, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ sin(angle from horizontal). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.</div>
+        <div class="disclaimer">Conservative 2-leg-share convention applied regardless of leg count, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.</div>
       </div>
     </div>
 
@@ -6328,20 +6328,28 @@
     function calcSlingAngle() {
       const load = parseFloat(document.getElementById('sling-load').value) || 0;
 
-      let angleDeg;
+      // Included angle = the angle between the two legs at the hook (the
+      // way it's actually read off a drawing or eyeballed on site) - NOT
+      // angle from horizontal of a single leg. The two relate by
+      // includedAngle = 180 - 2*(angle from horizontal), so this is a
+      // straight substitution: Load Angle Factor = 1/cos(includedAngle/2)
+      // in place of the old 1/sin(angle from horizontal). Cross-checked
+      // against standard sling angle factor tables: 60° -> 1.15, 90° ->
+      // 1.41, 120° -> 2.00, matching published values exactly.
+      let includedDeg;
       if (slingAngleMode === 'direct') {
-        angleDeg = parseFloat(document.getElementById('sling-angle').value) || 0;
+        includedDeg = parseFloat(document.getElementById('sling-angle').value) || 0;
       } else {
         const headroom = parseFloat(document.getElementById('sling-headroom').value) || 0;
         const spread = parseFloat(document.getElementById('sling-spread').value) || 0;
-        angleDeg = (headroom > 0 && spread > 0) ? Math.atan(headroom / (spread / 2)) * 180 / Math.PI : 0;
-        document.getElementById('sling-angle-computed').textContent = angleDeg > 0 ? `${angleDeg.toFixed(1)}°` : '—';
+        includedDeg = (headroom > 0 && spread > 0) ? 2 * Math.atan((spread / 2) / headroom) * 180 / Math.PI : 0;
+        document.getElementById('sling-angle-computed').textContent = includedDeg > 0 ? `${includedDeg.toFixed(1)}°` : '—';
       }
 
       const wll = parseFloat(document.getElementById('sling-wll').value) || 0;
       const resultBox = document.getElementById('sling-result-box');
 
-      if (load <= 0 || angleDeg <= 0 || angleDeg >= 90) {
+      if (load <= 0 || includedDeg <= 0 || includedDeg >= 180) {
         document.getElementById('sling-laf').textContent = '-';
         document.getElementById('sling-tension').textContent = '- t';
         resultBox.className = '';
@@ -6349,8 +6357,8 @@
         return;
       }
 
-      const angleRad = angleDeg * Math.PI / 180;
-      const laf = 1 / Math.sin(angleRad);
+      const halfAngleRad = (includedDeg / 2) * Math.PI / 180;
+      const laf = 1 / Math.cos(halfAngleRad);
       const tensionPerLeg = (load / 2) * laf;
 
       document.getElementById('sling-laf').textContent = laf.toFixed(2);
@@ -6370,8 +6378,8 @@
         resultBox.className = 'alt-box';
         html = `Minimum required WLL per leg at this angle: <strong>${tensionPerLeg.toFixed(2)} t</strong>. Enter your sling's rated WLL above to check pass/fail.`;
       }
-      if (angleDeg < 30) {
-        html += `<br><br><strong style="color:var(--warning);">⚠ Angle under 30° from horizontal</strong> — many rigging codes prohibit sling angles this shallow regardless of calculated capacity.`;
+      if (includedDeg >= 120) {
+        html += `<br><br><strong style="color:var(--warning);">⚠ Included angle 120° or over</strong> — many rigging codes prohibit sling angles this shallow regardless of calculated capacity.`;
       }
       resultBox.innerHTML = html;
     }
