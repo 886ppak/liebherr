@@ -70,6 +70,22 @@
     .tab-toggle-check { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1; min-width: 0; cursor: pointer; }
     .tab-toggle-check input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
 
+    /* "What's New" one-time announcement popup - shown at most once per
+       WHATS_NEW.version (main app script), tracked per-device in
+       localStorage, not tied to every CACHE_VERSION bump (most deploys
+       aren't worth interrupting someone's day for). Centered as a true
+       modal, unlike the header panels above which anchor under the
+       header - this one's meant to actually stop someone rather than
+       sit out of the way until opened. */
+    #whatsnew-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 500; }
+    #whatsnew-panel { display: none; position: fixed; top: 50%; left: 14px; right: 14px; max-width: 360px; margin: 0 auto; transform: translateY(-50%); background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; z-index: 501; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto; }
+    #whatsnew-panel .card-title { margin-bottom: 4px; }
+    .whatsnew-item { margin-top: 14px; }
+    .whatsnew-item-title { font-weight: 700; color: var(--accent-gold); font-size: 0.9rem; margin-bottom: 4px; }
+    .whatsnew-item-body { font-size: 0.85rem; color: var(--text-main); line-height: 1.5; }
+    .whatsnew-optout-row { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted); cursor: pointer; }
+    .whatsnew-optout-row input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+
     /* Left-side header icon, opposite the share/update-check pair on the
        right - offline cache status wasn't visible anywhere until a person
        happened to be on one of the 4 tabs that carry their own "Offline
@@ -661,7 +677,7 @@
           // for good - and only THEN open whichever tab is now first,
           // since that has to see the final order AND final hidden
           // state to pick the right one.
-          .finally(() => { applyTabOrder(); buildTabPrefsMenu(); applyTabPrefs(); openFirstTabInOrder(); });
+          .finally(() => { applyTabOrder(); buildTabPrefsMenu(); applyTabPrefs(); openFirstTabInOrder(); maybeShowWhatsNew(); });
       }
 
       onAuthStateChanged(auth, (user) => {
@@ -845,7 +861,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.25</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.26</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -889,6 +905,17 @@
     <div class="card-title">Customize Tabs</div>
     <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Hide tabs you don't use to declutter the menu. This only changes what YOU see on THIS device — nothing is shared, and it can't show a tab that's been restricted for your account.</div>
     <div id="tabs-toggle-list"></div>
+  </div>
+
+  <div id="whatsnew-backdrop"></div>
+  <div id="whatsnew-panel">
+    <div class="card-title">What's New</div>
+    <div id="whatsnew-items"></div>
+    <label class="whatsnew-optout-row">
+      <input type="checkbox" id="whatsnew-optout">
+      Don't show me these update notifications again
+    </label>
+    <button class="btn" style="margin-top:14px;" onclick="closeWhatsNew()">Got It</button>
   </div>
 
   <nav class="nav-tabs">
@@ -7657,6 +7684,57 @@
     function closeTabsPanel() {
       document.getElementById('tabs-panel').style.display = 'none';
       document.getElementById('tabs-backdrop').style.display = 'none';
+    }
+
+    // "What's New" announcement popup. Bump .version and add/replace
+    // .items whenever there's something worth telling people about -
+    // deliberately NOT tied to CACHE_VERSION, which bumps on every
+    // deploy (this session alone shipped ~10 in a row) and would nag
+    // constantly if it triggered this. Batch multiple smaller changes
+    // into one version bump rather than firing once per feature.
+    const WHATS_NEW = {
+      version: 1,
+      items: [
+        {
+          title: 'New: Customize Your Tabs',
+          body: "Don't need every tab? Tap the new menu icon in the header to hide the ones you don't use and reorder the rest with the up/down arrows — your top tab even opens first when you launch the app. Saved on this device only, so everyone sees their own layout."
+        }
+      ]
+    };
+    const WHATSNEW_SEEN_KEY = 'myslewer_whatsnew_seen_v1';
+    const WHATSNEW_OPTOUT_KEY = 'myslewer_whatsnew_optout_v1';
+
+    // Checked once per load, after the app itself is already usable -
+    // permanent opt-out and "already seen this version" are both
+    // per-device (localStorage), never synced anywhere, matching every
+    // other personal-preference feature in this app.
+    function maybeShowWhatsNew() {
+      try {
+        if (localStorage.getItem(WHATSNEW_OPTOUT_KEY) === 'true') return;
+        if (localStorage.getItem(WHATSNEW_SEEN_KEY) === String(WHATS_NEW.version)) return;
+      } catch (e) {
+        return; // storage unavailable - don't nag every single load
+      }
+      const itemsEl = document.getElementById('whatsnew-items');
+      itemsEl.innerHTML = WHATS_NEW.items.map((item) => `
+        <div class="whatsnew-item">
+          <div class="whatsnew-item-title">${item.title}</div>
+          <div class="whatsnew-item-body">${item.body}</div>
+        </div>
+      `).join('');
+      document.getElementById('whatsnew-backdrop').style.display = 'block';
+      document.getElementById('whatsnew-panel').style.display = 'block';
+    }
+
+    function closeWhatsNew() {
+      try {
+        localStorage.setItem(WHATSNEW_SEEN_KEY, String(WHATS_NEW.version));
+        if (document.getElementById('whatsnew-optout').checked) {
+          localStorage.setItem(WHATSNEW_OPTOUT_KEY, 'true');
+        }
+      } catch (e) { /* storage unavailable - will just show again next load */ }
+      document.getElementById('whatsnew-backdrop').style.display = 'none';
+      document.getElementById('whatsnew-panel').style.display = 'none';
     }
 
     // Opens on whatever tab this device's order/hide prefs put first,
