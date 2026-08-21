@@ -671,9 +671,11 @@
           // Service Fill is a one-off admin-only tab (not part of the
           // deny-list userAccess framework, which defaults everyone TO
           // full access - this one needs the opposite default, hidden
-          // unless it's specifically this account) so it's just a plain
-          // hardcoded email check rather than a Firestore-backed rule.
-          if (user.email && user.email.toLowerCase() === 'myslewer@gmail.com') {
+          // unless it's one of these specific accounts) so it's just a
+          // plain hardcoded allowlist rather than a Firestore-backed
+          // rule.
+          const SERVICE_FILL_ALLOWLIST = ['myslewer@gmail.com', 'dan.darwell@gmail.com'];
+          if (user.email && SERVICE_FILL_ALLOWLIST.includes(user.email.toLowerCase())) {
             const sfBtn = document.getElementById('servicefill-tab-btn');
             if (sfBtn) sfBtn.style.display = '';
           }
