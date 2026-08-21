@@ -690,7 +690,7 @@
           // unless it's one of these specific accounts) so it's just a
           // plain hardcoded allowlist rather than a Firestore-backed
           // rule.
-          const SERVICE_FILL_ALLOWLIST = ['myslewer@gmail.com', 'dan.darwell@gmail.com'];
+          const SERVICE_FILL_ALLOWLIST = ['myslewer@gmail.com', 'dan.darwell@gmail.com', 'cbuttell@gmail.com'];
           if (user.email && SERVICE_FILL_ALLOWLIST.includes(user.email.toLowerCase())) {
             const sfBtn = document.getElementById('servicefill-tab-btn');
             if (sfBtn) sfBtn.style.display = '';
