@@ -62,9 +62,13 @@
     #tabs-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; }
     #tabs-panel { display: none; position: fixed; top: 62px; right: 14px; left: 14px; max-width: 320px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; z-index: 201; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 75vh; overflow-y: auto; }
     #tabs-panel .card-title { margin-bottom: 12px; }
-    .tab-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; cursor: pointer; }
+    .tab-toggle-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; }
     .tab-toggle-row:last-child { border-bottom: none; }
-    .tab-toggle-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
+    .tab-toggle-move { display: flex; gap: 4px; flex-shrink: 0; }
+    .tab-toggle-move button { width: 26px; height: 26px; border-radius: 4px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 0.7rem; line-height: 1; }
+    .tab-toggle-move button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .tab-toggle-check { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1; min-width: 0; cursor: pointer; }
+    .tab-toggle-check input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
 
     /* Left-side header icon, opposite the share/update-check pair on the
        right - offline cache status wasn't visible anywhere until a person
@@ -329,7 +333,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.15</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.16</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -7047,6 +7051,56 @@
       catch (e) { /* storage unavailable - prefs just won't persist */ }
     }
 
+    // Tab ORDER is a separate localStorage key from TAB_PREFS_STORAGE_KEY
+    // (the hidden-tab map) rather than folded into the same object -
+    // keeps the existing flat {tabkey: true} format people already have
+    // stored untouched, no migration needed, two independent concerns
+    // that happen to live in the same panel.
+    const TAB_ORDER_STORAGE_KEY = 'myslewer_tab_order_v1';
+    function loadTabOrder() {
+      try { return JSON.parse(localStorage.getItem(TAB_ORDER_STORAGE_KEY)) || []; }
+      catch (e) { return []; }
+    }
+    function saveTabOrder(order) {
+      try { localStorage.setItem(TAB_ORDER_STORAGE_KEY, JSON.stringify(order)); }
+      catch (e) { /* storage unavailable - order just won't persist */ }
+    }
+
+    // Reorders the actual nav-tabs buttons to match the stored order.
+    // Keys not present in storage (a brand new tab shipped after this
+    // person last reordered, or simply no order saved yet) keep their
+    // existing relative position and get appended after the explicitly-
+    // ordered ones - so a new tab lands at the end instead of vanishing
+    // or jumping somewhere unexpected.
+    function applyTabOrder() {
+      const nav = document.querySelector('.nav-tabs');
+      if (!nav) return;
+      const order = loadTabOrder();
+      const buttons = Array.from(nav.querySelectorAll('.tab-btn[data-tabkey]'));
+      const byKey = new Map(buttons.map((b) => [b.dataset.tabkey, b]));
+      order.forEach((key) => {
+        const btn = byKey.get(key);
+        if (btn) { nav.appendChild(btn); byKey.delete(key); }
+      });
+      byKey.forEach((btn) => nav.appendChild(btn));
+    }
+
+    // Swaps a tab with its neighbour in the CURRENT on-screen order (not
+    // just the stored one - a first-ever move has no stored order yet,
+    // so this always reads the live DOM, which applyTabOrder has already
+    // made authoritative one way or another by this point).
+    function moveTabOrder(key, direction) {
+      const order = Array.from(document.querySelectorAll('.tab-btn[data-tabkey]')).map((b) => b.dataset.tabkey);
+      const idx = order.indexOf(key);
+      const swapIdx = idx + direction;
+      if (idx === -1 || swapIdx < 0 || swapIdx >= order.length) return;
+      [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+      saveTabOrder(order);
+      applyTabOrder();
+      buildTabPrefsMenu();
+      applyTabPrefs();
+    }
+
     function applyTabPrefs() {
       const hidden = loadTabPrefs();
       document.querySelectorAll('.tab-btn[data-tabkey]').forEach((btn) => {
@@ -7069,10 +7123,34 @@
       const hidden = loadTabPrefs();
       const allButtons = Array.from(document.querySelectorAll('.tab-btn[data-tabkey]'));
       listEl.innerHTML = '';
-      allButtons.forEach((btn) => {
+      allButtons.forEach((btn, i) => {
         const key = btn.dataset.tabkey;
-        const row = document.createElement('label');
+        const row = document.createElement('div');
         row.className = 'tab-toggle-row';
+
+        // Move buttons sit OUTSIDE the <label> below, deliberately - a
+        // button nested inside a <label> still gets its click forwarded
+        // to the label's checkbox by the browser, which would silently
+        // toggle visibility every time someone just meant to reorder.
+        const moveWrap = document.createElement('div');
+        moveWrap.className = 'tab-toggle-move';
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.textContent = '▲';
+        upBtn.setAttribute('aria-label', 'Move up');
+        upBtn.disabled = i === 0;
+        upBtn.onclick = () => moveTabOrder(key, -1);
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.textContent = '▼';
+        downBtn.setAttribute('aria-label', 'Move down');
+        downBtn.disabled = i === allButtons.length - 1;
+        downBtn.onclick = () => moveTabOrder(key, 1);
+        moveWrap.appendChild(upBtn);
+        moveWrap.appendChild(downBtn);
+
+        const label = document.createElement('label');
+        label.className = 'tab-toggle-check';
         const span = document.createElement('span');
         span.textContent = btn.textContent;
         const checkbox = document.createElement('input');
@@ -7090,8 +7168,11 @@
             if (firstVisible) firstVisible.click();
           }
         };
-        row.appendChild(span);
-        row.appendChild(checkbox);
+        label.appendChild(span);
+        label.appendChild(checkbox);
+
+        row.appendChild(moveWrap);
+        row.appendChild(label);
         listEl.appendChild(row);
       });
     }
@@ -7110,7 +7191,10 @@
 
     // No auth gate on this branch to wait for (see comment above) - run
     // immediately, the nav-tabs HTML is already parsed by the time this
-    // plain (non-deferred) script executes.
+    // plain (non-deferred) script executes. Reorder first (repositioning
+    // doesn't hide anything, so it's safe before the menu even exists),
+    // then build the menu while everything's still on-screen, then hide.
+    applyTabOrder();
     buildTabPrefsMenu();
     applyTabPrefs();
 
