@@ -54,6 +54,18 @@
     .share-actions { display: flex; gap: 8px; }
     .share-actions .toolbar-btn { flex: 1; }
 
+    /* Personal declutter menu - which tabs THIS device shows, stored in
+       localStorage only (see TAB_PREFS_STORAGE_KEY). Third right-side
+       header icon, so it sits further out from update-check/share. */
+    #tabs-btn { position: absolute; right: 98px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-gold); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+    #tabs-btn svg { width: 17px; height: 17px; }
+    #tabs-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; }
+    #tabs-panel { display: none; position: fixed; top: 62px; right: 14px; left: 14px; max-width: 320px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; z-index: 201; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-height: 75vh; overflow-y: auto; }
+    #tabs-panel .card-title { margin-bottom: 12px; }
+    .tab-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; cursor: pointer; }
+    .tab-toggle-row:last-child { border-bottom: none; }
+    .tab-toggle-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
+
     /* Left-side header icon, opposite the share/update-check pair on the
        right - offline cache status wasn't visible anywhere until a person
        happened to be on one of the 4 tabs that carry their own "Offline
@@ -622,7 +634,20 @@
       function loadTabRestrictions(uid) {
         getDoc(doc(db, 'userAccess', uid))
           .then((snap) => applyTabRestrictions((snap.exists() && snap.data().hidden) || {}))
-          .catch((err) => console.error('Could not load tab restrictions', err));
+          .catch((err) => console.error('Could not load tab restrictions', err))
+          // Personal declutter menu (applyTabPrefs/buildTabPrefsMenu,
+          // defined in the main app script further down) has to run
+          // AFTER admin restrictions are known either way - success or
+          // failure - so it only ever offers/hides tabs this person
+          // actually has access to. finally() covers both outcomes,
+          // rather than duplicating the call in both then() and catch().
+          // Build BEFORE apply, deliberately: the menu has to see every
+          // admin-allowed tab still on-screen (so a tab this person
+          // hid last visit still has a checkbox to turn it back on) -
+          // building it after applyTabPrefs would have already hidden
+          // that tab, making it indistinguishable from an admin-
+          // restricted one and dropping it from the list for good.
+          .finally(() => { buildTabPrefsMenu(); applyTabPrefs(); });
       }
 
       onAuthStateChanged(auth, (user) => {
@@ -804,12 +829,15 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v4.20</span></h1>
+    <h1>MYSLEWER <span class="app-version">v4.21</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
     <button id="share-btn" type="button" onclick="toggleSharePanel()" title="Share this app" aria-label="Share this app">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+    </button>
+    <button id="tabs-btn" type="button" onclick="toggleTabsPanel()" title="Customize tabs" aria-label="Customize tabs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="8" cy="6" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="16" cy="12" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="10" cy="18" r="1.6" fill="currentColor" stroke="none"></circle></svg>
     </button>
     <button id="update-check-btn" type="button" onclick="checkForAppUpdate()" title="Check for app update" aria-label="Check for app update">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
@@ -838,6 +866,13 @@
       <button class="toolbar-btn" onclick="copyShareLink()">Copy Link</button>
       <button class="toolbar-btn" id="share-native-btn" onclick="nativeShare()" style="display:none;">Share…</button>
     </div>
+  </div>
+
+  <div id="tabs-backdrop" onclick="closeTabsPanel()"></div>
+  <div id="tabs-panel">
+    <div class="card-title">Customize Tabs</div>
+    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Hide tabs you don't use to declutter the menu. This only changes what YOU see on THIS device — nothing is shared, and it can't show a tab that's been restricted for your account.</div>
+    <div id="tabs-toggle-list"></div>
   </div>
 
   <nav class="nav-tabs">
@@ -7421,6 +7456,93 @@
     function closeCachePanel() {
       document.getElementById('cache-panel').style.display = 'none';
       document.getElementById('cache-backdrop').style.display = 'none';
+    }
+
+    // Personal "declutter" tab menu - purely a per-device display
+    // preference, stored in localStorage only, never Firestore. Separate
+    // layer entirely from TAB_RESTRICTION_TARGETS/userAccess (the
+    // admin-managed deny-list in the gate's module script) - that one is
+    // an actual permission control synced from an admin; this one is
+    // just "which of the tabs I CAN see do I want cluttering my menu",
+    // decided by and remembered for the person using this device.
+    const TAB_PREFS_STORAGE_KEY = 'myslewer_tab_prefs_v1';
+    function loadTabPrefs() {
+      try { return JSON.parse(localStorage.getItem(TAB_PREFS_STORAGE_KEY)) || {}; }
+      catch (e) { return {}; }
+    }
+    function saveTabPrefs(prefs) {
+      try { localStorage.setItem(TAB_PREFS_STORAGE_KEY, JSON.stringify(prefs)); }
+      catch (e) { /* storage unavailable - prefs just won't persist */ }
+    }
+
+    // Called once per sign-in (see loadTabRestrictions's .finally() in
+    // the gate script), after admin restrictions have already been
+    // applied - so this only ever hides a tab that was already visible
+    // to this person; it never touches (and so can never un-hide) a tab
+    // that's display:none for any other reason, admin-restricted or
+    // Service Fill's own admin-email gate included.
+    function applyTabPrefs() {
+      const hidden = loadTabPrefs();
+      document.querySelectorAll('.tab-btn[data-tabkey]').forEach((btn) => {
+        if (btn.style.display === 'none') return;
+        if (hidden[btn.dataset.tabkey]) btn.style.display = 'none';
+      });
+      const activeBtn = document.querySelector('.tab-btn.active');
+      if (activeBtn && activeBtn.style.display === 'none') {
+        const firstVisible = Array.from(document.querySelectorAll('.tab-btn')).find((btn) => btn.style.display !== 'none');
+        if (firstVisible) firstVisible.click();
+      }
+    }
+
+    // Builds the checkbox list from whatever's ACTUALLY visible to this
+    // person right now, i.e. AFTER admin restrictions (and Service
+    // Fill's admin-email check) have already run - a tab that's been
+    // restricted for this account never even appears as an option here,
+    // by construction, rather than appearing greyed-out or similar.
+    function buildTabPrefsMenu() {
+      const listEl = document.getElementById('tabs-toggle-list');
+      if (!listEl) return;
+      const hidden = loadTabPrefs();
+      const visibleButtons = Array.from(document.querySelectorAll('.tab-btn[data-tabkey]'))
+        .filter((btn) => btn.style.display !== 'none');
+      listEl.innerHTML = '';
+      visibleButtons.forEach((btn) => {
+        const key = btn.dataset.tabkey;
+        const row = document.createElement('label');
+        row.className = 'tab-toggle-row';
+        const span = document.createElement('span');
+        span.textContent = btn.textContent;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !hidden[key];
+        checkbox.onchange = () => {
+          const prefs = loadTabPrefs();
+          if (checkbox.checked) delete prefs[key];
+          else prefs[key] = true;
+          saveTabPrefs(prefs);
+          btn.style.display = checkbox.checked ? '' : 'none';
+          const activeBtn = document.querySelector('.tab-btn.active');
+          if (activeBtn && activeBtn.style.display === 'none') {
+            const firstVisible = Array.from(document.querySelectorAll('.tab-btn')).find((b) => b.style.display !== 'none');
+            if (firstVisible) firstVisible.click();
+          }
+        };
+        row.appendChild(span);
+        row.appendChild(checkbox);
+        listEl.appendChild(row);
+      });
+    }
+
+    function toggleTabsPanel() {
+      const panel = document.getElementById('tabs-panel');
+      if (panel.style.display === 'block') { closeTabsPanel(); return; }
+      panel.style.display = 'block';
+      document.getElementById('tabs-backdrop').style.display = 'block';
+    }
+
+    function closeTabsPanel() {
+      document.getElementById('tabs-panel').style.display = 'none';
+      document.getElementById('tabs-backdrop').style.display = 'none';
     }
 
     function renderShareQR() {
