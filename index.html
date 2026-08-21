@@ -878,7 +878,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.1</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.2</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1835,7 +1835,7 @@
       <div class="card">
         <div class="card-title">Section Kit List</div>
         <div id="assembly-parts-list"></div>
-        <div class="disclaimer">Section codes are read directly off the OEM assembly drawing above — always cross-check against the image before pulling parts. Liebherr part numbers are shown only where confirmed against the parts catalogue; codes without one aren't guessed, so check those with parts before ordering. The TN-TF adapter is required to attach either jib to the boom head and is listed on every length even though the OEM assembly drawing itself never calls it out.</div>
+        <div class="disclaimer">Codes are read directly off the OEM assembly drawing above — always cross-check against the image before pulling parts. On the luffing jib, "boom sections" are the lattice pieces that bolt/pin together like the fixed jib's, but the "1A/1B" codes are pull rods (threaded rod/turnbuckle segments chained together, then forking into a pair) — see the OEM Rod Plan drawing for how they physically connect. Liebherr part numbers are shown only where confirmed against the parts catalogue; codes without one aren't guessed, so check those with parts before ordering. The TN-TF adapter is required to attach either jib to the boom head and is listed on every length even though the OEM assembly drawing itself never calls it out.</div>
       </div>
     </div>
 
@@ -1992,27 +1992,27 @@
     };
 
     const ASSEMBLY_LUFFING_LENGTHS = {
-      'N-21m': { totalM: 21.0, tip: ['1A-4','1A-1','1A-2','1A-3','2x1B-6'], boom: ['2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
-      'N-24,5m': { totalM: 24.5, tip: ['1A-4','1A-5','1A-1','1A-3'], boom: ['2B-6','2B-7','2B-8','2B-10','2C-13'] },
-      'N-28m': { totalM: 28.0, tip: ['1A-5','1A-1','1A-1','1A-2','1A-3'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-10','2C-13'] },
-      'N-31,5m': { totalM: 31.5, tip: ['1A-5','1A-1','1A-2','1A-3','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-10','2C-11','2C-13'] },
-      'N-35m': { totalM: 35.0, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2C-11','2C-11','2C-13'] },
-      'N-38,5m': { totalM: 38.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
-      'N-42m': { totalM: 42.0, tip: ['1A-4','1A-1','1A-1','1A-2','1A-2','1A-3','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2C-11','2B-10','2C-13'] },
-      'N-45,5m': { totalM: 45.5, tip: ['1A-4','1A-1','1A-2','1A-2','1A-3','2x1B-6','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
-      'N-49m': { totalM: 49.0, tip: ['1A-4','1A-1','1A-1','1A-2','1A-2','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
-      'N-52,5m': { totalM: 52.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
-      'N-56m': { totalM: 56.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
-      'N-59,5m': { totalM: 59.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2C-11','2C-12','2C-13'] },
-      'N-63m': { totalM: 63.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2C-11','2C-12','2C-13'] },
-      'N-66,5m': { totalM: 66.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-9','2C-11','2C-12','2C-13'] },
-      'N-70m': { totalM: 70.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-9','2C-11','2C-12','2C-13'] },
-      'N-73,5m': { totalM: 73.5, tip: ['1A-1','1A-11','1A-12','1A-3','2x1B-6','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-9','2C-11','2C-11','2C-12','2C-13'] },
-      'N-77m': { totalM: 77.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-9','2C-11','2C-11','2C-12','2C-13'] },
-      'N-80,5m': { totalM: 80.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-9','2C-11','2C-11','2C-12','2C-13'] },
-      'N-84m': { totalM: 84.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-9','2C-11','2C-11','2C-12','2C-13'] },
-      'N-87,5m': { totalM: 87.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-9','2C-11','2C-12','2C-12','2C-13'] },
-      'N-91m': { totalM: 91.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-9','2C-11','2C-12','2C-12','2C-13'] },
+      'N-21m': { totalM: 21.0, tip: ['1A-4','1A-1','1A-2','1A-3','2x1B-6'], retention: [], boom: ['2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
+      'N-24,5m': { totalM: 24.5, tip: ['1A-4','1A-5','1A-1','1A-3'], retention: [], boom: ['2B-6','2B-7','2B-8','2B-10','2C-13'] },
+      'N-28m': { totalM: 28.0, tip: ['1A-5','1A-1','1A-1','1A-2','1A-3'], retention: [], boom: ['2B-6','2B-7','2B-7','2B-8','2B-10','2C-13'] },
+      'N-31,5m': { totalM: 31.5, tip: ['1A-5','1A-1','1A-2','1A-3','2x1B-6'], retention: [], boom: ['2B-6','2B-7','2B-8','2B-10','2C-11','2C-13'] },
+      'N-35m': { totalM: 35.0, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], retention: [], boom: ['2B-6','2B-7','2B-7','2B-8','2C-11','2C-11','2C-13'] },
+      'N-38,5m': { totalM: 38.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6'], retention: [], boom: ['2B-6','2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
+      'N-42m': { totalM: 42.0, tip: ['1A-4','1A-1','1A-1','1A-2','1A-2','1A-3','2x1B-6'], retention: [], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2C-11','2B-10','2C-13'] },
+      'N-45,5m': { totalM: 45.5, tip: ['1A-4','1A-1','1A-2','1A-2','1A-3','2x1B-6','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
+      'N-49m': { totalM: 49.0, tip: ['1A-4','1A-1','1A-1','1A-2','1A-2','1A-3','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
+      'N-52,5m': { totalM: 52.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], retention: ['1C-8'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
+      'N-56m': { totalM: 56.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-6'], retention: ['1C-8'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
+      'N-59,5m': { totalM: 59.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-10'], boom: ['2B-6','2B-7','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-63m': { totalM: 63.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-66,5m': { totalM: 66.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-70m': { totalM: 70.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7'], retention: ['1C-8'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-73,5m': { totalM: 73.5, tip: ['1A-1','1A-11','1A-12','1A-3','2x1B-6','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-10'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-77m': { totalM: 77.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-80,5m': { totalM: 80.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-84m': { totalM: 84.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], retention: ['1C-8'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-87,5m': { totalM: 87.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-9','2C-11','2C-12','2C-12','2C-13'] },
+      'N-91m': { totalM: 91.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], retention: ['1C-9'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-9','2C-11','2C-12','2C-12','2C-13'] },
     };
 
     // Confirmed against the ETK electronic parts catalogue's own master
@@ -2025,6 +2025,13 @@
       '2C-11': { part: '910001008', desc: 'NI Intermediate Section, 7m' },
       '2C-13': { part: '916257008', desc: 'N Head Section, 2m' },
       '2A-1': { part: '918873308', desc: 'TN-TF Adapter Complete, 2.15m' },
+      '1A-1': { part: '916258108', desc: 'Pull Rod, 3.5m' },
+      '1A-2': { part: '916257808', desc: 'Pull Rod, 7m' },
+      '1A-3': { part: '919052308', desc: 'Pull Rod, 1.5m (yoke end)' },
+      '1B-6': { part: '916257908', desc: 'Pull Rod, 7m (ETK lists this position as 1B-16)' },
+      '1B-7': { part: '916257908', desc: 'Pull Rod, 7m (ETK lists this position as 1B-16)' },
+      '2x1B-6': { part: '916257908', desc: 'Pull Rod, 7m (ETK lists this position as 1B-16)' },
+      '2x1B-7': { part: '916257908', desc: 'Pull Rod, 7m (ETK lists this position as 1B-16)' },
     };
 
     let assemblyType = 'fixed';
@@ -2091,10 +2098,14 @@
       listEl.innerHTML = '';
 
       if (assemblyType === 'luffing') {
-        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Boom (horizontal) sections</div>');
+        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Boom (lattice) sections</div>');
         assemblyTallyCodes(entry.boom).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
-        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Luffed tip sections</div>');
+        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Pull rods (tip) — not lattice, see Rod Plan drawing</div>');
         assemblyTallyCodes(entry.tip).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
+        if (entry.retention.length) {
+          listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Retention rod</div>');
+          assemblyTallyCodes(entry.retention).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
+        }
       } else {
         listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Sections</div>');
         assemblyTallyCodes(entry.sections).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
