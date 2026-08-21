@@ -265,6 +265,14 @@
        identically to object-fit:contain given the same box and the same
        source aspect ratio, so the two stay pixel-aligned automatically.
        See methodology.txt 10.26. */
+    .assembly-image-wrap { position: relative; width: 100%; border-radius: 6px; background: #fff; overflow: hidden; }
+    .assembly-image-wrap img { width: 100%; height: auto; display: block; }
+    .assembly-part-row { padding: 8px 10px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); margin-bottom: 6px; }
+    .assembly-part-row .assembly-part-code { font-weight: 700; }
+    .assembly-part-row .assembly-part-detail { font-size: 0.8rem; margin-top: 2px; color: var(--text-muted); }
+    .assembly-part-row .assembly-part-detail .assembly-part-num { color: var(--accent-gold); }
+    .assembly-section-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin: 14px 0 6px; }
+    .assembly-section-header:first-child { margin-top: 0; }
     .cwt-image-wrap { position: relative; width: 100%; height: min(460px, 60vw); border-radius: 6px; background: #fff; overflow: hidden; touch-action: pan-y; }
     .cwt-image-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .cwt-hotspots-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -695,6 +703,15 @@
             const sfBtn = document.getElementById('servicefill-tab-btn');
             if (sfBtn) sfBtn.style.display = '';
           }
+          // Assembly Plans (LTM 1650 fixed/luffing jib) is new and still
+          // being validated - restricted to the owner only for now. Widen
+          // this allowlist (or fold it into SERVICE_FILL_ALLOWLIST) once
+          // it's ready for other users.
+          const ASSEMBLY_PLANS_ALLOWLIST = ['myslewer@gmail.com'];
+          if (user.email && ASSEMBLY_PLANS_ALLOWLIST.includes(user.email.toLowerCase())) {
+            const asmBtn = document.getElementById('assembly-tab-btn');
+            if (asmBtn) asmBtn.style.display = '';
+          }
           return;
         }
         // Confirmed signed-out (not just "still checking") - only now is
@@ -861,7 +878,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.0</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.1</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -928,6 +945,7 @@
     <button class="tab-btn" data-tabkey="chain" onclick="switchTab('chain-tab', event)">Chain Shortening</button>
     <button class="tab-btn" data-tabkey="rope" onclick="switchTab('rope-tab', event)">Rope Retentioning</button>
     <button class="tab-btn" id="servicefill-tab-btn" data-tabkey="servicefill" onclick="switchTab('servicefill-tab', event)" style="display:none;">Service Fill</button>
+    <button class="tab-btn" id="assembly-tab-btn" data-tabkey="assembly" onclick="switchTab('assembly-tab', event)" style="display:none;">Assembly Plans</button>
   </nav>
 
   <div class="container">
@@ -1785,6 +1803,42 @@
       <div class="disclaimer">Tap a segment to set that tank's level (10 segments = full). Litres to fill are estimated in tenths of the tank's rated capacity — top up against the gauge/dipstick on the day, this is a planning figure only. Levels are saved on this device only.</div>
     </div>
 
+    <!-- ================= ASSEMBLY PLANS ================= -->
+    <div id="assembly-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">LTM 1650-8.1 Jib Assembly</div>
+        <div class="form-group">
+          <label>Jib Type</label>
+          <div class="mode-toggle" id="assembly-type-toggle">
+            <button class="mode-btn active" id="assembly-type-fixed-btn" onclick="setAssemblyType('fixed')">Fixed (Fly) Jib</button>
+            <button class="mode-btn" id="assembly-type-luffing-btn" onclick="setAssemblyType('luffing')">Luffing Jib</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>Length</label>
+          <select id="assembly-length-select" onchange="renderAssemblyPlan()"></select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Assembly Drawing</div>
+        <div id="assembly-image-wrap" class="assembly-image-wrap">
+          <img id="assembly-image" src="" alt="">
+          <button type="button" class="carrier3d-fullscreen-btn" data-wrap="assembly-image-wrap" onclick="toggleWrapFullscreen('assembly-image-wrap')" title="Fullscreen" aria-label="Fullscreen">
+            <svg class="fs-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+            <svg class="fs-icon-compress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+          </button>
+        </div>
+        <div id="assembly-drawing-ref" style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Section Kit List</div>
+        <div id="assembly-parts-list"></div>
+        <div class="disclaimer">Section codes are read directly off the OEM assembly drawing above — always cross-check against the image before pulling parts. Liebherr part numbers are shown only where confirmed against the parts catalogue; codes without one aren't guessed, so check those with parts before ordering. The TN-TF adapter is required to attach either jib to the boom head and is listed on every length even though the OEM assembly drawing itself never calls it out.</div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -1905,6 +1959,158 @@
       } else {
         adblueCard.style.display = 'none';
       }
+    }
+
+    // Assembly Plans. Section codes and lengths per named jib length are
+    // transcribed directly from Liebherr's own OEM assembly drawings
+    // (dwg 98035472 fixed/fly jib, dwg 98036881 luffing jib) - the
+    // horizontal "boom" chain (2B/2C codes) is shared structurally between
+    // both jib types; the luffing jib additionally has its own diagonal
+    // "luffed tip" chain (1A/1B/1C codes) which the fixed jib doesn't have.
+    // Fixed jib section lengths sum exactly to the named total length
+    // (verified); the luffing jib's named length is a rated geometric
+    // figure that doesn't sum the same way since the tip folds at an
+    // angle, so those are recorded as printed rather than cross-checked.
+    const ASSEMBLY_FIXED_LENGTHS = {
+      'F-6m': { totalM: 6.0, sections: ['2B-4/2B-5','2B-10','2C-13'] },
+      'F-9,5m': { totalM: 9.5, sections: ['2B-4/2B-5','2B-7','2B-10','2C-13'] },
+      'F-13m': { totalM: 13.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-10','2C-13'] },
+      'F-16,5m': { totalM: 16.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-10','2C-13'] },
+      'F-20m': { totalM: 20.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-10','2C-13'] },
+      'F-23,5m': { totalM: 23.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-10','2C-11','2C-13'] },
+      'F-27m': { totalM: 27.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-10','2C-11','2C-13'] },
+      'F-30,5m': { totalM: 30.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
+      'F-34m': { totalM: 34.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
+      'F-37,5m': { totalM: 37.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
+      'F-41m': { totalM: 41.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
+      'F-44,5m': { totalM: 44.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
+      'F-48m': { totalM: 48.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
+      'F-51,5m': { totalM: 51.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-9','2B-10','2C-11','2C-12','2C-13'] },
+      'F-55m': { totalM: 55.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-9','2B-10','2C-11','2C-12','2C-13'] },
+      'F-58,5m': { totalM: 58.5, sections: ['2B-4/2B-5','2B-7','2B-8','2B-8','2B-9','2B-10','2C-11','2C-12','2C-13'] },
+      'F-62m': { totalM: 62.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-8','2B-9','2B-10','2C-11','2C-12','2C-13'] },
+    };
+
+    const ASSEMBLY_LUFFING_LENGTHS = {
+      'N-21m': { totalM: 21.0, tip: ['1A-4','1A-1','1A-2','1A-3','2x1B-6'], boom: ['2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
+      'N-24,5m': { totalM: 24.5, tip: ['1A-4','1A-5','1A-1','1A-3'], boom: ['2B-6','2B-7','2B-8','2B-10','2C-13'] },
+      'N-28m': { totalM: 28.0, tip: ['1A-5','1A-1','1A-1','1A-2','1A-3'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-10','2C-13'] },
+      'N-31,5m': { totalM: 31.5, tip: ['1A-5','1A-1','1A-2','1A-3','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-10','2C-11','2C-13'] },
+      'N-35m': { totalM: 35.0, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2C-11','2C-11','2C-13'] },
+      'N-38,5m': { totalM: 38.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
+      'N-42m': { totalM: 42.0, tip: ['1A-4','1A-1','1A-1','1A-2','1A-2','1A-3','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2C-11','2B-10','2C-13'] },
+      'N-45,5m': { totalM: 45.5, tip: ['1A-4','1A-1','1A-2','1A-2','1A-3','2x1B-6','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
+      'N-49m': { totalM: 49.0, tip: ['1A-4','1A-1','1A-1','1A-2','1A-2','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-10','2C-11','2C-11','2C-13'] },
+      'N-52,5m': { totalM: 52.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
+      'N-56m': { totalM: 56.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-10','2C-11','2C-11','2C-13'] },
+      'N-59,5m': { totalM: 59.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-63m': { totalM: 63.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-66,5m': { totalM: 66.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-70m': { totalM: 70.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-9','2C-11','2C-12','2C-13'] },
+      'N-73,5m': { totalM: 73.5, tip: ['1A-1','1A-11','1A-12','1A-3','2x1B-6','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-8','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-77m': { totalM: 77.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-8','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-80,5m': { totalM: 80.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-3','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-84m': { totalM: 84.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-9','2C-11','2C-11','2C-12','2C-13'] },
+      'N-87,5m': { totalM: 87.5, tip: ['1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-8','2B-9','2B-9','2C-11','2C-12','2C-12','2C-13'] },
+      'N-91m': { totalM: 91.0, tip: ['1A-1','1A-1','1A-2','1A-11','1A-12','1A-11','1A-12','1A-3','2x1B-6','2x1B-7','2x1B-6','2x1B-7','2x1B-6'], boom: ['2B-6','2B-7','2B-7','2B-8','2B-9','2B-9','2C-11','2C-12','2C-12','2C-13'] },
+    };
+
+    // Confirmed against the ETK electronic parts catalogue's own master
+    // cross-reference index (item block 500-602) - codes not present there
+    // are left unresolved in the UI rather than guessed at.
+    const ASSEMBLY_PART_LOOKUP = {
+      '2B-6': { part: '918851608', desc: 'N Assembly Unit Complete, 12.35m (luffing jib base)' },
+      '2B-7': { part: '916847108', desc: 'NA Intermediate Section, 3.5m' },
+      '2B-10': { part: '918891708', desc: 'NI Reducing Section, 1.5m' },
+      '2C-11': { part: '910001008', desc: 'NI Intermediate Section, 7m' },
+      '2C-13': { part: '916257008', desc: 'N Head Section, 2m' },
+      '2A-1': { part: '918873308', desc: 'TN-TF Adapter Complete, 2.15m' },
+    };
+
+    let assemblyType = 'fixed';
+
+    function setAssemblyType(type) {
+      assemblyType = type;
+      document.getElementById('assembly-type-fixed-btn').classList.toggle('active', type === 'fixed');
+      document.getElementById('assembly-type-luffing-btn').classList.toggle('active', type === 'luffing');
+      populateAssemblyLengthSelect();
+      renderAssemblyPlan();
+    }
+
+    function populateAssemblyLengthSelect() {
+      const sel = document.getElementById('assembly-length-select');
+      const lengths = assemblyType === 'fixed' ? ASSEMBLY_FIXED_LENGTHS : ASSEMBLY_LUFFING_LENGTHS;
+      const prevValue = sel.value;
+      sel.innerHTML = '';
+      Object.keys(lengths).forEach((name) => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if (lengths[prevValue]) sel.value = prevValue;
+    }
+
+    function assemblyImagePath(type, name) {
+      return `./assembly/ltm1650-${type}-${name.replace(',', '_')}.jpg`;
+    }
+
+    // Groups identical printed drawing labels together (e.g. two "2B-7"
+    // rows become one "2x 2B-7" line) rather than listing every repeated
+    // segment separately.
+    function assemblyTallyCodes(codes) {
+      const counts = {};
+      codes.forEach((c) => { counts[c] = (counts[c] || 0) + 1; });
+      return Object.keys(counts).map((code) => ({ code, qty: counts[code] }));
+    }
+
+    function assemblyPartRowHtml(code, qty) {
+      const info = ASSEMBLY_PART_LOOKUP[code];
+      const detail = info
+        ? `<span class="assembly-part-num">${info.part}</span> — ${info.desc}`
+        : 'not in catalogue — verify with parts';
+      return `<div class="assembly-part-row"><span class="assembly-part-code">${qty}x ${code}</span><div class="assembly-part-detail">${detail}</div></div>`;
+    }
+
+    function renderAssemblyPlan() {
+      const sel = document.getElementById('assembly-length-select');
+      const name = sel.value;
+      const lengths = assemblyType === 'fixed' ? ASSEMBLY_FIXED_LENGTHS : ASSEMBLY_LUFFING_LENGTHS;
+      const entry = lengths[name];
+      if (!entry) return;
+
+      const img = document.getElementById('assembly-image');
+      img.src = assemblyImagePath(assemblyType, name);
+      img.alt = `Liebherr LTM 1650-8.1 ${assemblyType === 'fixed' ? 'fixed jib' : 'luffing jib'} assembly drawing, ${name}`;
+
+      document.getElementById('assembly-drawing-ref').textContent = assemblyType === 'fixed'
+        ? 'Liebherr dwg 98035472 — FESTE SPITZE F-6M to F-62M'
+        : 'Liebherr dwg 98036881 — WIPPSPITZE N-21M to N-91M';
+
+      const listEl = document.getElementById('assembly-parts-list');
+      listEl.innerHTML = '';
+
+      if (assemblyType === 'luffing') {
+        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Boom (horizontal) sections</div>');
+        assemblyTallyCodes(entry.boom).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
+        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Luffed tip sections</div>');
+        assemblyTallyCodes(entry.tip).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
+      } else {
+        listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header">Sections</div>');
+        assemblyTallyCodes(entry.sections).forEach((r) => listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml(r.code, r.qty)));
+      }
+
+      // TN-TF adapter connects either jib type to the boom head - required
+      // on every single length, but never itself called out on the OEM
+      // assembly drawings, so it's appended here rather than baked into
+      // each length's own section array above.
+      listEl.insertAdjacentHTML('beforeend', '<div class="assembly-section-header" style="color:var(--accent-gold);">Always required</div>');
+      listEl.insertAdjacentHTML('beforeend', assemblyPartRowHtml('2A-1', 1));
+    }
+
+    function initAssemblyTab() {
+      populateAssemblyLengthSelect();
+      renderAssemblyPlan();
     }
 
     // Tab Controller
@@ -9208,6 +9414,7 @@
     initCwtTab();
     initDriveEqTab();
     initReeveTab(); // Reeving Plans is the default active tab on load
+    initAssemblyTab();
     initLoadChartTab();
     updateZoomReadout();
     updateCompassUI();
