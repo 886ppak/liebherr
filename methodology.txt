@@ -9127,3 +9127,60 @@ cranes get their own subsections as they're built.
   browser cache clear.
 
   CACHE_VERSION v218->v219, app version v5.23->v5.24.
+
+63. Follow-on from 61/62: the rear-clearance line's own rendering was
+    getting occluded by the carrier model, producing angle-dependent,
+    sometimes-backwards results even with the calibration fix live
+
+  After 62's fix landed and the person confirmed they were actually on
+  the new code (v5.24), they compared the sliding beam box toggle ON vs
+  OFF from a single fixed Fit View angle and found the OPPOSITE of what
+  the math says: OFF (rearMm=3717, near point tucked further under the
+  model) read as flush, ON (rearMm=4987, near point right at the
+  model's real edge) read as visibly gapped - backwards, and internally
+  contradictory with an earlier straight-down test that had shown near-
+  identical placement for both states. Chased this down properly rather
+  than re-asserting the (already re-verified, still correct) numbers.
+
+  Root cause: addDimensionLine's THREE.LineBasicMaterial and the slew
+  circle's own LineLoop material used normal depth-testing (Three.js's
+  default), same as every other object in the scene. Both sit at ground
+  level (center.y + ~0.03-0.04m) - well below a carrier's own body
+  height - so whichever stretch of the line or circle happens to pass
+  "under" the solid carrier geometry from the CURRENT camera's angle
+  gets silently hidden by the z-buffer, and which stretch that is shifts
+  with camera position, not with the actual mm figure being shown. From
+  directly overhead this mostly self-cancels (confirmed via projected
+  screen-space math: the two states really do differ by the correct
+  ~19px/1.27m once measured properly - see below), which is why an
+  earlier top-down check looked deceptively close-enough; from an
+  angled/elevated view it doesn't cancel out at all, and can invert
+  which state looks more "correct" depending on exactly how each
+  state's near point sits relative to the model's silhouette from that
+  specific angle.
+
+  Fix: addDimensionLine's line + end-tick materials and the slew
+  circle's own LineLoop material all now render with depthTest: false,
+  depthWrite: false, and a renderOrder of 10, so they're always fully
+  visible on top of the model regardless of camera angle or whether the
+  reference point they're drawn from happens to sit "inside" the
+  model's own footprint.
+
+  Verified two ways, not just re-asserted: (1) projected the true
+  world-space rearEdge point through the actual live Three.js camera for
+  both toggle states from one fixed, unmoved Fit View - screen positions
+  differ by ~19 CSS px (≈38 physical px at 2x device scale), matching
+  the expected 1.27m shift almost exactly (predicted ~665.5px/627.0px
+  physical, measured rendered pixels 665-676 / 627-676). (2) confirmed
+  the rendered pixels themselves now show it: box ON, the line's tick
+  sits right at the model's real edge (12px tall mark, nothing before
+  it); box OFF, red pixels run continuously from the tick's true (now
+  visibly-inside-the-model) position all the way out - the line now
+  visibly crosses the TOP of the modeled box on its way out, which
+  looks unusual at a glance (a line drawn across solid-looking geometry)
+  but is the honest, angle-independent picture of "here's where the
+  rear would be without a box the model can't actually remove" -
+  exactly what the person had predicted correctly back in 60 ("if I
+  toggle it off, the dim line should project under the crane").
+
+  CACHE_VERSION v219->v220, app version v5.24->v5.25.
