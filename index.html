@@ -885,7 +885,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.8</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.9</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1870,7 +1870,8 @@
           <label>Input Method</label>
           <div class="mode-toggle" id="sling-angle-mode-toggle">
             <button class="mode-btn active" id="sling-angle-mode-direct-btn" onclick="setSlingAngleMode('direct')">Enter Angle</button>
-            <button class="mode-btn" id="sling-angle-mode-dims-btn" onclick="setSlingAngleMode('dims')">From Dimensions</button>
+            <button class="mode-btn" id="sling-angle-mode-dims-btn" onclick="setSlingAngleMode('dims')">Headroom + Spread</button>
+            <button class="mode-btn" id="sling-angle-mode-leglen-btn" onclick="setSlingAngleMode('leglen')">Leg Length + Spread</button>
           </div>
         </div>
         <div class="form-group" id="sling-angle-direct-group" style="margin-top:14px;">
@@ -1887,6 +1888,16 @@
             <input type="number" id="sling-spread" step="0.1" min="0" placeholder="e.g. 2" oninput="calcSlingAngle()">
           </div>
         </div>
+        <div class="grid" id="sling-angle-leglen-group" style="margin-top:14px; display:none;">
+          <div class="form-group">
+            <label>Leg Length — each sling/chain leg (m)</label>
+            <input type="number" id="sling-leglen" step="0.1" min="0" placeholder="e.g. 3" oninput="calcSlingAngle()">
+          </div>
+          <div class="form-group">
+            <label>Spread — leg to leg, opposite corners (m)</label>
+            <input type="number" id="sling-spread2" step="0.1" min="0" placeholder="e.g. 2" oninput="calcSlingAngle()">
+          </div>
+        </div>
         <div id="sling-angle-computed-wrap" style="display:none; margin-top:10px;">
           <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Computed Included Angle</label>
           <div id="sling-angle-computed" style="font-weight:700; color:var(--accent-gold);">—</div>
@@ -1894,11 +1905,20 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Sling Rating</div>
+        <div class="card-title">Sling / Chain Type</div>
         <div class="form-group">
+          <div class="mode-toggle" id="sling-type-toggle" style="flex-wrap:wrap;">
+            <button class="mode-btn active" id="sling-type-g80-btn" onclick="setSlingType('g80')">Grade 80 Chain</button>
+            <button class="mode-btn" id="sling-type-g100-btn" onclick="setSlingType('g100')">Grade 100 Chain</button>
+            <button class="mode-btn" id="sling-type-synthetic-btn" onclick="setSlingType('synthetic')">Synthetic Round Sling</button>
+            <button class="mode-btn" id="sling-type-custom-btn" onclick="setSlingType('custom')">Custom / My Own WLL</button>
+          </div>
+        </div>
+        <div class="form-group" id="sling-wll-group" style="margin-top:14px; display:none;">
           <label>Each Leg's Rated WLL — Vertical (t)</label>
           <input type="number" id="sling-wll" step="0.1" min="0" placeholder="e.g. 5.3" oninput="calcSlingAngle()">
         </div>
+        <div class="disclaimer" id="sling-type-source-note" style="margin-top:14px;">Chain WLL-by-size figures are standard published EN 818-4 grade 80/100 values (single leg, vertical) — generic industry data, not tied to a specific manufacturer's chart. Always confirm against the actual chain's own tag before use.</div>
       </div>
 
       <div class="card">
@@ -6299,8 +6319,36 @@
     }
 
     // --- SLING ANGLE CALCULATOR (owner-only) ---
+    // Standard published EN 818-4 grade 80/100 chain WLL-by-size (single
+    // leg, vertical, tonnes) - generic industry figures, not tied to one
+    // manufacturer's catalogue. Sizes as commonly published across major
+    // chain sling charts (Beaver, Gunnebo, Crosby etc.) which agree on
+    // these values for the standard EN 818-4 size range.
+    const CHAIN_WLL_G80 = [
+      [6, 1.12], [7, 1.5], [8, 2.0], [9, 2.5], [10, 3.15],
+      [13, 5.3], [16, 8.0], [18, 10.0], [20, 12.5], [22, 15.0],
+      [26, 21.2], [32, 31.5]
+    ];
+    const CHAIN_WLL_G100 = [
+      [6, 1.4], [7, 1.9], [8, 2.5], [10, 4.0], [13, 6.7],
+      [16, 10.0], [18, 12.5], [20, 16.0], [22, 19.0],
+      [26, 26.5], [32, 40.0]
+    ];
+    // EN 1492-2 round sling colour code (vertical/0° WLL, tonnes) - the
+    // colour band on the sling's own label sleeve is the actual standard
+    // reference on site, this table just mirrors it. Sizes above 10t
+    // aren't part of the base colour-code standard, so those rows are
+    // labelled by rating only rather than implying a colour.
+    const SYNTHETIC_SLING_WLL = [
+      ['Violet', 1.0], ['Green', 2.0], ['Yellow', 3.0], ['Grey', 4.0],
+      ['Red', 5.0], ['Brown', 6.0], ['Blue', 8.0], ['Orange', 10.0],
+      ['(no standard colour) 12t', 12.0], ['(no standard colour) 15t', 15.0],
+      ['(no standard colour) 20t', 20.0], ['(no standard colour) 25t', 25.0]
+    ];
+
     let slingLegsMode = 2;
     let slingAngleMode = 'direct';
+    let slingTypeMode = 'g80';
 
     function setSlingLegs(n) {
       slingLegsMode = n;
@@ -6313,10 +6361,40 @@
       slingAngleMode = mode;
       document.getElementById('sling-angle-mode-direct-btn').classList.toggle('active', mode === 'direct');
       document.getElementById('sling-angle-mode-dims-btn').classList.toggle('active', mode === 'dims');
+      document.getElementById('sling-angle-mode-leglen-btn').classList.toggle('active', mode === 'leglen');
       document.getElementById('sling-angle-direct-group').style.display = mode === 'direct' ? '' : 'none';
       document.getElementById('sling-angle-dims-group').style.display = mode === 'dims' ? '' : 'none';
-      document.getElementById('sling-angle-computed-wrap').style.display = mode === 'dims' ? '' : 'none';
+      document.getElementById('sling-angle-leglen-group').style.display = mode === 'leglen' ? '' : 'none';
+      document.getElementById('sling-angle-computed-wrap').style.display = mode !== 'direct' ? '' : 'none';
       calcSlingAngle();
+    }
+
+    function setSlingType(type) {
+      slingTypeMode = type;
+      document.getElementById('sling-type-g80-btn').classList.toggle('active', type === 'g80');
+      document.getElementById('sling-type-g100-btn').classList.toggle('active', type === 'g100');
+      document.getElementById('sling-type-synthetic-btn').classList.toggle('active', type === 'synthetic');
+      document.getElementById('sling-type-custom-btn').classList.toggle('active', type === 'custom');
+      document.getElementById('sling-wll-group').style.display = type === 'custom' ? '' : 'none';
+      const noteEl = document.getElementById('sling-type-source-note');
+      if (type === 'synthetic') {
+        noteEl.textContent = "Round sling colour-code WLL figures are the standard published EN 1492-2 vertical/0° ratings — generic industry data, not tied to one manufacturer's chart. Always confirm against the actual sling's own label sleeve before use.";
+      } else if (type === 'custom') {
+        noteEl.textContent = "Checking against a WLL you already know, rather than getting a size/rating recommendation.";
+      } else {
+        noteEl.textContent = "Chain WLL-by-size figures are standard published EN 818-4 grade 80/100 values (single leg, vertical) — generic industry data, not tied to a specific manufacturer's chart. Always confirm against the actual chain's own tag before use.";
+      }
+      calcSlingAngle();
+    }
+
+    // Finds the smallest table entry whose WLL clears the required
+    // tension - table is assumed sorted ascending by WLL, matching how
+    // both tables above are laid out.
+    function findMinimumRating(table, tensionPerLeg) {
+      for (const [label, wll] of table) {
+        if (wll >= tensionPerLeg) return { label, wll };
+      }
+      return null;
     }
 
     // Conservative 2-leg-share convention (see the tab's own disclaimer) -
@@ -6327,27 +6405,40 @@
     // formula, so the math can't silently drift between the two modes.
     function calcSlingAngle() {
       const load = parseFloat(document.getElementById('sling-load').value) || 0;
+      const resultBox = document.getElementById('sling-result-box');
 
       // Included angle = the angle between the two legs at the hook (the
       // way it's actually read off a drawing or eyeballed on site) - NOT
-      // angle from horizontal of a single leg. The two relate by
-      // includedAngle = 180 - 2*(angle from horizontal), so this is a
-      // straight substitution: Load Angle Factor = 1/cos(includedAngle/2)
-      // in place of the old 1/sin(angle from horizontal). Cross-checked
-      // against standard sling angle factor tables: 60° -> 1.15, 90° ->
-      // 1.41, 120° -> 2.00, matching published values exactly.
+      // angle from horizontal of a single leg. Cross-checked against
+      // standard sling angle factor tables: 60° -> 1.15, 90° -> 1.41,
+      // 120° -> 2.00, matching published values exactly.
       let includedDeg;
       if (slingAngleMode === 'direct') {
         includedDeg = parseFloat(document.getElementById('sling-angle').value) || 0;
-      } else {
+      } else if (slingAngleMode === 'dims') {
         const headroom = parseFloat(document.getElementById('sling-headroom').value) || 0;
         const spread = parseFloat(document.getElementById('sling-spread').value) || 0;
         includedDeg = (headroom > 0 && spread > 0) ? 2 * Math.atan((spread / 2) / headroom) * 180 / Math.PI : 0;
         document.getElementById('sling-angle-computed').textContent = includedDeg > 0 ? `${includedDeg.toFixed(1)}°` : '—';
+      } else {
+        // leglen: leg length is the hypotenuse, half-spread the opposite
+        // side - half-included angle (from vertical) = asin((spread/2)/legLength).
+        // A leg shorter than half the spread can't physically reach, so
+        // that's flagged separately rather than fed into asin() (which
+        // would produce NaN past 1.0 anyway).
+        const legLen = parseFloat(document.getElementById('sling-leglen').value) || 0;
+        const spread = parseFloat(document.getElementById('sling-spread2').value) || 0;
+        if (legLen > 0 && spread > 0 && legLen >= spread / 2) {
+          includedDeg = 2 * Math.asin((spread / 2) / legLen) * 180 / Math.PI;
+          document.getElementById('sling-angle-computed').textContent = `${includedDeg.toFixed(1)}°`;
+        } else if (legLen > 0 && spread > 0) {
+          includedDeg = 0;
+          document.getElementById('sling-angle-computed').textContent = 'too short for this spread';
+        } else {
+          includedDeg = 0;
+          document.getElementById('sling-angle-computed').textContent = '—';
+        }
       }
-
-      const wll = parseFloat(document.getElementById('sling-wll').value) || 0;
-      const resultBox = document.getElementById('sling-result-box');
 
       if (load <= 0 || includedDeg <= 0 || includedDeg >= 180) {
         document.getElementById('sling-laf').textContent = '-';
@@ -6365,18 +6456,34 @@
       document.getElementById('sling-tension').textContent = `${tensionPerLeg.toFixed(2)} t`;
 
       let html = '';
-      if (wll > 0) {
-        if (tensionPerLeg <= wll) {
-          const margin = wll - tensionPerLeg;
-          resultBox.className = 'recommendation-box';
-          html = `<strong style="color:var(--success);">PASS</strong> — ${wll.toFixed(2)}t rated leg clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).`;
+      if (slingTypeMode === 'custom') {
+        const wll = parseFloat(document.getElementById('sling-wll').value) || 0;
+        if (wll > 0) {
+          if (tensionPerLeg <= wll) {
+            const margin = wll - tensionPerLeg;
+            resultBox.className = 'recommendation-box';
+            html = `<strong style="color:var(--success);">PASS</strong> — ${wll.toFixed(2)}t rated leg clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).`;
+          } else {
+            resultBox.className = 'fail-box';
+            html = `<strong style="color:var(--danger);">FAIL</strong> — ${wll.toFixed(2)}t rated leg is under the ${tensionPerLeg.toFixed(2)}t tension required at this angle. Minimum rated WLL needed per leg: ${tensionPerLeg.toFixed(2)}t.`;
+          }
         } else {
-          resultBox.className = 'fail-box';
-          html = `<strong style="color:var(--danger);">FAIL</strong> — ${wll.toFixed(2)}t rated leg is under the ${tensionPerLeg.toFixed(2)}t tension required at this angle. Minimum rated WLL needed per leg: ${tensionPerLeg.toFixed(2)}t.`;
+          resultBox.className = 'alt-box';
+          html = `Minimum required WLL per leg at this angle: <strong>${tensionPerLeg.toFixed(2)} t</strong>. Enter your sling's rated WLL above to check pass/fail.`;
         }
       } else {
-        resultBox.className = 'alt-box';
-        html = `Minimum required WLL per leg at this angle: <strong>${tensionPerLeg.toFixed(2)} t</strong>. Enter your sling's rated WLL above to check pass/fail.`;
+        const table = slingTypeMode === 'g80' ? CHAIN_WLL_G80 : slingTypeMode === 'g100' ? CHAIN_WLL_G100 : SYNTHETIC_SLING_WLL;
+        const match = findMinimumRating(table, tensionPerLeg);
+        if (match) {
+          const margin = match.wll - tensionPerLeg;
+          const gradeLabel = slingTypeMode === 'g80' ? 'Grade 80' : slingTypeMode === 'g100' ? 'Grade 100' : '';
+          const sizeLabel = slingTypeMode === 'synthetic' ? match.label : `${match.label}mm ${gradeLabel} chain`;
+          resultBox.className = 'recommendation-box';
+          html = `<strong style="color:var(--success);">Minimum: ${sizeLabel}</strong> — rated ${match.wll.toFixed(2)}t, clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).`;
+        } else {
+          resultBox.className = 'fail-box';
+          html = `<strong style="color:var(--danger);">Exceeds this chart's range</strong> — ${tensionPerLeg.toFixed(2)}t per leg is beyond the standard sizes listed here. Consult a rigging engineer or step up equipment class.`;
+        }
       }
       if (includedDeg >= 120) {
         html += `<br><br><strong style="color:var(--warning);">⚠ Included angle 120° or over</strong> — many rigging codes prohibit sling angles this shallow regardless of calculated capacity.`;
