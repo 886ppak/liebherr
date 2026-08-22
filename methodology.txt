@@ -8960,3 +8960,31 @@ cranes get their own subsections as they're built.
   beam box in rear figure (+1.61m)", and the rear figure correctly goes
   3717 -> 5327mm when checked. No console errors. CACHE_VERSION
   v215->v216, app version v5.20->v5.21.
+
+60. Correction to 59: sliding beam box add-on was 1610mm, should have
+    been 1270mm
+
+  Caught by the person re-measuring the OEM dimension drawing themselves
+  and coming back with centre-of-slew-to-rear figures of 3717mm (box
+  off - matches FOOTPRINTS['1650'].rear exactly) and 4987mm (box on).
+  4987-3717 = 1270mm, not the 1610mm shipped in 59.
+
+  The mistake: 59 had the right raw numbers already in hand (the sales
+  brochure's "Maße" page carries 18302mm and 19572mm as two overall
+  vehicle lengths sharing the exact same front reference point) but
+  used the box's own ISOLATED depth figure from a completely different
+  drawing (1610mm, the Transportplan page's standalone technical
+  drawing of the box by itself) instead of the NET delta between the
+  two totals that were sitting on the same dimensioned drawing, right
+  next to each other. 19572-18302 = 1270mm exactly, and 19572-14585
+  (FOOTPRINTS['1650'].front) = 4987mm exactly - matching the person's
+  own independently-derived figure to the millimetre. The box evidently
+  nests/overlaps with the existing frame by around 340mm when actually
+  mounted, rather than adding its full 1610mm depth flush - so the
+  isolated-component drawing was the wrong source to pull the add-on
+  number from, even though it was a genuine OEM figure for a genuine
+  OEM part. Both totals needed to come from the SAME dimensioned
+  drawing to get the real net effect.
+
+  SLIDING_BEAM_BOX_DEPTH_MM['1650'] corrected from 1610 to 1270.
+  CACHE_VERSION v216->v217, app version v5.21->v5.22.
