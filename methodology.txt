@@ -86,11 +86,22 @@ Formula: G_kg = L x M x n x F
   L = boom length, M = rope weight/m (by diameter), n = reeving/falls,
   F = empirical reeving-factor table indexed by n.
 
-UNRESOLVED, FLAGGED NOT FIXED: n appears both as a direct multiplier and
-inside F (which itself scales with n) - looks like possible double-counting
-of the same effect. Raised with the person once; not confirmed wrong, so
-left unchanged. Don't silently "correct" this in a future pass - ask again
-first, or at minimum re-flag before changing behavior.
+RESOLVED (was flagged, not a bug): n appears both as a direct multiplier
+and inside F (which itself scales with n), which looked like possible
+double-counting of the same effect. Confirmed directly against the
+primary source - Liebherr Load Chart Manual, chapter 40.35 "Hook blocks
+and load hooks" (doc 029527-02), sections 1-2.2 - the person photographed
+the actual formula/table pages. G = L x M x n x F is Liebherr's own
+official formula, stated with no caveat about n appearing twice, and
+both the rope-weight-by-diameter table and the reeving-factor table in
+this app match the OEM tables digit-for-digit. F only grows mildly with
+n (1.31 at n=1 to 1.44 at n=6, +10% while n triples) - too shallow a
+slope to be a second linear n-multiplier in disguise, consistent instead
+with F being an independent friction/margin correction (more sheaves =
+more friction resisting the rope pulling taut) layered on top of the
+L x M x n base term (the actual physical rope weight hanging in the
+system). Not double-counting - standard "base quantity x correction
+factor" practice, and it's the manufacturer's own stated formula.
 
 Out-of-range rope diameter or reeving count leads to an explicit warning
 banner, not a silent fallback. An earlier version silently fell back to a
@@ -313,8 +324,9 @@ Verified, current state (checked directly against index.html):
   (full 1-14 way "Normaleinscherung" master sheet). Neither has been
   matched to a specific crane/config or processed into the manifest yet -
   confirm which crane these belong to before linking them in.
-- Tab 2's possible n double-counting in G = L x M x n x F - flagged, never
-  resolved either way.
+- Tab 2's possible n double-counting in G = L x M x n x F - RESOLVED, not
+  a bug; confirmed against the OEM Load Chart Manual chapter 40.35 (see
+  section 3's updated note for the full reasoning).
 - Tab 4's actual design/build reasoning is NOT recoverable from chat
   history — only from code inspection (see coverage note at top). If the
   person can locate the Claude Code / tablet session that built it, that
