@@ -485,34 +485,66 @@ window.__carrier3dActivate = function (modelKey, url, wrapId, labelId, calibrati
 // coordinate space (relative to the slew center at x=0,y=0). Doesn't
 // rescale the model itself - it's already dimensionally accurate from the
 // CAD export, more so than the OEM-sheet-derived FOOTPRINTS approximation
-// - only finds WHERE within that box the slew center sits, using
-// FOOTPRINTS' front/rear as a fraction along the model's own measured
-// length as a starting estimate. calibration.frontAtMinZ says which end of
-// the box (min or max Z) is the front, confirmed per-crane by rendering a
-// straight-down view and visually identifying the driving cab (see
-// methodology.txt 10.77) - that's the one thing that can't be derived from
-// the geometry alone. calibration.lateralSign flips left/right if a
-// crane's export happens to have +X reading as the opposite side from the
-// site plan's own "+X = right" convention. xSlope/zSlope are world-metres
-// per site-plan-millimetre - always -0.001 or +0.001 here (the formula
-// trusts the CAD export's own scale exactly); refineCalibrationFromGeometry
-// below may replace them with a measured slope instead.
+// - only finds WHERE within that box the slew center sits.
+//
+// Anchored off the FRONT overhang only (front tip + FOOTPRINTS' own front
+// distance), not off a front/rear proportional split of the model's whole
+// measured length - a person caught this the hard way on the 1650 (see
+// methodology.txt 59/60/61): that crane's exported mesh has the removable
+// rear sliding beam box permanently baked in, so its measured length
+// matches the box-ON total, not FOOTPRINTS' box-OFF total the proportional
+// split assumed. Splitting a too-long measured length using a too-short
+// total's ratio pushed the estimated slew centre about 1m too far toward
+// the rear - every dimension line, ground-layout mark and AR anchor drawn
+// off it inherited that same rearward shift, even though the plain mm
+// figures (FOOTPRINTS, GROUND_LAYOUT_DATA, the rear-clearance toggle's own
+// math) were always correct - only this 3D placement was wrong.
+//
+// Turned out not to be 1650-only: checked every crane's own exported mesh
+// length against its FOOTPRINTS total, and every crane WITH a combi box
+// (COMBI_BOX_DEPTH_MM - 1110/1130/1160/1250/1300) measured 400-630mm
+// longer than its own box-OFF total, same story, smaller box; the one
+// crane with neither box (1100, no COMBI_BOX_DEPTH_MM entry) measured
+// within 6mm. Checked the OLD proportional-split formula's own slewZ
+// against each crane's independently geometry-refined calibration (real
+// outrigger foot-plate positions, refineCalibrationFromGeometry below -
+// the closest thing to ground truth available) and it was off by
+// 430-510mm on every combi-box crane, not just the 1650. This front-anchor
+// formula lands within 15-210mm of that same ground truth on every crane
+// tested (1650 excepted - no full leg geometry to refine against there,
+// but checked directly against the model's own measured rear tip instead,
+// within 11mm) - consistently closer than the old formula everywhere, and
+// mathematically a no-op for any crane whose mesh happens to measure
+// exactly FOOTPRINTS' own total (front+rear), so cranes without this
+// problem see no change in behaviour. See methodology.txt 61 for the
+// full per-crane comparison table. Nothing here depends on the model's
+// total length or rear overhang at all, so a baked-in rear accessory on
+// ANY crane's export (fitted or not, one of these or a future one) can't
+// skew it - only a baked-in FRONT-end mismatch could, and no crane in
+// this fleet has one.
+//
+// calibration.frontAtMinZ says which end of the box (min or max Z) is the
+// front, confirmed per-crane by rendering a straight-down view and
+// visually identifying the driving cab (see methodology.txt 10.77) -
+// that's the one thing that can't be derived from the geometry alone.
+// calibration.lateralSign flips left/right if a crane's export happens to
+// have +X reading as the opposite side from the site plan's own "+X =
+// right" convention. xSlope/zSlope are world-metres per site-plan-
+// millimetre - always -0.001 or +0.001 here (the formula trusts the CAD
+// export's own scale exactly); refineCalibrationFromGeometry below may
+// replace them with a measured slope instead.
 function computeFormulaCalibration(root, footprint, calibration) {
   const box = new THREE.Box3().setFromObject(root);
   const groundY = box.min.y;
   const lateralCenter = (box.min.x + box.max.x) / 2;
-  const measuredLength = box.max.z - box.min.z;
   const frontOverhang = footprint.front / 1000;
-  const rearOverhang = footprint.rear / 1000;
-  const total = frontOverhang + rearOverhang;
-  const fractionFromFront = total > 0 ? frontOverhang / total : 0.5;
   const frontTipZ = calibration.frontAtMinZ ? box.min.z : box.max.z;
   // +1 when the front tip is at min Z (so moving toward the rear increases
   // Z, matching the site plan's own "rear = positive Y" convention
   // directly); -1 when the front tip is at max Z instead.
   const dirSign = calibration.frontAtMinZ ? 1 : -1;
   const lateralSign = calibration.lateralSign || 1;
-  const slewZ = frontTipZ + dirSign * fractionFromFront * measuredLength;
+  const slewZ = frontTipZ + dirSign * frontOverhang;
   return { groundY, lateralCenter, slewZ, xSlope: lateralSign / 1000, zSlope: dirSign / 1000 };
 }
 

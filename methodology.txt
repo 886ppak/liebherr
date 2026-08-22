@@ -8614,3 +8614,89 @@ cranes get their own subsections as they're built.
 
   SLIDING_BEAM_BOX_DEPTH_MM['1650'] corrected from 1610 to 1270.
   CACHE_VERSION v216->v217, app version v5.21->v5.22.
+
+61. 3D calibration bug found via 59/60: slew centre estimate skewed by
+    ANY baked-in accessory, not just the 1650's box
+
+  Direct follow-on from 60. The person asked a sharp question after
+  seeing the rear-clearance line in the 3D preview NOT sit flush against
+  the visibly-modeled sliding beam box even with the toggle checked:
+  "seems weird that if it's already baked in should the dimension line
+  be under the carrier and it's not... shouldn't that line be right up
+  against the rear box?"
+
+  Root cause, confirmed by actually loading the GLB and measuring it
+  (not just reasoning about it): carrier3d.js's computeFormulaCalibration
+  estimates where the slew centre sits within a crane's 3D mesh by
+  taking the model's own measured front-to-back length and splitting it
+  front/rear using the FOOTPRINTS ratio (front / (front+rear)). The
+  1650's exported mesh measures 19.561m - matching the box-ON total
+  (19.572m = 14.585 front + 4.987 rear-with-box, see 60) almost exactly,
+  not FOOTPRINTS' box-OFF total (18.302m) the split assumed. Splitting a
+  19.561m mesh using an 18.302m-based ratio pushed the estimated slew
+  centre about 1.0m too far toward the rear - confirmed by hand
+  (frontTipZ + frontOverhang gives -6.372, the old formula gave -5.368,
+  a 1004mm difference) and confirmed by checking the resulting rear-edge
+  point against the mesh's own real geometry (old formula placed it
+  380mm PAST the model's actual rear tip - floating in empty space
+  behind the visible box, exactly what the person was looking at).
+
+  Checked whether this was 1650-specific before touching shared code.
+  It wasn't: loaded all 7 cranes' GLBs and compared each one's measured
+  length against its own FOOTPRINTS total -
+
+    1100 (no combi box, no sliding beam box): -6mm      - clean
+    1110 (combi box):                        +626mm
+    1130 (combi box):                        +415mm
+    1160 (combi box):                        +425mm
+    1250 (combi box):                        +420mm
+    1300 (combi box):                        +421mm
+    1650 (sliding beam box):                +1259mm
+
+  Every crane WITH a COMBI_BOX_DEPTH_MM entry showed a few-hundred-mm
+  mismatch; the one crane with neither box showed essentially none. Same
+  underlying issue on 6 of 7 cranes, just smaller everywhere but the
+  1650 (whose box is over twice the size of the standard combi box).
+
+  Fix: computeFormulaCalibration in carrier3d.js now anchors the slew
+  centre off the FRONT overhang alone (front tip + FOOTPRINTS' own front
+  distance in mm), not off a proportional split of the model's whole
+  measured length. Nothing in this calculation depends on the model's
+  total length or rear overhang any more, so a baked-in rear accessory
+  on any crane's export - this one, one of the other 5, or a future
+  crane added later - structurally cannot skew it. Mathematically an
+  exact no-op for a crane whose mesh happens to measure precisely
+  FOOTPRINTS' own total (confirmed: 1100 barely moved, 15mm vs 17mm).
+
+  Verified this was a genuine improvement, not just a different guess,
+  by checking BOTH the old and new formula against each crane's own
+  geometry-refined calibration (refineCalibrationFromGeometry, which
+  anchors off the model's real outrigger foot-plate positions - the
+  closest thing to ground truth available, used by Support Pad
+  Placement once outriggers are synced). Old formula's error vs that
+  ground truth, by crane: 1100 17mm, 1110 507mm, 1130 455mm, 1160 486mm,
+  1250 498mm, 1300 430mm. New formula's error against the same ground
+  truth: 1100 15mm, 1110 69mm, 1130 171mm, 1160 192mm, 1250 207mm, 1300
+  129mm. Closer (often dramatically so) on every single crane, no
+  regressions anywhere. The 1650 has no full outrigger geometry to
+  refine against (missing one beam pair, see 10.76/10.77), so checked
+  directly against the model's own measured rear tip instead - the new
+  formula's rear-edge point (with the sliding beam box toggle on) landed
+  within 11mm of the box's real modeled tip, vs 1014mm short of it
+  (past it, into empty space) under the old formula - which is exactly
+  the visible symptom the person spotted and asked about.
+
+  This also means the earlier "resolved... agrees within ~1m" note on
+  the 1650's CARRIER_CALIBRATION uncertain flag (see 37) was very likely
+  quietly absorbing this exact same error as generic cross-check noise,
+  rather than a genuinely unexplained ~1m of slack - it now has a real,
+  fixed, named cause.
+
+  What did NOT change: any plain mm figure anywhere in the app
+  (FOOTPRINTS, GROUND_LAYOUT_DATA, COMBI_BOX_DEPTH_MM,
+  SLIDING_BEAM_BOX_DEPTH_MM, the rear-clearance toggle's own maths, the
+  "Layout Dimensions" text table). None of that goes through this 3D
+  calibration path - only the 3D-rendered POSITION of things (dimension
+  lines, ground-layout markers, AR anchor placement) was ever affected.
+
+  CACHE_VERSION v217->v218, app version v5.22->v5.23.
