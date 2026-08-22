@@ -885,7 +885,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.10</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.11</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1851,14 +1851,6 @@
       <div class="card">
         <div class="card-title">Rigging Setup</div>
         <div class="form-group">
-          <label>Number of Legs</label>
-          <div class="mode-toggle" id="sling-legs-toggle">
-            <button class="mode-btn active" id="sling-legs-2-btn" onclick="setSlingLegs(2)">2 Legs</button>
-            <button class="mode-btn" id="sling-legs-34-btn" onclick="setSlingLegs(34)">3 or 4 Legs</button>
-          </div>
-          <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px;" id="sling-legs-note">Standard practice for 3/4-leg bridles: only 2 legs are assumed to actually share the load (even distribution across all legs can't be guaranteed), so the tension math is the same as a 2-leg sling either way.</div>
-        </div>
-        <div class="form-group" style="margin-top:14px;">
           <label>Load Weight (t)</label>
           <input type="number" id="sling-load" step="0.1" min="0" placeholder="e.g. 10" oninput="calcSlingAngle()">
         </div>
@@ -1934,7 +1926,7 @@
           </div>
         </div>
         <div id="sling-result-box"></div>
-        <div class="disclaimer">Conservative 2-leg-share convention applied regardless of leg count, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.</div>
+        <div class="disclaimer">Conservative 2-point rigging convention, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.</div>
       </div>
     </div>
 
@@ -6353,16 +6345,8 @@
       ['(no standard colour) 20t', 20.0], ['(no standard colour) 25t', 25.0]
     ];
 
-    let slingLegsMode = 2;
     let slingAngleMode = 'direct';
     let slingTypeMode = 'g80';
-
-    function setSlingLegs(n) {
-      slingLegsMode = n;
-      document.getElementById('sling-legs-2-btn').classList.toggle('active', n === 2);
-      document.getElementById('sling-legs-34-btn').classList.toggle('active', n === 34);
-      calcSlingAngle();
-    }
 
     function setSlingAngleMode(mode) {
       slingAngleMode = mode;
@@ -6405,11 +6389,10 @@
     }
 
     // Conservative 2-leg-share convention (see the tab's own disclaimer) -
-    // tension per leg = (Load / 2) * Load Angle Factor, regardless of
-    // whether it's actually a 2-leg or 3/4-leg bridle, since only 2 legs
-    // are ever assumed to genuinely share the load. slingLegsMode is kept
-    // as UI-only state (drives the note text) rather than feeding the
-    // formula, so the math can't silently drift between the two modes.
+    // tension per leg = (Load / 2) * Load Angle Factor. This is a plain
+    // 2-point rigging calculator; a 3/4-leg bridle still only assumes 2
+    // legs genuinely share the load, since even distribution across more
+    // legs can't be guaranteed.
     function calcSlingAngle() {
       const load = parseFloat(document.getElementById('sling-load').value) || 0;
       const resultBox = document.getElementById('sling-result-box');
