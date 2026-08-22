@@ -900,7 +900,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.16</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.17</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1850,11 +1850,30 @@
       <div class="card" id="assembly-erection-card" style="display:none;">
         <div class="card-title">Erection &amp; Take-down</div>
         <div class="form-group">
+          <label>Rigging Config</label>
+          <div class="mode-toggle" id="assembly-erection-rigging-toggle">
+            <button class="mode-btn active" id="assembly-erection-rigging-standard-btn" onclick="setAssemblyErectionRigging('standard')">Standard (T3N)</button>
+            <button class="mode-btn" id="assembly-erection-rigging-tyguy-btn" onclick="setAssemblyErectionRigging('tyguy')">TY-Guy</button>
+          </div>
+        </div>
+        <div class="form-group" id="assembly-erection-h-group" style="margin-top:14px; display:none;">
+          <label>Auxiliary Jib (H-1.7, Winch 2)</label>
+          <div class="mode-toggle" id="assembly-erection-h-toggle">
+            <button class="mode-btn active" id="assembly-erection-h-off-btn" onclick="setAssemblyErectionH(false)">Not Fitted</button>
+            <button class="mode-btn" id="assembly-erection-h-on-btn" onclick="setAssemblyErectionH(true)">Fitted</button>
+          </div>
+        </div>
+        <div class="form-group" id="assembly-erection-method-standard-group" style="margin-top:14px;">
           <label>Erection Method</label>
           <div class="mode-toggle" id="assembly-erection-method-toggle">
             <button class="mode-btn active" id="assembly-erection-stretched-btn" onclick="setAssemblyErectionMethod('stretched')">Stretched</button>
             <button class="mode-btn" id="assembly-erection-angled-btn" onclick="setAssemblyErectionMethod('angled')">Angled</button>
           </div>
+        </div>
+        <div class="form-group" id="assembly-erection-method-tyguy-group" style="margin-top:14px; display:none;">
+          <label>Erection Method</label>
+          <select id="assembly-erection-tyguy-method-select" onchange="onAssemblyErectionTyguyMethodChange()"></select>
+          <div id="assembly-erection-boom-preset-note" style="font-size:0.78rem; color:var(--accent-gold); margin-top:6px;"></div>
         </div>
         <div class="form-group" style="margin-top:14px;">
           <label>Ballast Radius</label>
@@ -1879,12 +1898,26 @@
           </div>
         </div>
         <div id="assembly-erection-note"></div>
-        <div class="disclaimer">T3N, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Erection and Take-down chart (doc aat_27550-04-02, chapter 17.10). Minimum Counterweight is the lowest CWT the chart lists as valid at this length/radius/method — more is always fine, just heavier than necessary. Reference tool only — cross-check against the current OEM erection and take-down chart before erecting or taking down.</div>
+        <div class="disclaimer" id="assembly-erection-disclaimer">T3N, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Erection and Take-down chart (doc aat_27550-04-02, chapter 17.10). Minimum Counterweight is the lowest CWT the chart lists as valid at this length/radius/method — more is always fine, just heavier than necessary. Reference tool only — cross-check against the current OEM erection and take-down chart before erecting or taking down.</div>
       </div>
 
       <div class="card" id="assembly-fixed-erection-card" style="display:none;">
         <div class="card-title">Erection &amp; Take-down (360°)</div>
         <div class="form-group">
+          <label>Rigging Config</label>
+          <div class="mode-toggle" id="assembly-fixed-erection-rigging-toggle">
+            <button class="mode-btn active" id="assembly-fixed-erection-rigging-standard-btn" onclick="setAssemblyFixedErectionRigging('standard')">Standard (T3F)</button>
+            <button class="mode-btn" id="assembly-fixed-erection-rigging-tyguy-btn" onclick="setAssemblyFixedErectionRigging('tyguy')">TY-Guy</button>
+          </div>
+        </div>
+        <div class="form-group" id="assembly-fixed-erection-h-group" style="margin-top:14px; display:none;">
+          <label>Auxiliary Jib (H-1.7, Winch 2)</label>
+          <div class="mode-toggle" id="assembly-fixed-erection-h-toggle">
+            <button class="mode-btn active" id="assembly-fixed-erection-h-off-btn" onclick="setAssemblyFixedErectionH(false)">Not Fitted</button>
+            <button class="mode-btn" id="assembly-fixed-erection-h-on-btn" onclick="setAssemblyFixedErectionH(true)">Fitted</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
           <label>Ballast Radius</label>
           <div class="mode-toggle" id="assembly-fixed-erection-radius-toggle">
             <button class="mode-btn" id="assembly-fixed-erection-radius-64-btn" onclick="setAssemblyFixedErectionRadius('6.4')">6.4m</button>
@@ -1912,7 +1945,7 @@
           </div>
         </div>
         <div id="assembly-fixed-erection-note"></div>
-        <div class="disclaimer">T3F/T3NZF, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Operating Instructions (doc LTM1650-8-1-000/27500-05-02, chapter 6.26.10). Maximum Counterweight is a fixed ceiling that doesn't change with length or radius — shown for reference, not something to aim for. Reference tool only — cross-check against the current OEM manual before erecting or taking down.</div>
+        <div class="disclaimer" id="assembly-fixed-erection-disclaimer">T3F/T3NZF, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Operating Instructions (doc LTM1650-8-1-000/27500-05-02, chapter 6.26.10). Maximum Counterweight is a fixed ceiling that doesn't change with length or radius — shown for reference, not something to aim for. Reference tool only — cross-check against the current OEM manual before erecting or taking down.</div>
       </div>
     </div>
 
@@ -2214,6 +2247,57 @@
       'F-62m': { hkfl: 0.7, minCwt: { '6.4': 65, '7.4': 55, '8.4': 55 }, variableSupportNote: true },
     };
 
+    // TY-Guy rigging option for the fixed jib (T3YVEF/T3YVEFH) - same
+    // idea as the luffing jib's TY-Guy option above, but structurally
+    // simple like the plain T3F table (one boom state, no folded-under
+    // sub-methods - TY-guying on the fixed jib doesn't need the longer
+    // jib's partial-boom-extension technique). null = not possible at any
+    // CWT (F-58.5m/F-62m for noH; F-55m/F-58.5m for H - H also drops
+    // F-62m as a length option entirely, it isn't offered with the
+    // aux jib fitted). H hkfl is [main, aux] same as the luffing H
+    // variant. Source: same doc as T3F (LTM1650-8-1-000/27500-05-02),
+    // chapter 6.26.10, items 7-8 (T3YVEF/T3YVEFH).
+    const ASSEMBLY_FIXED_TYGUY_ERECTION_MAX_CWT = { '6.4': 175, '7.4': 175, '8.4': 155 }; // same ceiling for both noH and H
+    const ASSEMBLY_FIXED_TYGUY_ERECTION = {
+      noH: {
+      'F-6m': { hkfl: 4, minCwt: { '6.4': 45, '7.4': 35, '8.4': 35 }, variableSupportNote: false },
+      'F-9,5m': { hkfl: 4, minCwt: { '6.4': 45, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-13m': { hkfl: 3.5, minCwt: { '6.4': 45, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-16,5m': { hkfl: 3, minCwt: { '6.4': 55, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-20m': { hkfl: 2.5, minCwt: { '6.4': 55, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-23,5m': { hkfl: 2.3, minCwt: { '6.4': 55, '7.4': 55, '8.4': 45 }, variableSupportNote: false },
+      'F-27m': { hkfl: 2.3, minCwt: { '6.4': 65, '7.4': 55, '8.4': 55 }, variableSupportNote: false },
+      'F-30,5m': { hkfl: 2.3, minCwt: { '6.4': 65, '7.4': 65, '8.4': 55 }, variableSupportNote: false },
+      'F-34m': { hkfl: 2.3, minCwt: { '6.4': 75, '7.4': 65, '8.4': 65 }, variableSupportNote: false },
+      'F-37,5m': { hkfl: 1.8, minCwt: { '6.4': 75, '7.4': 65, '8.4': 65 }, variableSupportNote: false },
+      'F-41m': { hkfl: 1.8, minCwt: { '6.4': 75, '7.4': 75, '8.4': 65 }, variableSupportNote: false },
+      'F-44,5m': { hkfl: 1.8, minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: false },
+      'F-48m': { hkfl: 1, minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: false },
+      'F-51,5m': { hkfl: 1, minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: false },
+      'F-55m': { hkfl: 1, minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: true },
+      'F-58,5m': null,
+      'F-62m': null,
+      },
+      H: {
+      'F-6m': { hkfl: [4, 1.5], minCwt: { '6.4': 55, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-9,5m': { hkfl: [4, 1.5], minCwt: { '6.4': 55, '7.4': 55, '8.4': 55 }, variableSupportNote: false },
+      'F-13m': { hkfl: [3.5, 1.5], minCwt: { '6.4': 65, '7.4': 55, '8.4': 55 }, variableSupportNote: false },
+      'F-16,5m': { hkfl: [2.8, 1.5], minCwt: { '6.4': 65, '7.4': 55, '8.4': 55 }, variableSupportNote: false },
+      'F-20m': { hkfl: [2.8, 1.5], minCwt: { '6.4': 75, '7.4': 65, '8.4': 65 }, variableSupportNote: false },
+      'F-23,5m': { hkfl: [2, 2.3], minCwt: { '6.4': 75, '7.4': 75, '8.4': 65 }, variableSupportNote: false },
+      'F-27m': { hkfl: [2, 2.3], minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: false },
+      'F-30,5m': { hkfl: [2.3, 1.8], minCwt: { '6.4': 75, '7.4': 75, '8.4': 75 }, variableSupportNote: true },
+      'F-34m': { hkfl: [2.3, 1.8], minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: true },
+      'F-37,5m': { hkfl: [1.5, 1.8], minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: true },
+      'F-41m': { hkfl: [1.5, 1], minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: true },
+      'F-44,5m': { hkfl: [1.5, 1], minCwt: { '6.4': 85, '7.4': 85, '8.4': 75 }, variableSupportNote: true },
+      'F-48m': { hkfl: [1, 0.7], minCwt: { '6.4': 85, '7.4': 85, '8.4': 75 }, variableSupportNote: true },
+      'F-51,5m': { hkfl: [0, 0.7], minCwt: { '6.4': 85, '7.4': 75, '8.4': 75 }, variableSupportNote: true },
+      'F-55m': null,
+      'F-58,5m': null,
+      },
+    };
+
     const ASSEMBLY_LUFFING_LENGTHS = {
       'N-21m': { totalM: 21.0, tip: ['1A-4','1A-1','1A-2','1A-3','2x1B-6'], retention: [], boom: ['2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
       'N-24,5m': { totalM: 24.5, tip: ['1A-4','1A-5','1A-1','1A-3'], retention: [], boom: ['2B-6','2B-7','2B-8','2B-10','2C-13'] },
@@ -2274,6 +2358,84 @@
       'N-84m': { stretched: { '6.4': { cwt: 155, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 145, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 125, wind: 11.2, hkfl: 1.8 } }, angled: { '6.4': { cwt: 85, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } } },
       'N-87,5m': { stretched: { '6.4': { cwt: 165, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 145, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 135, wind: 11.2, hkfl: 1.8 } }, angled: { '6.4': { cwt: 85, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } } },
       'N-91m': { stretched: { '6.4': null, '7.4': null, '8.4': null }, angled: { '6.4': { cwt: 85, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 13.4, hkfl: 1.8 } } },
+    };
+
+    // TY-Guy rigging option for the luffing jib (T3YVEN/T3YVENH) - an
+    // alternative to the plain T3N above, needed for longer jib lengths.
+    // Structurally different from T3N: instead of just Stretched/Angled,
+    // it has up to 8 named erection methods per length (Stretched,
+    // Angled, plus 6 'Folded under' techniques each requiring the main
+    // boom preset to a SPECIFIC partial-extension state before starting -
+    // see ASSEMBLY_LUFFING_TYGUY_METHODS for which). Not every method is
+    // valid at every length (Stretched/Angled only cover up to ~49m,
+    // Folded-under methods only from ~31.5m up), so the per-length object
+    // below only lists whichever methods the OEM chart actually offers -
+    // absence of a method key means 'not applicable at this length', same
+    // meaning as an explicit null. H = with the H-1.7 auxiliary jib
+    // (winch 2) fitted - carries its own dual [main, aux] hook block
+    // weight and a shorter valid length range in places. Source: same
+    // doc as T3N (aat_27550-04-02), chapter 17.10, wide support base,
+    // items 7-10 (T3YVEN/T3YVENH). Zero parsing anomalies on extraction.
+    const ASSEMBLY_LUFFING_TYGUY_METHODS = {
+      stretched: { boomPreset: 'T-16.7 (0/0/0)', label: 'Stretched' },
+      angled: { boomPreset: 'T-16.7 (0/0/0)', label: 'Angled' },
+      'folded_T-33.8': { boomPreset: 'T-33.8 (46/92/0)', label: 'Folded under \u2014 T-33.8' },
+      'folded_T-33.9': { boomPreset: 'T-33.9 (0/46/92)', label: 'Folded under \u2014 T-33.9' },
+      'folded_T-39.5': { boomPreset: 'T-39.5 (92/92/0)', label: 'Folded under \u2014 T-39.5' },
+      'folded_T-39.7': { boomPreset: 'T-39.7 (0/92/92)', label: 'Folded under \u2014 T-39.7' },
+      'folded_T-45.3': { boomPreset: 'T-45.3 (46/92/92)', label: 'Folded under \u2014 T-45.3' },
+      'folded_T-51.0': { boomPreset: 'T-51.0 (92/92/92)', label: 'Folded under \u2014 T-51.0' },
+    };
+
+    const ASSEMBLY_LUFFING_TYGUY_ERECTION = {
+      noH:
+      {
+        'N-21m': { 'stretched': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3.5 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3.5 } }, 'angled': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3.5 }, '7.4': { cwt: 55, wind: 13.4, hkfl: 3.5 } } },
+        'N-24,5m': { 'stretched': { '6.4': { cwt: 85, wind: 13.4, hkfl: 3.5 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 3.5 } }, 'angled': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3.5 }, '7.4': { cwt: 55, wind: 13.4, hkfl: 3.5 } } },
+        'N-28m': { 'stretched': { '6.4': { cwt: 85, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 55, wind: 13.4, hkfl: 3 } } },
+        'N-31,5m': { 'stretched': { '6.4': { cwt: 95, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 85, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } } },
+        'N-35m': { 'stretched': { '6.4': { cwt: 95, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 85, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } } },
+        'N-38,5m': { 'stretched': { '6.4': { cwt: 105, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 95, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 65, wind: 9, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 13.4, hkfl: 3 } } },
+        'N-42m': { 'stretched': { '6.4': { cwt: 115, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 105, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 11.2, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 11.2, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 11.2, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 11.2, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 11.2, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 11.2, hkfl: 3 } } },
+        'N-45,5m': { 'stretched': { '6.4': { cwt: 115, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 105, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 9, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 9, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 9, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 9, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 9, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 55, wind: 9, hkfl: 3 } } },
+        'N-49m': { 'stretched': { '6.4': { cwt: 125, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 115, wind: 13.4, hkfl: 3 } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } } },
+        'N-52,5m': { 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 3 } } },
+        'N-56m': { 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 3 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 3 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 3 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 3 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 3 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 11.2, hkfl: 3 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 3 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 3 } } },
+        'N-59,5m': { 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } } },
+        'N-63m': { 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 9, hkfl: 1.8 } } },
+        'N-66,5m': { 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 65, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } } },
+        'N-70m': { 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 13.4, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 13.4, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 13.4, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 13.4, hkfl: 1.8 } } },
+        'N-73,5m': { 'folded_T-33.8': { '6.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 95, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 11.2, hkfl: 1.8 } } },
+        'N-77m': { 'folded_T-33.8': { '6.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 11.2, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 11.2, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 95, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 11.2, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 105, wind: 11.2, hkfl: 1.8 }, '7.4': { cwt: 95, wind: 11.2, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 11.2, hkfl: 1.8 } } },
+        'N-80,5m': { 'folded_T-33.8': { '6.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 9, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 65, wind: 9, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 9, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 9, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } } },
+        'N-84m': { 'folded_T-33.8': { '6.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 9, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 75, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 75, wind: 9, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 115, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 95, wind: 9, hkfl: 1.8 } } },
+        'N-87,5m': { 'folded_T-33.8': { '6.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-33.9': { '6.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 85, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-39.5': { '6.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-39.7': { '6.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 95, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 85, wind: 9, hkfl: 1.8 } }, 'folded_T-45.3': { '6.4': { cwt: 115, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 105, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 95, wind: 9, hkfl: 1.8 } }, 'folded_T-51.0': { '6.4': { cwt: 125, wind: 9, hkfl: 1.8 }, '7.4': { cwt: 115, wind: 9, hkfl: 1.8 }, '8.4': { cwt: 105, wind: 9, hkfl: 1.8 } } },
+        'N-91m': { 'folded_T-33.8': { '6.4': { cwt: 95, wind: 9, hkfl: 0.7 }, '7.4': { cwt: 85, wind: 9, hkfl: 0.7 }, '8.4': { cwt: 85, wind: 9, hkfl: 0.7 } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 9, hkfl: 0.7 }, '7.4': { cwt: 85, wind: 9, hkfl: 0.7 }, '8.4': { cwt: 85, wind: 9, hkfl: 0.7 } }, 'folded_T-39.5': { '6.4': { cwt: 105, wind: 9, hkfl: 0.7 }, '7.4': { cwt: 95, wind: 9, hkfl: 0.7 }, '8.4': { cwt: 85, wind: 9, hkfl: 0.7 } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 9, hkfl: 0.7 }, '7.4': { cwt: 85, wind: 9, hkfl: 0.7 }, '8.4': { cwt: 85, wind: 9, hkfl: 0.7 } }, 'folded_T-45.3': { '6.4': { cwt: 105, wind: 9, hkfl: 0.7 }, '7.4': { cwt: 95, wind: 9, hkfl: 0.7 }, '8.4': { cwt: 85, wind: 9, hkfl: 0.7 } }, 'folded_T-51.0': { '6.4': { cwt: 125, wind: 9, hkfl: 0.7 }, '7.4': { cwt: 105, wind: 9, hkfl: 0.7 }, '8.4': { cwt: 95, wind: 9, hkfl: 0.7 } } },
+      },
+      H:
+      {
+        'N-21m': { 'stretched': { '6.4': { cwt: 95, wind: 13.4, hkfl: [2.3, 3.5] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3.5] } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3.5] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3.5] } } },
+        'N-24,5m': { 'stretched': { '6.4': { cwt: 95, wind: 13.4, hkfl: [2.3, 3.5] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3.5] } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3.5] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3.5] } } },
+        'N-28m': { 'stretched': { '6.4': { cwt: 105, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 95, wind: 13.4, hkfl: [2.3, 3] } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] } } },
+        'N-31,5m': { 'stretched': { '6.4': { cwt: 115, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 95, wind: 13.4, hkfl: [2.3, 3] } }, 'angled': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } } },
+        'N-35m': { 'stretched': { '6.4': { cwt: 115, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 105, wind: 13.4, hkfl: [2.3, 3] } }, 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-33.8': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-33.9': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-39.5': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-39.7': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-45.3': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-51.0': { '6.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } } },
+        'N-38,5m': { 'stretched': { '6.4': { cwt: 125, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 115, wind: 13.4, hkfl: [2.3, 3] } }, 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-33.8': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 3] }, '8.4': { cwt: 65, wind: 13.4, hkfl: [2.3, 3] } } },
+        'N-42m': { 'stretched': { '6.4': { cwt: 135, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 115, wind: 13.4, hkfl: [2.3, 2.3] } }, 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.8': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 65, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 65, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 65, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 65, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 65, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 65, wind: 11.2, hkfl: [2.3, 2.3] } } },
+        'N-45,5m': { 'stretched': { '6.4': { cwt: 135, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 125, wind: 13.4, hkfl: [2.3, 2.3] } }, 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.8': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } } },
+        'N-49m': { 'stretched': { '6.4': { cwt: 145, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 135, wind: 13.4, hkfl: [2.3, 2.3] } }, 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.8': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } } },
+        'N-52,5m': { 'angled': { '6.4': { cwt: 95, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.8': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 13.4, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [2.3, 2.3] } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 11.2, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 11.2, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 11.2, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 11.2, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 11.2, hkfl: [2.3, 2.3] } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 11.2, hkfl: [2.3, 2.3] }, '7.4': { cwt: 75, wind: 11.2, hkfl: [2.3, 2.3] }, '8.4': { cwt: 75, wind: 11.2, hkfl: [2.3, 2.3] } } },
+        'N-56m': { 'angled': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 2.3] } }, 'folded_T-33.8': { '6.4': { cwt: 85, wind: 9, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 2.3] } }, 'folded_T-33.9': { '6.4': { cwt: 85, wind: 9, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 2.3] } }, 'folded_T-39.5': { '6.4': { cwt: 85, wind: 9, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 2.3] } }, 'folded_T-39.7': { '6.4': { cwt: 85, wind: 9, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 2.3] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 2.3] } }, 'folded_T-45.3': { '6.4': { cwt: 85, wind: 9, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 2.3] }, '8.4': { cwt: 75, wind: 11.2, hkfl: [1.8, 2.3] } }, 'folded_T-51.0': { '6.4': { cwt: 85, wind: 9, hkfl: [1.8, 2.3] }, '7.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 2.3] }, '8.4': { cwt: 75, wind: 11.2, hkfl: [1.8, 2.3] } } },
+        'N-59,5m': { 'angled': { '6.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-33.8': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-33.9': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.5': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-45.3': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-51.0': { '6.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 9, hkfl: [1.8, 1.8] } } },
+        'N-63m': { 'angled': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-33.8': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-33.9': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.5': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-45.3': { '6.4': { cwt: 95, wind: 11.2, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 11.2, hkfl: [1.8, 1.8] } } },
+        'N-66,5m': { 'folded_T-33.8': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-33.9': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.5': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-45.3': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 75, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-51.0': { '6.4': { cwt: 105, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] } } },
+        'N-70m': { 'folded_T-33.8': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-33.9': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.5': { '6.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 13.4, hkfl: [1.8, 1.8] } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 11.2, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 1.8] } }, 'folded_T-45.3': { '6.4': { cwt: 95, wind: 11.2, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 11.2, hkfl: [1.8, 1.8] } }, 'folded_T-51.0': { '6.4': { cwt: 115, wind: 13.4, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 11.2, hkfl: [1.8, 1.8] }, '8.4': { cwt: 95, wind: 13.4, hkfl: [1.8, 1.8] } } },
+        'N-73,5m': { 'folded_T-33.8': { '6.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-33.9': { '6.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-39.5': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-39.7': { '6.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-45.3': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 85, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-51.0': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 105, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] } } },
+        'N-77m': { 'folded_T-33.8': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-33.9': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] } }, 'folded_T-39.5': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 1.8] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 1.8] } } },
+        'N-80,5m': { 'folded_T-33.8': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-33.9': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-39.5': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-39.7': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-45.3': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-51.0': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } } },
+        'N-84m': { 'folded_T-33.8': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-33.9': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-39.5': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-39.7': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-45.3': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-51.0': { '6.4': { cwt: 125, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 115, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] } } },
+        'N-87,5m': { 'folded_T-33.8': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-33.9': { '6.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-39.5': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-39.7': { '6.4': { cwt: 115, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 95, wind: 9, hkfl: [1.8, 0] } }, 'folded_T-51.0': { '6.4': { cwt: 135, wind: 9, hkfl: [1.8, 0] }, '7.4': { cwt: 125, wind: 9, hkfl: [1.8, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [1.8, 0] } } },
+        'N-91m': { 'folded_T-33.8': { '6.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] } }, 'folded_T-33.9': { '6.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] } }, 'folded_T-39.5': { '6.4': { cwt: 115, wind: 9, hkfl: [0.7, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] } }, 'folded_T-45.3': { '6.4': { cwt: 115, wind: 9, hkfl: [0.7, 0] }, '7.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] } }, 'folded_T-51.0': { '6.4': { cwt: 135, wind: 9, hkfl: [0.7, 0] }, '7.4': { cwt: 115, wind: 9, hkfl: [0.7, 0] }, '8.4': { cwt: 105, wind: 9, hkfl: [0.7, 0] } } },
+      }
     };
 
     // Confirmed against the ETK electronic parts catalogue's own master
@@ -2387,13 +2549,77 @@
       if (assemblyType === 'fixed') renderAssemblyFixedErection(name);
     }
 
-    let assemblyErectionMethod = 'stretched';
+    // Hook block weight is a plain figure normally, but a [main, aux]
+    // pair once the H-1.7 auxiliary jib (winch 2) is fitted - shared by
+    // both the luffing and fixed jib TY-Guy H-variants.
+    function formatHkfl(v) {
+      if (v === null || v === undefined) return '-';
+      if (Array.isArray(v)) return `${v[0] === null ? '-' : v[0]} / ${v[1] === null ? '-' : v[1]} t (main/aux)`;
+      return `${v} t`;
+    }
+
+    let assemblyErectionRigging = 'standard'; // 'standard' (T3N) or 'tyguy' (T3YVEN)
+    let assemblyErectionH = false; // H-1.7 auxiliary jib fitted, TY-Guy only
+    let assemblyErectionMethod = 'stretched'; // Standard mode: stretched/angled
+    let assemblyErectionTyguyMethod = null; // TY-Guy mode: set dynamically per length, see populateAssemblyErectionTyguyMethodSelect
     let assemblyErectionRadius = '7.4';
+
+    const ASSEMBLY_ERECTION_STANDARD_DISCLAIMER = 'T3N, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Erection and Take-down chart (doc aat_27550-04-02, chapter 17.10). Minimum Counterweight is the lowest CWT the chart lists as valid at this length/radius/method — more is always fine, just heavier than necessary. Reference tool only — cross-check against the current OEM erection and take-down chart before erecting or taking down.';
+    const ASSEMBLY_ERECTION_TYGUY_DISCLAIMER = 'T3YVEN/T3YVENH, wide support base (100%) 10.5m × 9.6m — TY-Guy rigging option, per Liebherr Erection and Take-down chart (doc aat_27550-04-02, chapter 17.10, items 7-10). "Folded under" methods require the main boom preset to the stated partial-extension state before starting — that\'s how that technique works, not optional. Minimum Counterweight is the lowest CWT the chart lists as valid at this length/radius/method. Reference tool only — cross-check against the current OEM erection and take-down chart before erecting or taking down.';
+
+    function setAssemblyErectionRigging(mode) {
+      assemblyErectionRigging = mode;
+      document.getElementById('assembly-erection-rigging-standard-btn').classList.toggle('active', mode === 'standard');
+      document.getElementById('assembly-erection-rigging-tyguy-btn').classList.toggle('active', mode === 'tyguy');
+      document.getElementById('assembly-erection-h-group').style.display = mode === 'tyguy' ? '' : 'none';
+      document.getElementById('assembly-erection-method-standard-group').style.display = mode === 'standard' ? '' : 'none';
+      document.getElementById('assembly-erection-method-tyguy-group').style.display = mode === 'tyguy' ? '' : 'none';
+      document.getElementById('assembly-erection-disclaimer').textContent = mode === 'tyguy' ? ASSEMBLY_ERECTION_TYGUY_DISCLAIMER : ASSEMBLY_ERECTION_STANDARD_DISCLAIMER;
+      renderAssemblyErection(document.getElementById('assembly-length-select').value);
+    }
+
+    function setAssemblyErectionH(flag) {
+      assemblyErectionH = flag;
+      document.getElementById('assembly-erection-h-off-btn').classList.toggle('active', !flag);
+      document.getElementById('assembly-erection-h-on-btn').classList.toggle('active', flag);
+      renderAssemblyErection(document.getElementById('assembly-length-select').value);
+    }
 
     function setAssemblyErectionMethod(method) {
       assemblyErectionMethod = method;
       document.getElementById('assembly-erection-stretched-btn').classList.toggle('active', method === 'stretched');
       document.getElementById('assembly-erection-angled-btn').classList.toggle('active', method === 'angled');
+      renderAssemblyErection(document.getElementById('assembly-length-select').value);
+    }
+
+    // Up to 8 named methods exist (see ASSEMBLY_LUFFING_TYGUY_METHODS),
+    // but not every one applies at every length - the per-length entry in
+    // ASSEMBLY_LUFFING_TYGUY_ERECTION only carries whichever methods the
+    // OEM chart actually offers there, so the dropdown is rebuilt fresh
+    // each time the length (or H fitment) changes rather than statically
+    // listing all 8 and disabling some.
+    function populateAssemblyErectionTyguyMethodSelect(name) {
+      const sel = document.getElementById('assembly-erection-tyguy-method-select');
+      const entry = ASSEMBLY_LUFFING_TYGUY_ERECTION[assemblyErectionH ? 'H' : 'noH'][name];
+      const prevValue = assemblyErectionTyguyMethod;
+      sel.innerHTML = '';
+      if (!entry) {
+        assemblyErectionTyguyMethod = null;
+        return;
+      }
+      const methods = Object.keys(entry);
+      methods.forEach((method) => {
+        const opt = document.createElement('option');
+        opt.value = method;
+        opt.textContent = ASSEMBLY_LUFFING_TYGUY_METHODS[method].label;
+        sel.appendChild(opt);
+      });
+      assemblyErectionTyguyMethod = methods.includes(prevValue) ? prevValue : methods[0];
+      sel.value = assemblyErectionTyguyMethod;
+    }
+
+    function onAssemblyErectionTyguyMethodChange() {
+      assemblyErectionTyguyMethod = document.getElementById('assembly-erection-tyguy-method-select').value;
       renderAssemblyErection(document.getElementById('assembly-length-select').value);
     }
 
@@ -2406,6 +2632,10 @@
     }
 
     function renderAssemblyErection(name) {
+      if (assemblyErectionRigging === 'tyguy') {
+        renderAssemblyErectionTyguy(name);
+        return;
+      }
       const entry = ASSEMBLY_LUFFING_ERECTION[name];
       const noteEl = document.getElementById('assembly-erection-note');
       if (!entry) {
@@ -2425,11 +2655,61 @@
       }
       document.getElementById('assembly-erection-cwt').textContent = `${combo.cwt} t`;
       document.getElementById('assembly-erection-wind').textContent = `${combo.wind} m/s`;
-      document.getElementById('assembly-erection-hkfl').textContent = `${combo.hkfl} t`;
+      document.getElementById('assembly-erection-hkfl').textContent = formatHkfl(combo.hkfl);
       noteEl.innerHTML = '';
     }
 
+    function renderAssemblyErectionTyguy(name) {
+      populateAssemblyErectionTyguyMethodSelect(name);
+      const noteEl = document.getElementById('assembly-erection-note');
+      const presetNoteEl = document.getElementById('assembly-erection-boom-preset-note');
+      const entry = ASSEMBLY_LUFFING_TYGUY_ERECTION[assemblyErectionH ? 'H' : 'noH'][name];
+      if (!entry || !assemblyErectionTyguyMethod) {
+        document.getElementById('assembly-erection-cwt').textContent = '-';
+        document.getElementById('assembly-erection-wind').textContent = '-';
+        document.getElementById('assembly-erection-hkfl').textContent = '-';
+        presetNoteEl.textContent = '';
+        noteEl.innerHTML = `<div class="fail-box"><strong style="color:var(--danger);">Not possible</strong> — ${name} isn't covered by the TY-Guy${assemblyErectionH ? ' (H-1.7 fitted)' : ''} chart at any counterweight or method.</div>`;
+        return;
+      }
+      const methodInfo = ASSEMBLY_LUFFING_TYGUY_METHODS[assemblyErectionTyguyMethod];
+      presetNoteEl.textContent = `Main boom must be preset to ${methodInfo.boomPreset} before starting.`;
+      const combo = entry[assemblyErectionTyguyMethod][assemblyErectionRadius];
+      if (!combo) {
+        document.getElementById('assembly-erection-cwt').textContent = '-';
+        document.getElementById('assembly-erection-wind').textContent = '-';
+        document.getElementById('assembly-erection-hkfl').textContent = '-';
+        noteEl.innerHTML = `<div class="fail-box"><strong style="color:var(--danger);">Not available</strong> — this length/method combination isn't listed at ${assemblyErectionRadius}m radius on this chart. Try a different radius or method.</div>`;
+        return;
+      }
+      document.getElementById('assembly-erection-cwt').textContent = `${combo.cwt} t`;
+      document.getElementById('assembly-erection-wind').textContent = `${combo.wind} m/s`;
+      document.getElementById('assembly-erection-hkfl').textContent = formatHkfl(combo.hkfl);
+      noteEl.innerHTML = '';
+    }
+
+    let assemblyFixedErectionRigging = 'standard'; // 'standard' (T3F) or 'tyguy' (T3YVEF)
+    let assemblyFixedErectionH = false;
     let assemblyFixedErectionRadius = '7.4';
+
+    const ASSEMBLY_FIXED_ERECTION_STANDARD_DISCLAIMER = 'T3F/T3NZF, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Operating Instructions (doc LTM1650-8-1-000/27500-05-02, chapter 6.26.10). Maximum Counterweight is a fixed ceiling that doesn\'t change with length or radius — shown for reference, not something to aim for. Reference tool only — cross-check against the current OEM manual before erecting or taking down.';
+    const ASSEMBLY_FIXED_ERECTION_TYGUY_DISCLAIMER = 'T3YVEF/T3YVEFH, wide support base (100%) 10.5m × 9.6m — TY-Guy rigging option, main boom fully retracted (T-16.7), per Liebherr Operating Instructions (doc LTM1650-8-1-000/27500-05-02, chapter 6.26.10, items 7-8). Maximum Counterweight is a fixed ceiling that doesn\'t change with length or radius. Reference tool only — cross-check against the current OEM manual before erecting or taking down.';
+
+    function setAssemblyFixedErectionRigging(mode) {
+      assemblyFixedErectionRigging = mode;
+      document.getElementById('assembly-fixed-erection-rigging-standard-btn').classList.toggle('active', mode === 'standard');
+      document.getElementById('assembly-fixed-erection-rigging-tyguy-btn').classList.toggle('active', mode === 'tyguy');
+      document.getElementById('assembly-fixed-erection-h-group').style.display = mode === 'tyguy' ? '' : 'none';
+      document.getElementById('assembly-fixed-erection-disclaimer').textContent = mode === 'tyguy' ? ASSEMBLY_FIXED_ERECTION_TYGUY_DISCLAIMER : ASSEMBLY_FIXED_ERECTION_STANDARD_DISCLAIMER;
+      renderAssemblyFixedErection(document.getElementById('assembly-length-select').value);
+    }
+
+    function setAssemblyFixedErectionH(flag) {
+      assemblyFixedErectionH = flag;
+      document.getElementById('assembly-fixed-erection-h-off-btn').classList.toggle('active', !flag);
+      document.getElementById('assembly-fixed-erection-h-on-btn').classList.toggle('active', flag);
+      renderAssemblyFixedErection(document.getElementById('assembly-length-select').value);
+    }
 
     function setAssemblyFixedErectionRadius(radius) {
       assemblyFixedErectionRadius = radius;
@@ -2440,18 +2720,23 @@
     }
 
     function renderAssemblyFixedErection(name) {
-      const entry = ASSEMBLY_FIXED_ERECTION[name];
+      const isTyguy = assemblyFixedErectionRigging === 'tyguy';
+      const source = isTyguy ? ASSEMBLY_FIXED_TYGUY_ERECTION[assemblyFixedErectionH ? 'H' : 'noH'] : ASSEMBLY_FIXED_ERECTION;
+      const maxCwtSource = isTyguy ? ASSEMBLY_FIXED_TYGUY_ERECTION_MAX_CWT : ASSEMBLY_FIXED_ERECTION_MAX_CWT;
+      const entry = source[name];
       const noteEl = document.getElementById('assembly-fixed-erection-note');
       if (!entry) {
         document.getElementById('assembly-fixed-erection-cwt').textContent = '-';
         document.getElementById('assembly-fixed-erection-maxcwt').textContent = '-';
         document.getElementById('assembly-fixed-erection-hkfl').textContent = '-';
-        noteEl.innerHTML = '';
+        noteEl.innerHTML = isTyguy
+          ? `<div class="fail-box"><strong style="color:var(--danger);">Not possible</strong> — ${name} isn't available under TY-Guy rigging${assemblyFixedErectionH ? ' with the H-1.7 aux jib fitted' : ''} at any counterweight.</div>`
+          : '';
         return;
       }
       document.getElementById('assembly-fixed-erection-cwt').textContent = `${entry.minCwt[assemblyFixedErectionRadius]} t`;
-      document.getElementById('assembly-fixed-erection-maxcwt').textContent = `${ASSEMBLY_FIXED_ERECTION_MAX_CWT[assemblyFixedErectionRadius]} t`;
-      document.getElementById('assembly-fixed-erection-hkfl').textContent = `${entry.hkfl} t`;
+      document.getElementById('assembly-fixed-erection-maxcwt').textContent = `${maxCwtSource[assemblyFixedErectionRadius]} t`;
+      document.getElementById('assembly-fixed-erection-hkfl').textContent = formatHkfl(entry.hkfl);
       noteEl.innerHTML = entry.variableSupportNote
         ? `<div class="fail-box"><strong style="color:var(--danger);">Not possible on a variable support</strong> — ${name} can only be assembled/disassembled/erected/taken down on a symmetric support, and with assembly switch fitted.</div>`
         : '';
