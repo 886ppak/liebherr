@@ -900,7 +900,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.18</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.19</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1963,11 +1963,12 @@
         <div class="card-title">Sling Angle</div>
         <div class="form-group">
           <label>Input Method</label>
-          <div class="mode-toggle" id="sling-angle-mode-toggle">
+          <div class="mode-toggle" id="sling-angle-mode-toggle" style="flex-wrap:wrap;">
             <button class="mode-btn active" id="sling-angle-mode-direct-btn" onclick="setSlingAngleMode('direct')">Enter Angle</button>
             <button class="mode-btn" id="sling-angle-mode-dims-btn" onclick="setSlingAngleMode('dims')">Headroom + Spread</button>
             <button class="mode-btn" id="sling-angle-mode-leglen-btn" onclick="setSlingAngleMode('leglen')">Leg Length + Spread</button>
             <button class="mode-btn" id="sling-angle-mode-uneven-btn" onclick="setSlingAngleMode('uneven')">Unequal Legs</button>
+            <button class="mode-btn" id="sling-angle-mode-twoangle-btn" onclick="setSlingAngleMode('twoangle')">Two Leg Angles</button>
           </div>
         </div>
         <div class="form-group" id="sling-angle-direct-group" style="margin-top:14px;">
@@ -2008,7 +2009,18 @@
             <input type="number" id="sling-uneven-spread" step="0.01" min="0" placeholder="e.g. 3" oninput="calcSlingAngle()">
           </div>
         </div>
-        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px; display:none;" id="sling-uneven-note">Assumes both pick points sit at the same height. With two fixed leg lengths and a fixed spread, the hook position — and the tension split between the legs — is fixed by the geometry, not a choice. An OEM drawing that specs unequal legs has already worked backward from the load's CG to put the hook plumb above it; entering those same lengths here just resolves what each leg actually carries.</div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px; display:none;" id="sling-uneven-note">Assumes both pick points sit at the same height. With two fixed leg lengths and a fixed spread, the hook position — and the tension split between the legs — is fixed by the geometry, not a choice. An OEM drawing that specs unequal legs has already worked backward from the load's CG to put the hook plumb above it; entering those same lengths here just resolves what each leg actually carries. If your pick points AREN'T level (or you're not sure), use "Two Leg Angles" instead — it doesn't need that assumption.</div>
+        <div class="grid" id="sling-angle-twoangle-group" style="margin-top:14px; display:none;">
+          <div class="form-group">
+            <label>Leg 1 Angle — from vertical (°)</label>
+            <input type="number" id="sling-leg1angle" step="0.1" min="0" max="89.9" placeholder="e.g. 19" oninput="calcSlingAngle()">
+          </div>
+          <div class="form-group">
+            <label>Leg 2 Angle — from vertical (°)</label>
+            <input type="number" id="sling-leg2angle" step="0.1" min="0" max="89.9" placeholder="e.g. 38" oninput="calcSlingAngle()">
+          </div>
+        </div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px; display:none;" id="sling-twoangle-note">Works regardless of whether the two pick points are level — this is exactly how a lot of real OEM lift plans present an asymmetric rig, precisely because it sidesteps that question. Enter each leg's own angle off vertical, straight from the drawing.</div>
         <div id="sling-angle-computed-wrap" style="display:none; margin-top:10px;">
           <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Computed Geometry</label>
           <div id="sling-angle-computed" style="font-weight:700; color:var(--accent-gold);">—</div>
@@ -6885,16 +6897,20 @@
       document.getElementById('sling-angle-mode-dims-btn').classList.toggle('active', mode === 'dims');
       document.getElementById('sling-angle-mode-leglen-btn').classList.toggle('active', mode === 'leglen');
       document.getElementById('sling-angle-mode-uneven-btn').classList.toggle('active', mode === 'uneven');
+      document.getElementById('sling-angle-mode-twoangle-btn').classList.toggle('active', mode === 'twoangle');
       document.getElementById('sling-angle-direct-group').style.display = mode === 'direct' ? '' : 'none';
       document.getElementById('sling-angle-dims-group').style.display = mode === 'dims' ? '' : 'none';
       document.getElementById('sling-angle-leglen-group').style.display = mode === 'leglen' ? '' : 'none';
       document.getElementById('sling-angle-uneven-group').style.display = mode === 'uneven' ? '' : 'none';
       document.getElementById('sling-uneven-note').style.display = mode === 'uneven' ? '' : 'none';
-      document.getElementById('sling-angle-computed-wrap').style.display = mode !== 'direct' ? '' : 'none';
-      document.getElementById('sling-metrics-symmetric').style.display = mode === 'uneven' ? 'none' : '';
-      document.getElementById('sling-metrics-uneven').style.display = mode === 'uneven' ? '' : 'none';
-      document.getElementById('sling-result-disclaimer').textContent = mode === 'uneven'
-        ? "Unequal-leg geometry: each leg's angle from vertical is fixed by its length and the spread (law of cosines), then tension per leg is resolved from force balance at the hook — T = Load × sin(other leg's angle) ÷ sin(included angle). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use."
+      document.getElementById('sling-angle-twoangle-group').style.display = mode === 'twoangle' ? '' : 'none';
+      document.getElementById('sling-twoangle-note').style.display = mode === 'twoangle' ? '' : 'none';
+      document.getElementById('sling-angle-computed-wrap').style.display = (mode !== 'direct' && mode !== 'twoangle') ? '' : 'none';
+      const isTwoLeg = mode === 'uneven' || mode === 'twoangle';
+      document.getElementById('sling-metrics-symmetric').style.display = isTwoLeg ? 'none' : '';
+      document.getElementById('sling-metrics-uneven').style.display = isTwoLeg ? '' : 'none';
+      document.getElementById('sling-result-disclaimer').textContent = isTwoLeg
+        ? "Unequal-leg geometry: each leg's own angle from vertical determines the split — tension per leg is resolved from force balance at the hook, T = Load × sin(other leg's angle) ÷ sin(included angle). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use."
         : "Conservative 2-point rigging convention, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.";
       calcSlingAngle();
     }
@@ -7038,12 +7054,62 @@
       resultBox.innerHTML = html;
     }
 
+    // Two Leg Angles: each leg's own angle from vertical, straight off
+    // the drawing - unlike "Unequal Legs" (leg lengths + spread), this
+    // needs no assumption about the two pick points being level, since
+    // the angles already encode whatever height difference exists
+    // between them. Same T = Load x sin(other leg's angle) / sin(included
+    // angle) force-balance result as calcSlingAngleUneven, just skipping
+    // the geometry-reconstruction step entirely since the angles are
+    // given directly - always valid by construction (each leg <90 from
+    // vertical), unlike the leg-length+spread route which can reject an
+    // impossible triangle.
+    function calcSlingAngleTwoAngle(load) {
+      const resultBox = document.getElementById('sling-result-box');
+      const leg1El = document.getElementById('sling-tension-leg1');
+      const leg2El = document.getElementById('sling-tension-leg2');
+      const theta1 = parseFloat(document.getElementById('sling-leg1angle').value);
+      const theta2 = parseFloat(document.getElementById('sling-leg2angle').value);
+
+      if (isNaN(theta1) || isNaN(theta2) || theta1 < 0 || theta2 < 0 || theta1 >= 90 || theta2 >= 90 || load <= 0) {
+        leg1El.textContent = '- t';
+        leg2El.textContent = '- t';
+        resultBox.className = '';
+        resultBox.innerHTML = '';
+        return;
+      }
+
+      const includedDeg = theta1 + theta2;
+      const sinIncluded = Math.sin(includedDeg * Math.PI / 180);
+      const T1 = load * Math.sin(theta2 * Math.PI / 180) / sinIncluded;
+      const T2 = load * Math.sin(theta1 * Math.PI / 180) / sinIncluded;
+
+      leg1El.textContent = `${T1.toFixed(2)} t`;
+      leg2El.textContent = `${T2.toFixed(2)} t`;
+
+      const r1 = sizeCheckHtml(T1);
+      const r2 = sizeCheckHtml(T2);
+      resultBox.className = (r1.cls === 'fail-box' || r2.cls === 'fail-box') ? 'fail-box' : r1.cls;
+      let html = `<strong>Leg 1</strong> (${theta1.toFixed(1)}° from vertical, ${T1.toFixed(2)}t): ${r1.html}<br><br><strong>Leg 2</strong> (${theta2.toFixed(1)}° from vertical, ${T2.toFixed(2)}t): ${r2.html}`;
+      if (slingTypeMode !== 'custom' && r1.cls === 'recommendation-box' && r2.cls === 'recommendation-box') {
+        html += `<br><br>If rigging with a matched pair rather than two different legs, size both to whichever of the two is larger.`;
+      }
+      if (includedDeg >= 120) {
+        html += `<br><br><strong style="color:var(--warning);">⚠ Included angle ${includedDeg.toFixed(1)}° or over</strong> — many rigging codes prohibit sling angles this shallow regardless of calculated capacity.`;
+      }
+      resultBox.innerHTML = html;
+    }
+
     function calcSlingAngle() {
       const load = parseFloat(document.getElementById('sling-load').value) || 0;
       const resultBox = document.getElementById('sling-result-box');
 
       if (slingAngleMode === 'uneven') {
         calcSlingAngleUneven(load);
+        return;
+      }
+      if (slingAngleMode === 'twoangle') {
+        calcSlingAngleTwoAngle(load);
         return;
       }
 
