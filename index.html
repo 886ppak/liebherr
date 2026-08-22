@@ -900,7 +900,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.15</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.16</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1881,6 +1881,39 @@
         <div id="assembly-erection-note"></div>
         <div class="disclaimer">T3N, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Erection and Take-down chart (doc aat_27550-04-02, chapter 17.10). Minimum Counterweight is the lowest CWT the chart lists as valid at this length/radius/method — more is always fine, just heavier than necessary. Reference tool only — cross-check against the current OEM erection and take-down chart before erecting or taking down.</div>
       </div>
+
+      <div class="card" id="assembly-fixed-erection-card" style="display:none;">
+        <div class="card-title">Erection &amp; Take-down (360°)</div>
+        <div class="form-group">
+          <label>Ballast Radius</label>
+          <div class="mode-toggle" id="assembly-fixed-erection-radius-toggle">
+            <button class="mode-btn" id="assembly-fixed-erection-radius-64-btn" onclick="setAssemblyFixedErectionRadius('6.4')">6.4m</button>
+            <button class="mode-btn active" id="assembly-fixed-erection-radius-74-btn" onclick="setAssemblyFixedErectionRadius('7.4')">7.4m</button>
+            <button class="mode-btn" id="assembly-fixed-erection-radius-84-btn" onclick="setAssemblyFixedErectionRadius('8.4')">8.4m</button>
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px;">Figure is valid slewing anywhere through 360° — rear-only needs the exact same minimum on this chart, so there's no separate rear-only figure to show.</div>
+        </div>
+        <div class="metrics-grid" style="margin-top:14px;">
+          <div class="metric-card highlight">
+            <div class="metric-label">Minimum Counterweight</div>
+            <div class="metric-value" id="assembly-fixed-erection-cwt">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Maximum Counterweight</div>
+            <div class="metric-value" id="assembly-fixed-erection-maxcwt">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Max Wind Speed</div>
+            <div class="metric-value">13.4 m/s</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Max Hook Block (HKFL)</div>
+            <div class="metric-value" id="assembly-fixed-erection-hkfl">-</div>
+          </div>
+        </div>
+        <div id="assembly-fixed-erection-note"></div>
+        <div class="disclaimer">T3F/T3NZF, wide support base (100%) 10.5m × 9.6m, main boom fully retracted (T-16.7), no H-1.7 auxiliary jib fitted — per Liebherr Operating Instructions (doc LTM1650-8-1-000/27500-05-02, chapter 6.26.10). Maximum Counterweight is a fixed ceiling that doesn't change with length or radius — shown for reference, not something to aim for. Reference tool only — cross-check against the current OEM manual before erecting or taking down.</div>
+      </div>
     </div>
 
     <!-- ================= SLING ANGLE CALCULATOR (owner-only) ================= -->
@@ -2145,6 +2178,42 @@
       'F-62m': { totalM: 62.0, sections: ['2B-4/2B-5','2B-7','2B-7','2B-8','2B-8','2B-9','2B-10','2C-11','2C-12','2C-13'] },
     };
 
+    // Minimum counterweight to erect/take down each fixed jib length,
+    // straight off the OEM Operating Instructions manual (doc
+    // LTM1650-8-1-000/27500-05-02, chapter 6.26.10, support variation AV1
+    // "wide support base 10.5m x 9.6m", table T3F/T3NZF - no H-1.7
+    // auxiliary jib, main boom fully retracted, matches this app's own
+    // ASSEMBLY_FIXED_LENGTHS length-for-length). Max permissible wind
+    // speed is a flat 13.4m/s across this entire table (unlike the
+    // luffing jib chart, which tightens to 11.2m/s for its longest
+    // lengths) - no per-length wind figure needed here. 360-degree slew
+    // and rear-only slew required the exact identical minimum CWT at
+    // every single length in the source chart (double-checked against
+    // several rows by hand) - the person confirmed only showing "360°"
+    // is correct here rather than a toggle that would always read the
+    // same both ways, but the underlying number IS the 360-degree figure
+    // (the more inclusive of the two), not a value that assumes rear-only.
+    const ASSEMBLY_FIXED_ERECTION_MAX_CWT = { '6.4': 175, '7.4': 175, '8.4': 155 }; // constant across every length
+    const ASSEMBLY_FIXED_ERECTION = {
+      'F-6m': { hkfl: 3.5, minCwt: { '6.4': 25, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-9,5m': { hkfl: 3.5, minCwt: { '6.4': 25, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-13m': { hkfl: 3.5, minCwt: { '6.4': 25, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-16,5m': { hkfl: 3, minCwt: { '6.4': 25, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-20m': { hkfl: 3, minCwt: { '6.4': 25, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-23,5m': { hkfl: 2.5, minCwt: { '6.4': 25, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-27m': { hkfl: 2.3, minCwt: { '6.4': 35, '7.4': 25, '8.4': 25 }, variableSupportNote: false },
+      'F-30,5m': { hkfl: 2.3, minCwt: { '6.4': 35, '7.4': 35, '8.4': 35 }, variableSupportNote: false },
+      'F-34m': { hkfl: 2.3, minCwt: { '6.4': 45, '7.4': 35, '8.4': 35 }, variableSupportNote: false },
+      'F-37,5m': { hkfl: 1.8, minCwt: { '6.4': 45, '7.4': 35, '8.4': 35 }, variableSupportNote: false },
+      'F-41m': { hkfl: 1.8, minCwt: { '6.4': 45, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-44,5m': { hkfl: 1.8, minCwt: { '6.4': 55, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-48m': { hkfl: 1, minCwt: { '6.4': 45, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-51,5m': { hkfl: 1, minCwt: { '6.4': 55, '7.4': 45, '8.4': 45 }, variableSupportNote: false },
+      'F-55m': { hkfl: 1, minCwt: { '6.4': 55, '7.4': 55, '8.4': 55 }, variableSupportNote: false },
+      'F-58,5m': { hkfl: 1, minCwt: { '6.4': 65, '7.4': 55, '8.4': 55 }, variableSupportNote: true },
+      'F-62m': { hkfl: 0.7, minCwt: { '6.4': 65, '7.4': 55, '8.4': 55 }, variableSupportNote: true },
+    };
+
     const ASSEMBLY_LUFFING_LENGTHS = {
       'N-21m': { totalM: 21.0, tip: ['1A-4','1A-1','1A-2','1A-3','2x1B-6'], retention: [], boom: ['2B-7','2B-8','2B-8','2B-10','2C-11','2C-13'] },
       'N-24,5m': { totalM: 24.5, tip: ['1A-4','1A-5','1A-1','1A-3'], retention: [], boom: ['2B-6','2B-7','2B-8','2B-10','2C-13'] },
@@ -2313,6 +2382,9 @@
 
       document.getElementById('assembly-erection-card').style.display = assemblyType === 'luffing' ? '' : 'none';
       if (assemblyType === 'luffing') renderAssemblyErection(name);
+
+      document.getElementById('assembly-fixed-erection-card').style.display = assemblyType === 'fixed' ? '' : 'none';
+      if (assemblyType === 'fixed') renderAssemblyFixedErection(name);
     }
 
     let assemblyErectionMethod = 'stretched';
@@ -2355,6 +2427,34 @@
       document.getElementById('assembly-erection-wind').textContent = `${combo.wind} m/s`;
       document.getElementById('assembly-erection-hkfl').textContent = `${combo.hkfl} t`;
       noteEl.innerHTML = '';
+    }
+
+    let assemblyFixedErectionRadius = '7.4';
+
+    function setAssemblyFixedErectionRadius(radius) {
+      assemblyFixedErectionRadius = radius;
+      document.getElementById('assembly-fixed-erection-radius-64-btn').classList.toggle('active', radius === '6.4');
+      document.getElementById('assembly-fixed-erection-radius-74-btn').classList.toggle('active', radius === '7.4');
+      document.getElementById('assembly-fixed-erection-radius-84-btn').classList.toggle('active', radius === '8.4');
+      renderAssemblyFixedErection(document.getElementById('assembly-length-select').value);
+    }
+
+    function renderAssemblyFixedErection(name) {
+      const entry = ASSEMBLY_FIXED_ERECTION[name];
+      const noteEl = document.getElementById('assembly-fixed-erection-note');
+      if (!entry) {
+        document.getElementById('assembly-fixed-erection-cwt').textContent = '-';
+        document.getElementById('assembly-fixed-erection-maxcwt').textContent = '-';
+        document.getElementById('assembly-fixed-erection-hkfl').textContent = '-';
+        noteEl.innerHTML = '';
+        return;
+      }
+      document.getElementById('assembly-fixed-erection-cwt').textContent = `${entry.minCwt[assemblyFixedErectionRadius]} t`;
+      document.getElementById('assembly-fixed-erection-maxcwt').textContent = `${ASSEMBLY_FIXED_ERECTION_MAX_CWT[assemblyFixedErectionRadius]} t`;
+      document.getElementById('assembly-fixed-erection-hkfl').textContent = `${entry.hkfl} t`;
+      noteEl.innerHTML = entry.variableSupportNote
+        ? `<div class="fail-box"><strong style="color:var(--danger);">Not possible on a variable support</strong> — ${name} can only be assembled/disassembled/erected/taken down on a symmetric support, and with assembly switch fitted.</div>`
+        : '';
     }
 
     function initAssemblyTab() {
