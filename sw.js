@@ -4,7 +4,7 @@
 // reeving diagrams (see CONTENT_CACHE below) — those persist across updates
 // so a crew doesn't lose offline access to plans they've already viewed just
 // because an app update shipped.
-const CACHE_VERSION = 'myslewer-v51-beta144';
+const CACHE_VERSION = 'myslewer-v51-beta145';
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 
 // Fetched-on-demand content (reeving diagrams, etc). Fixed name, never
@@ -31,6 +31,20 @@ const CONTENT_CACHE = 'app-content-v1';
 // Only the manifest itself is listed here, not the dozens of SVG files -
 // those stay in CONTENT_CACHE, matching the stable-content reasoning this
 // whole comment describes.
+//
+// vendor/carrier3d.js is the same story again, caught the same way: a
+// person kept seeing a stale, pre-fix 3D calibration result across two
+// separate CACHE_VERSION bumps because this file was never in APP_SHELL -
+// it's dynamically imported by index.html, not referenced as a normal
+// page asset, so it fell into the generic fetch-once-cache-forever
+// CONTENT_CACHE path same as everything not listed here. It's genuinely
+// actively-edited app logic (not stable vendored library code - see
+// methodology.txt 61/62), so it needs the same guarantee as index.html
+// itself. The vendor/three/* library files it imports (GLTFLoader.js,
+// DRACOLoader.js, OrbitControls.js, three.module.min.js) and the .glb
+// carrier models are deliberately NOT added here - genuinely stable,
+// unedited third-party/OEM-export content, same reasoning as the reeving
+// SVGs above, correctly left in CONTENT_CACHE.
 const APP_SHELL = [
   './',
   './index.html',
@@ -48,7 +62,8 @@ const APP_SHELL = [
   './counterweight/img/ltm1300-cwt-exploded.png',
   './counterweight/img/ltm1300-cwt-uk-exploded.png',
   './counterweight/img/ltr1220-cwt-exploded.png',
-  './reeving/manifest.json'
+  './reeving/manifest.json',
+  './vendor/carrier3d.js'
 ];
 
 self.addEventListener('install', (event) => {
