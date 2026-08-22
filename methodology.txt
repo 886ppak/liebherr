@@ -8869,3 +8869,94 @@ cranes get their own subsections as they're built.
   way, in the same comparison run as the two capped cranes.
 
 ================================================================================
+
+59. LTM 1650 Crane Layout: rear-clearance toggle for the removable
+    sliding beam box
+
+  Same idea as the existing "Include tool box in rear figure" toggle on
+  the 360 Slew Clearance card, extended to a second, unrelated accessory
+  that only exists on the 1650: the removable rear "sliding beam box"
+  (Schiebeholmkasten in the OEM docs; some editions translate it
+  "outrigger box" - same 9.4t part). The person flagged this from their
+  own site practice: the crane gets positioned first, then the box goes
+  on while building the crane out - so they wanted a way to show ground
+  clearance behind the carrier with or without it counted, same as the
+  existing toolbox toggle does for the other models.
+
+  The open question going in was which direction to apply it: does
+  FOOTPRINTS['1650'].rear (3717mm) already include the box, needing it
+  subtracted when shown "without", or does it exclude the box, needing
+  it added when shown "with"? Settled by primary-source cross-checking,
+  not by guessing:
+
+  - Rendered and read Fig.151675 ("Crane dimensions") from the person's
+    own downloaded LTM 1650-8.1 Operating Instructions PDF - captioned
+    only "1 On-road driving / 2 All-wheel steering", no footnote
+    anywhere about the sliding beam box being fitted or removed.
+  - The person then supplied a Liebherr sales brochure PDF
+    (assets-cdn.liebherr.com) for the same crane. Its own "Maße"
+    dimension page (S3273.04, same "On-road driving" caption) carries
+    three overall-length figures (18302/19572/20717mm) - checked the
+    actual vector line endpoints in the PDF (not just eyeballing) and
+    confirmed all three differ only by FRONT-end reference points
+    (1145mm apart, matching a separately-labelled front dimension), not
+    by anything at the rear. No footnote on that page names the box
+    either. FOOTPRINTS['1650'].front + rear (14585+3717) matches the
+    18302 figure exactly, confirming the app's existing rear baseline is
+    the box-off "on-road driving" figure already in this drawing.
+  - The person pushed back hard on this, pointing to a "Baustellenfahrt"
+    (jobsite driving) page in that same brochure where the rear of the
+    carrier is drawn with a green-highlighted box absent from the
+    "Straßenfahrt" (road driving) page's equivalent row. First pass at
+    comparing the two got it wrong - mixed up the superstructure
+    counterweight housing (identical, present in both) with the
+    carrier's own rear structure (which genuinely differs) - corrected
+    once re-examined properly: the jobsite-driving page really does draw
+    the box fitted; the road-driving page really does draw it absent.
+  - This isn't a contradiction of the box-off dimension drawing, it
+    completes the picture: Straßenfahrt = public road travel (box on
+    its own trailer), Baustellenfahrt = on-site maneuvering after the
+    box has already been unloaded and fitted - exactly the sequence the
+    person described from the start.
+  - Clinching confirmation from the same brochure's "Transportplan"
+    page: a literal parts list of everything that comes off the crane
+    and rides its own trailer for road transport - TY guying (19.2t), N
+    assembly unit (13t), Winch 3 (7.9t), Hoist gear 2 (4.7t), and the
+    Schiebeholmkasten/Outrigger box itself, named explicitly, 9.4t,
+    2980x1679mm front face / 1610x1720mm side profile - matching the
+    Operating Instructions manual's own Fig.158040 (Sliding beam box)
+    digit-for-digit. Confirms it travels separately by road, consistent
+    with the box-off baseline in the dimensioned drawing.
+
+  Net conclusion: FOOTPRINTS['1650'].rear (3717mm) is box-OFF, so the
+  toggle ADDS length when checked, not subtracts - opposite of the
+  person's initial guess, but the person's underlying instinct (this
+  needs to be checked against the actual drawing, don't just assume)
+  was right, and their pushback caught a real mistake in an earlier
+  comparison pass along the way.
+
+  The add amount is the box's own depth, 1610mm - its front-to-back
+  projection when mounted at the rear (spanning the carrier's ~3.1m
+  width with its 2.98m front face) - not the 2980mm figure, which is
+  the box's width across the vehicle, not how far it sticks out behind
+  the carrier.
+
+  New SLIDING_BEAM_BOX_DEPTH_MM = { '1650': 1610 } constant, kept
+  separate from COMBI_BOX_DEPTH_MM (different part, different fleet -
+  only the 1650 has this one - and critically the opposite default).
+  renderCarrier3DSlewToggles() gained a second nested checkbox
+  (#carrier-3d-include-slidingbeambox) alongside the existing toolbox
+  one, shown only when the current model has an entry in the new
+  constant. Defaults UNCHECKED (the combi box toggle defaults checked)
+  because for the 1650 the box-off state is the normal starting point
+  per the person's own site practice, not the exception. onSlewCircle
+  Toggle() folds both toggles' contributions into rearMm additively
+  (footprint.rear + toolbox-if-checked + sliding-beam-box-if-checked),
+  so a model could in principle have both someday without the code
+  needing to change, though no current crane does.
+
+  Verified via Playwright: toggle renders only for the 1650 (absent for
+  every other model), starts unchecked, label reads "Include sliding
+  beam box in rear figure (+1.61m)", and the rear figure correctly goes
+  3717 -> 5327mm when checked. No console errors. CACHE_VERSION
+  v215->v216, app version v5.20->v5.21.

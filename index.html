@@ -893,7 +893,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.20</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.21</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -4178,6 +4178,28 @@
       '1300': 810
     };
 
+    // LTM 1650-8.1's removable rear "sliding beam box" (Schiebeholmkasten in
+    // the OEM docs, sometimes translated "outrigger box" - same 9.4t part).
+    // Same idea as COMBI_BOX_DEPTH_MM above (depth added behind FOOTPRINTS'
+    // own rear figure when fitted) but kept as its own constant/toggle
+    // rather than folded into that one: different part, different fleet
+    // (only the 1650 has it), and - critically - the opposite default.
+    // Confirmed via the OEM Operating Instructions (Fig.151675 "Crane
+    // dimensions", captioned "On-road driving") and the sales brochure's
+    // own Transportplan page, which lists the Schiebeholmkasten as a 9.4t
+    // unit transported on its own trailer, separately from the base
+    // machine - so FOOTPRINTS['1650'].rear is box-OFF, and this is an
+    // add-on, not a subtraction. Value (1610mm) is the box's own depth -
+    // its front-to-back projection when mounted at the rear, spanning the
+    // carrier's ~3.1m width with its 2.98m front face - not the 2.98m
+    // figure itself, which is the box's width, not how far it sticks out
+    // behind the carrier. Defaults unchecked (opposite of the combi box
+    // toggle's default-checked) per the person's own stated site practice:
+    // position the crane first, then fit the box while building the crane
+    // out - so "box off" is the normal starting state to show, not the
+    // exception. See methodology.txt for the full primary-source trail.
+    const SLIDING_BEAM_BOX_DEPTH_MM = { '1650': 1610 };
+
     // TEST DATA - LTM 1110-5.1 only, built as a proof-of-concept before this
     // tab goes live. Unlike the Counterweight Combinations PDFs, this
     // document category has NO character-shift cipher - page.get_text()
@@ -7230,6 +7252,11 @@
           <input type="checkbox" id="carrier-3d-include-toolbox" checked onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
           Include tool box in rear figure (+${(COMBI_BOX_DEPTH_MM[modelKey] / 1000).toFixed(2)}m)
         </label>` : '') +
+        (SLIDING_BEAM_BOX_DEPTH_MM[modelKey] ? `
+        <label style="display:flex; align-items:center; gap:6px; margin-top:6px; margin-left:22px; cursor:pointer; font-size:0.7rem; color:var(--text-muted);">
+          <input type="checkbox" id="carrier-3d-include-slidingbeambox" onchange="onSlewCircleToggle()" style="width:auto; cursor:pointer;">
+          Include sliding beam box in rear figure (+${(SLIDING_BEAM_BOX_DEPTH_MM[modelKey] / 1000).toFixed(2)}m)
+        </label>` : '') +
         `<label style="display:flex; align-items:center; gap:6px; margin-top:6px; cursor:pointer; font-size:0.75rem;">
           <input type="checkbox" id="carrier-3d-show-ground-layout" onchange="onGroundLayoutToggle()" style="width:auto; cursor:pointer;">
           Show ground layout marks (paint-out dimensions)
@@ -7332,10 +7359,14 @@
       const showRearClearance = showRearClearanceEl ? showRearClearanceEl.checked : false;
       const includeToolboxEl = document.getElementById('carrier-3d-include-toolbox');
       const includeToolbox = includeToolboxEl ? includeToolboxEl.checked : false;
+      const includeSlidingBeamBoxEl = document.getElementById('carrier-3d-include-slidingbeambox');
+      const includeSlidingBeamBox = includeSlidingBeamBoxEl ? includeSlidingBeamBoxEl.checked : false;
       const data = SLEW_CLEARANCE_DATA[modelKey];
       const footprint = FOOTPRINTS[modelKey];
       const rearMm = (showRearClearance && footprint)
-        ? footprint.rear + (includeToolbox ? (COMBI_BOX_DEPTH_MM[modelKey] || 0) : 0)
+        ? footprint.rear
+          + (includeToolbox ? (COMBI_BOX_DEPTH_MM[modelKey] || 0) : 0)
+          + (includeSlidingBeamBox ? (SLIDING_BEAM_BOX_DEPTH_MM[modelKey] || 0) : 0)
         : null;
       // FOOTPRINTS/CARRIER_CALIBRATION passed through so carrier3d.js can
       // compute its own fallback slew-centre calibration when Support Pad
