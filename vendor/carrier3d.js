@@ -1007,12 +1007,30 @@ function makeTextSprite(text, color) {
 // of solid - used by Target Mat Marks to read as clearly a projected/
 // not-yet-real measurement, same dashed = "if moved" convention already
 // established by the ghost pad boxes elsewhere in this file.
+// depthTest/depthWrite false + a high renderOrder on both the line and its
+// end ticks (below) is deliberate, not decorative: these sit at ground
+// level (y = center.y + ~0.03-0.04, see applySlewCircles), well below a
+// carrier's own body height, so with normal depth-testing the model's own
+// solid geometry occludes whichever stretch of the line happens to pass
+// "under" it from the camera's current angle - and WHICH stretch that is
+// shifts with camera angle, not with the actual mm figure the line is
+// showing. A person caught this the hard way comparing the sliding beam
+// box toggle on vs off (methodology.txt 63): from one camera angle the
+// OFF state (near point tucked further under the model) read as flush
+// while the ON state (near point right at the model's real edge) read as
+// gapped - backwards from the true clearance, purely because normal
+// occlusion hides different amounts of the line depending on view angle
+// and how deep under the model's roofline the near point happens to sit.
+// Rendering these always-on-top makes the full line - and therefore
+// what's actually flush vs not - read the same from any angle, matching
+// the real mm figure instead of an angle-dependent illusion.
 function addDimensionLine(group, p1, p2, color, labelText, labelT = 0.5, dashed = false) {
   const mat = dashed
-    ? new THREE.LineDashedMaterial({ color, dashSize: 0.15, gapSize: 0.1 })
-    : new THREE.LineBasicMaterial({ color });
+    ? new THREE.LineDashedMaterial({ color, dashSize: 0.15, gapSize: 0.1, depthTest: false, depthWrite: false })
+    : new THREE.LineBasicMaterial({ color, depthTest: false, depthWrite: false });
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), mat);
   if (dashed) line.computeLineDistances();
+  line.renderOrder = 10;
   group.add(line);
 
   const dir = new THREE.Vector3().subVectors(p2, p1);
@@ -1022,13 +1040,15 @@ function addDimensionLine(group, p1, p2, color, labelText, labelT = 0.5, dashed 
     // Perpendicular to the line, in the ground (XZ) plane - a 90 degree
     // rotation of the direction vector about Y.
     const perp = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(tickHalf);
-    const tickMat = new THREE.LineBasicMaterial({ color });
+    const tickMat = new THREE.LineBasicMaterial({ color, depthTest: false, depthWrite: false });
     [p1, p2].forEach((p) => {
       const tick = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(p.x - perp.x, p.y, p.z - perp.z),
         new THREE.Vector3(p.x + perp.x, p.y, p.z + perp.z)
       ]);
-      group.add(new THREE.Line(tick, tickMat));
+      const tickLine = new THREE.Line(tick, tickMat);
+      tickLine.renderOrder = 10;
+      group.add(tickLine);
     });
   }
 
@@ -1119,8 +1139,15 @@ function applySlewCircles(modelKey, root, circles, footprint, calibration, carri
       ));
     }
     const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({ color });
-    slewCircleGroup.add(new THREE.LineLoop(geo, mat));
+    // depthTest/depthWrite false + renderOrder, same reasoning as
+    // addDimensionLine below - this circle sits at ground level too, so
+    // without it, whichever stretch passes "under" the carrier body gets
+    // occluded and silently vanishes depending on camera angle, not on
+    // anything real about the circle itself.
+    const mat = new THREE.LineBasicMaterial({ color, depthTest: false, depthWrite: false });
+    const circleLoop = new THREE.LineLoop(geo, mat);
+    circleLoop.renderOrder = 10;
+    slewCircleGroup.add(circleLoop);
 
     const y = center.y + 0.04;
 
