@@ -885,7 +885,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.11</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.12</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1864,6 +1864,7 @@
             <button class="mode-btn active" id="sling-angle-mode-direct-btn" onclick="setSlingAngleMode('direct')">Enter Angle</button>
             <button class="mode-btn" id="sling-angle-mode-dims-btn" onclick="setSlingAngleMode('dims')">Headroom + Spread</button>
             <button class="mode-btn" id="sling-angle-mode-leglen-btn" onclick="setSlingAngleMode('leglen')">Leg Length + Spread</button>
+            <button class="mode-btn" id="sling-angle-mode-uneven-btn" onclick="setSlingAngleMode('uneven')">Unequal Legs</button>
           </div>
         </div>
         <div class="form-group" id="sling-angle-direct-group" style="margin-top:14px;">
@@ -1890,8 +1891,23 @@
             <input type="number" id="sling-spread2" step="0.1" min="0" placeholder="e.g. 2" oninput="calcSlingAngle()">
           </div>
         </div>
+        <div class="grid" id="sling-angle-uneven-group" style="margin-top:14px; display:none;">
+          <div class="form-group">
+            <label>Leg 1 Length (m)</label>
+            <input type="number" id="sling-leg1len" step="0.01" min="0" placeholder="e.g. 1.98" oninput="calcSlingAngle()">
+          </div>
+          <div class="form-group">
+            <label>Leg 2 Length (m)</label>
+            <input type="number" id="sling-leg2len" step="0.01" min="0" placeholder="e.g. 4.2" oninput="calcSlingAngle()">
+          </div>
+          <div class="form-group">
+            <label>Spread — pick point to pick point (m)</label>
+            <input type="number" id="sling-uneven-spread" step="0.01" min="0" placeholder="e.g. 3" oninput="calcSlingAngle()">
+          </div>
+        </div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px; display:none;" id="sling-uneven-note">Assumes both pick points sit at the same height. With two fixed leg lengths and a fixed spread, the hook position — and the tension split between the legs — is fixed by the geometry, not a choice. An OEM drawing that specs unequal legs has already worked backward from the load's CG to put the hook plumb above it; entering those same lengths here just resolves what each leg actually carries.</div>
         <div id="sling-angle-computed-wrap" style="display:none; margin-top:10px;">
-          <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Computed Included Angle</label>
+          <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Computed Geometry</label>
           <div id="sling-angle-computed" style="font-weight:700; color:var(--accent-gold);">—</div>
         </div>
       </div>
@@ -1915,7 +1931,7 @@
 
       <div class="card">
         <div class="card-title">Result</div>
-        <div class="metrics-grid">
+        <div class="metrics-grid" id="sling-metrics-symmetric">
           <div class="metric-card highlight">
             <div class="metric-label">Load Angle Factor</div>
             <div class="metric-value" id="sling-laf">-</div>
@@ -1925,8 +1941,18 @@
             <div class="metric-value" id="sling-tension">- t</div>
           </div>
         </div>
+        <div class="metrics-grid" id="sling-metrics-uneven" style="display:none;">
+          <div class="metric-card highlight">
+            <div class="metric-label">Leg 1 Tension</div>
+            <div class="metric-value" id="sling-tension-leg1">- t</div>
+          </div>
+          <div class="metric-card highlight">
+            <div class="metric-label">Leg 2 Tension</div>
+            <div class="metric-value" id="sling-tension-leg2">- t</div>
+          </div>
+        </div>
         <div id="sling-result-box"></div>
-        <div class="disclaimer">Conservative 2-point rigging convention, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.</div>
+        <div class="disclaimer" id="sling-result-disclaimer">Conservative 2-point rigging convention, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.</div>
       </div>
     </div>
 
@@ -6353,10 +6379,18 @@
       document.getElementById('sling-angle-mode-direct-btn').classList.toggle('active', mode === 'direct');
       document.getElementById('sling-angle-mode-dims-btn').classList.toggle('active', mode === 'dims');
       document.getElementById('sling-angle-mode-leglen-btn').classList.toggle('active', mode === 'leglen');
+      document.getElementById('sling-angle-mode-uneven-btn').classList.toggle('active', mode === 'uneven');
       document.getElementById('sling-angle-direct-group').style.display = mode === 'direct' ? '' : 'none';
       document.getElementById('sling-angle-dims-group').style.display = mode === 'dims' ? '' : 'none';
       document.getElementById('sling-angle-leglen-group').style.display = mode === 'leglen' ? '' : 'none';
+      document.getElementById('sling-angle-uneven-group').style.display = mode === 'uneven' ? '' : 'none';
+      document.getElementById('sling-uneven-note').style.display = mode === 'uneven' ? '' : 'none';
       document.getElementById('sling-angle-computed-wrap').style.display = mode !== 'direct' ? '' : 'none';
+      document.getElementById('sling-metrics-symmetric').style.display = mode === 'uneven' ? 'none' : '';
+      document.getElementById('sling-metrics-uneven').style.display = mode === 'uneven' ? '' : 'none';
+      document.getElementById('sling-result-disclaimer').textContent = mode === 'uneven'
+        ? "Unequal-leg geometry: each leg's angle from vertical is fixed by its length and the spread (law of cosines), then tension per leg is resolved from force balance at the hook — T = Load × sin(other leg's angle) ÷ sin(included angle). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use."
+        : "Conservative 2-point rigging convention, per standard rigging practice (ASME B30.9-style). Tension per leg = (Load ÷ 2) × Load Angle Factor, where Load Angle Factor = 1 ÷ cos(included angle ÷ 2). Reference tool only — cross-check against your sling's own rated capacity chart and site rigging plan before use.";
       calcSlingAngle();
     }
 
@@ -6388,14 +6422,125 @@
       return null;
     }
 
+    // Shared by the symmetric modes (one shared tension figure) and the
+    // Unequal Legs mode (one call per leg, since the two legs can carry
+    // different tensions) - keeps the pass/fail/recommend wording and
+    // logic in exactly one place either way.
+    function sizeCheckHtml(tensionPerLeg) {
+      if (slingTypeMode === 'custom') {
+        const wll = parseFloat(document.getElementById('sling-wll').value) || 0;
+        if (wll > 0) {
+          if (tensionPerLeg <= wll) {
+            const margin = wll - tensionPerLeg;
+            return { cls: 'recommendation-box', html: `<strong style="color:var(--success);">PASS</strong> — ${wll.toFixed(2)}t rated leg clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).` };
+          }
+          return { cls: 'fail-box', html: `<strong style="color:var(--danger);">FAIL</strong> — ${wll.toFixed(2)}t rated leg is under the ${tensionPerLeg.toFixed(2)}t tension required at this angle. Minimum rated WLL needed per leg: ${tensionPerLeg.toFixed(2)}t.` };
+        }
+        return { cls: 'alt-box', html: `Minimum required WLL per leg at this angle: <strong>${tensionPerLeg.toFixed(2)} t</strong>. Enter your sling's rated WLL above to check pass/fail.` };
+      }
+      const table = slingTypeMode === 'g80' ? CHAIN_WLL_G80 : slingTypeMode === 'g100' ? CHAIN_WLL_G100 : SYNTHETIC_SLING_WLL;
+      const match = findMinimumRating(table, tensionPerLeg);
+      if (match) {
+        const margin = match.wll - tensionPerLeg;
+        const gradeLabel = slingTypeMode === 'g80' ? 'Grade 80' : slingTypeMode === 'g100' ? 'Grade 100' : '';
+        const sizeLabel = slingTypeMode === 'synthetic' ? match.label : `${match.label}mm ${gradeLabel} chain`;
+        return { cls: 'recommendation-box', html: `<strong style="color:var(--success);">Minimum: ${sizeLabel}</strong> — rated ${match.wll.toFixed(2)}t, clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).` };
+      }
+      return { cls: 'fail-box', html: `<strong style="color:var(--danger);">Exceeds this chart's range</strong> — ${tensionPerLeg.toFixed(2)}t per leg is beyond the standard sizes listed here. Consult a rigging engineer or step up equipment class.` };
+    }
+
     // Conservative 2-leg-share convention (see the tab's own disclaimer) -
     // tension per leg = (Load / 2) * Load Angle Factor. This is a plain
     // 2-point rigging calculator; a 3/4-leg bridle still only assumes 2
     // legs genuinely share the load, since even distribution across more
     // legs can't be guaranteed.
+    // Unequal-leg 2-point rig: given both leg lengths and the spread
+    // between pick points, the triangle (leg1, leg2, spread) fully
+    // determines the hook position - law of cosines gives each leg's
+    // angle from vertical (theta1, theta2), and resolving forces at the
+    // hook (horizontal components must cancel, vertical must sum to the
+    // load) gives the classic result T1 = W*sin(theta2)/sin(theta1+theta2),
+    // T2 = W*sin(theta1)/sin(theta1+theta2). Sanity-checked against the
+    // symmetric-mode formula: when L1=L2, this collapses to exactly
+    // (load/2)*LAF for both legs, matching the existing calculation.
+    function calcSlingAngleUneven(load) {
+      const resultBox = document.getElementById('sling-result-box');
+      const computedEl = document.getElementById('sling-angle-computed');
+      const leg1El = document.getElementById('sling-tension-leg1');
+      const leg2El = document.getElementById('sling-tension-leg2');
+      const L1 = parseFloat(document.getElementById('sling-leg1len').value) || 0;
+      const L2 = parseFloat(document.getElementById('sling-leg2len').value) || 0;
+      const S = parseFloat(document.getElementById('sling-uneven-spread').value) || 0;
+
+      if (L1 <= 0 || L2 <= 0 || S <= 0) {
+        computedEl.textContent = '—';
+        leg1El.textContent = '- t';
+        leg2El.textContent = '- t';
+        resultBox.className = '';
+        resultBox.innerHTML = '';
+        return;
+      }
+      if (L1 + L2 <= S || L1 + S <= L2 || L2 + S <= L1) {
+        computedEl.textContent = 'not a valid triangle for this spread';
+        leg1El.textContent = '- t';
+        leg2El.textContent = '- t';
+        resultBox.className = 'fail-box';
+        resultBox.innerHTML = `<strong style="color:var(--danger);">Invalid geometry</strong> — these leg lengths can't reach across a ${S.toFixed(2)}m spread (or one leg is too much longer than the other allows). Check the figures against the drawing.`;
+        return;
+      }
+
+      const clamp = (v) => Math.max(-1, Math.min(1, v));
+      const angleA = Math.acos(clamp((L1 * L1 + S * S - L2 * L2) / (2 * L1 * S))) * 180 / Math.PI;
+      const angleB = Math.acos(clamp((L2 * L2 + S * S - L1 * L1) / (2 * L2 * S))) * 180 / Math.PI;
+      const includedDeg = Math.acos(clamp((L1 * L1 + L2 * L2 - S * S) / (2 * L1 * L2))) * 180 / Math.PI;
+      const theta1 = 90 - angleA;
+      const theta2 = 90 - angleB;
+      computedEl.textContent = `Leg 1: ${theta1.toFixed(1)}° · Leg 2: ${theta2.toFixed(1)}° from vertical · Included ${includedDeg.toFixed(1)}°`;
+
+      if (load <= 0) {
+        leg1El.textContent = '- t';
+        leg2El.textContent = '- t';
+        resultBox.className = '';
+        resultBox.innerHTML = '';
+        return;
+      }
+
+      const sinIncluded = Math.sin(includedDeg * Math.PI / 180);
+      const T1 = load * Math.sin(theta2 * Math.PI / 180) / sinIncluded;
+      const T2 = load * Math.sin(theta1 * Math.PI / 180) / sinIncluded;
+
+      if (!(T1 > 0) || !(T2 > 0) || !isFinite(T1) || !isFinite(T2)) {
+        leg1El.textContent = '- t';
+        leg2El.textContent = '- t';
+        resultBox.className = 'fail-box';
+        resultBox.innerHTML = `<strong style="color:var(--danger);">Not a valid hanging configuration</strong> — with these lengths and spread the hook doesn't sit above the span between the two pick points, which a rope/chain leg can't resolve (it can only pull, not push). Check the leg lengths and spread against the drawing.`;
+        return;
+      }
+
+      leg1El.textContent = `${T1.toFixed(2)} t`;
+      leg2El.textContent = `${T2.toFixed(2)} t`;
+
+      const r1 = sizeCheckHtml(T1);
+      const r2 = sizeCheckHtml(T2);
+      resultBox.className = (r1.cls === 'fail-box' || r2.cls === 'fail-box') ? 'fail-box' : r1.cls;
+      let html = `<strong>Leg 1</strong> (${theta1.toFixed(1)}° from vertical, ${T1.toFixed(2)}t): ${r1.html}<br><br><strong>Leg 2</strong> (${theta2.toFixed(1)}° from vertical, ${T2.toFixed(2)}t): ${r2.html}`;
+      if (slingTypeMode !== 'custom' && r1.cls === 'recommendation-box' && r2.cls === 'recommendation-box') {
+        html += `<br><br>If rigging with a matched pair rather than two different legs, size both to whichever of the two is larger.`;
+      }
+      if (includedDeg >= 120) {
+        html += `<br><br><strong style="color:var(--warning);">⚠ Included angle 120° or over</strong> — many rigging codes prohibit sling angles this shallow regardless of calculated capacity.`;
+      }
+      resultBox.innerHTML = html;
+    }
+
     function calcSlingAngle() {
       const load = parseFloat(document.getElementById('sling-load').value) || 0;
       const resultBox = document.getElementById('sling-result-box');
+
+      if (slingAngleMode === 'uneven') {
+        calcSlingAngleUneven(load);
+        return;
+      }
 
       // Included angle = the angle between the two legs at the hook (the
       // way it's actually read off a drawing or eyeballed on site) - NOT
@@ -6445,36 +6590,9 @@
       document.getElementById('sling-laf').textContent = laf.toFixed(2);
       document.getElementById('sling-tension').textContent = `${tensionPerLeg.toFixed(2)} t`;
 
-      let html = '';
-      if (slingTypeMode === 'custom') {
-        const wll = parseFloat(document.getElementById('sling-wll').value) || 0;
-        if (wll > 0) {
-          if (tensionPerLeg <= wll) {
-            const margin = wll - tensionPerLeg;
-            resultBox.className = 'recommendation-box';
-            html = `<strong style="color:var(--success);">PASS</strong> — ${wll.toFixed(2)}t rated leg clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).`;
-          } else {
-            resultBox.className = 'fail-box';
-            html = `<strong style="color:var(--danger);">FAIL</strong> — ${wll.toFixed(2)}t rated leg is under the ${tensionPerLeg.toFixed(2)}t tension required at this angle. Minimum rated WLL needed per leg: ${tensionPerLeg.toFixed(2)}t.`;
-          }
-        } else {
-          resultBox.className = 'alt-box';
-          html = `Minimum required WLL per leg at this angle: <strong>${tensionPerLeg.toFixed(2)} t</strong>. Enter your sling's rated WLL above to check pass/fail.`;
-        }
-      } else {
-        const table = slingTypeMode === 'g80' ? CHAIN_WLL_G80 : slingTypeMode === 'g100' ? CHAIN_WLL_G100 : SYNTHETIC_SLING_WLL;
-        const match = findMinimumRating(table, tensionPerLeg);
-        if (match) {
-          const margin = match.wll - tensionPerLeg;
-          const gradeLabel = slingTypeMode === 'g80' ? 'Grade 80' : slingTypeMode === 'g100' ? 'Grade 100' : '';
-          const sizeLabel = slingTypeMode === 'synthetic' ? match.label : `${match.label}mm ${gradeLabel} chain`;
-          resultBox.className = 'recommendation-box';
-          html = `<strong style="color:var(--success);">Minimum: ${sizeLabel}</strong> — rated ${match.wll.toFixed(2)}t, clears ${tensionPerLeg.toFixed(2)}t required tension (${margin.toFixed(2)}t margin).`;
-        } else {
-          resultBox.className = 'fail-box';
-          html = `<strong style="color:var(--danger);">Exceeds this chart's range</strong> — ${tensionPerLeg.toFixed(2)}t per leg is beyond the standard sizes listed here. Consult a rigging engineer or step up equipment class.`;
-        }
-      }
+      const r = sizeCheckHtml(tensionPerLeg);
+      resultBox.className = r.cls;
+      let html = r.html;
       if (includedDeg >= 120) {
         html += `<br><br><strong style="color:var(--warning);">⚠ Included angle 120° or over</strong> — many rigging codes prohibit sling angles this shallow regardless of calculated capacity.`;
       }
