@@ -9074,3 +9074,56 @@ cranes get their own subsections as they're built.
   lines, ground-layout markers, AR anchor placement) was ever affected.
 
   CACHE_VERSION v217->v218, app version v5.22->v5.23.
+
+62. Follow-on from 61: vendor/carrier3d.js was never in the service
+    worker's precache list, so the calibration fix (and any future
+    carrier3d.js edit) could silently never reach a browser that had
+    already opened the 3D view once
+
+  Direct result of the person actually checking 61's fix on their own
+  device with Fit View and seeing "way off" - a real, large gap between
+  the rear-clearance line and the visible box, contradicting a fresh-
+  browser-profile test that showed the line touching the box to within
+  a pixel. Investigated why the SAME shipped code could produce two
+  different results, rather than assuming either result was wrong.
+
+  Root cause: sw.js's APP_SHELL array (the list of files precached and
+  refreshed on every CACHE_VERSION bump) never included
+  './vendor/carrier3d.js'. index.html imports it dynamically
+  (`import('./vendor/carrier3d.js')`-style, not a normal <script src>
+  page asset), so it was never automatically swept up the way core page
+  assets are - it fell into the generic fetch-once/cache-forever
+  CONTENT_CACHE path, same as everything else not explicitly listed.
+  CONTENT_CACHE is - by design, see this file's own comments - NEVER
+  cleared by a CACHE_VERSION bump. So a person who opened the 3D
+  Carrier Preview even once, at any point before 61 shipped, had the
+  OLD, buggy carrier3d.js cached forever - every later CACHE_VERSION
+  bump updated index.html (which they'd see as a new version number in
+  the header) but never touched that already-cached copy, so 61's fix
+  silently never reached them despite the app visibly reporting v5.23.
+
+  This is the exact same failure mode already documented in this file's
+  own comments for the counterweight diagrams (10.28) and reeving
+  manifest (41) - a person can keep seeing stale content/behaviour
+  across multiple version bumps because the fix landed in CONTENT_CACHE
+  the first time and nothing ever cleared it. Just never applied to
+  carrier3d.js specifically until now, because nobody had a reason to
+  distrust its caching before.
+
+  Fix: added './vendor/carrier3d.js' to APP_SHELL. The existing
+  activate() handler already purges any stale CONTENT_CACHE duplicate of
+  a URL that's newly added to APP_SHELL (same mechanism that fixed the
+  counterweight diagrams originally) - no new logic needed, just adding
+  the one missing entry. Deliberately did NOT add the vendor/three/*
+  library files (GLTFLoader.js, DRACOLoader.js, OrbitControls.js,
+  three.module.min.js) or the .glb carrier models - those are genuinely
+  stable, unedited vendored/OEM content, same reasoning as the reeving
+  SVGs staying in CONTENT_CACHE.
+
+  A person on an affected device needs one fresh load past this fix to
+  clear it - the in-app refresh button (CHECK_FOR_UPDATE) re-fetches
+  every APP_SHELL entry with cache:'reload', so once this specific fix
+  is live it should be enough on its own without needing a manual
+  browser cache clear.
+
+  CACHE_VERSION v218->v219, app version v5.23->v5.24.
