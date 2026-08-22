@@ -885,7 +885,7 @@
   </script>
 
   <header>
-    <h1>MYSLEWER <span class="app-version">v5.9</span></h1>
+    <h1>MYSLEWER <span class="app-version">v5.10</span></h1>
     <button id="cache-btn" type="button" onclick="toggleCachePanel()" title="Offline content" aria-label="Offline content">
       <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5,10.5 C2.5,5.5 4.2,3 7.2,3 L16.8,3 C19.8,3 21.5,5.5 21.5,10.5 L21.5,18 C21.5,19.1 20.6,20 19.5,20 L4.5,20 C3.4,20 2.5,19.1 2.5,18 Z"></path><rect fill="#272a30" x="3.6" y="6.3" width="16.8" height="0.9" rx="0.4"></rect><rect fill="#272a30" x="3.9" y="9.3" width="16.2" height="0.9" rx="0.4"></rect><path fill="#272a30" d="M11,1 L13,1 L13,6.8 L15.3,6.8 L12,10.8 L8.7,6.8 L11,6.8 Z"></path><circle fill="#272a30" cx="12" cy="15.6" r="1.2"></circle><path fill="#272a30" d="M11.15,16.3 L12.85,16.3 L12.85,18.1 L11.15,18.1 Z"></path><circle fill="#272a30" cx="4.8" cy="14" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="14" r="0.55"></circle><circle fill="#272a30" cx="4.8" cy="17.3" r="0.55"></circle><circle fill="#272a30" cx="19.2" cy="17.3" r="0.55"></circle></svg>
     </button>
@@ -1918,7 +1918,7 @@
           <label>Each Leg's Rated WLL — Vertical (t)</label>
           <input type="number" id="sling-wll" step="0.1" min="0" placeholder="e.g. 5.3" oninput="calcSlingAngle()">
         </div>
-        <div class="disclaimer" id="sling-type-source-note" style="margin-top:14px;">Chain WLL-by-size figures are standard published EN 818-4 grade 80/100 values (single leg, vertical) — generic industry data, not tied to a specific manufacturer's chart. Always confirm against the actual chain's own tag before use.</div>
+        <div class="disclaimer" id="sling-type-source-note" style="margin-top:14px;">Chain WLL-by-size figures are to AS 3775 (single leg, straight sling, vertical) — the Australian Standard itself, not one supplier's proprietary chart. Always confirm against the actual chain's own tag before use.</div>
       </div>
 
       <div class="card">
@@ -6319,19 +6319,26 @@
     }
 
     // --- SLING ANGLE CALCULATOR (owner-only) ---
-    // Standard published EN 818-4 grade 80/100 chain WLL-by-size (single
-    // leg, vertical, tonnes) - generic industry figures, not tied to one
-    // manufacturer's catalogue. Sizes as commonly published across major
-    // chain sling charts (Beaver, Gunnebo, Crosby etc.) which agree on
-    // these values for the standard EN 818-4 size range.
+    // Chain grade 80/100 WLL-by-size (single leg, straight sling,
+    // vertical, tonnes) to AS 3775 - the Australian Standard itself,
+    // cross-checked against a real supplier chart's own published AS
+    // 3775 table (which is the standard's numbers regardless of which
+    // supplier prints it, not proprietary to any one brand). That same
+    // chart's multi-leg angle columns (e.g. 13mm G80: 5.3t single leg ->
+    // 9.2/7.5/5.3t at 60°/90°/120° for a 2-leg straight sling) match this
+    // calculator's own formula exactly (legWLL * 2 * cos(includedAngle/2)),
+    // confirming both the table and the math independently. Only the
+    // sizes AS 3775 actually lists are included - no 9mm or 18mm in
+    // either grade, no 7mm in G100 (verify current stock sizes with your
+    // supplier regardless, since availability can lag the standard).
     const CHAIN_WLL_G80 = [
-      [6, 1.12], [7, 1.5], [8, 2.0], [9, 2.5], [10, 3.15],
-      [13, 5.3], [16, 8.0], [18, 10.0], [20, 12.5], [22, 15.0],
+      [6, 1.1], [7, 1.5], [8, 2.0], [10, 3.2],
+      [13, 5.3], [16, 8.0], [20, 12.5], [22, 15.0],
       [26, 21.2], [32, 31.5]
     ];
     const CHAIN_WLL_G100 = [
-      [6, 1.4], [7, 1.9], [8, 2.5], [10, 4.0], [13, 6.7],
-      [16, 10.0], [18, 12.5], [20, 16.0], [22, 19.0],
+      [6, 1.4], [8, 2.5], [10, 4.0], [13, 6.7],
+      [16, 10.0], [19, 14.0], [20, 16.0], [22, 19.0],
       [26, 26.5], [32, 40.0]
     ];
     // EN 1492-2 round sling colour code (vertical/0° WLL, tonnes) - the
@@ -6382,7 +6389,7 @@
       } else if (type === 'custom') {
         noteEl.textContent = "Checking against a WLL you already know, rather than getting a size/rating recommendation.";
       } else {
-        noteEl.textContent = "Chain WLL-by-size figures are standard published EN 818-4 grade 80/100 values (single leg, vertical) — generic industry data, not tied to a specific manufacturer's chart. Always confirm against the actual chain's own tag before use.";
+        noteEl.textContent = "Chain WLL-by-size figures are to AS 3775 (single leg, straight sling, vertical) — the Australian Standard itself, not one supplier's proprietary chart. Always confirm against the actual chain's own tag before use.";
       }
       calcSlingAngle();
     }
